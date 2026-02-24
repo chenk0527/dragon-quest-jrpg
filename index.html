@@ -3,6 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 强制清除缓存 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    
+    <script>
+        // 强制刷新缓存 - 添加时间戳
+        if (!window.location.search.includes('nocache')) {
+            window.location.href = window.location.href.split('?')[0] + '?nocache=' + Date.now();
+        }
+    </script>
     <title>勇者斗恶龙 JRPG</title>
     <style>
         :root {
