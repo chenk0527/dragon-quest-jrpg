@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Slime Pixel Art - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="56" rx="20" ry="6" fill="#000000" opacity="0.3"/>
+  
+  <!-- Slime body - Green -->
+  <rect x="12" y="28" width="40" height="24" fill="#7cb342"/>
+  <rect x="8" y="32" width="4" height="16" fill="#7cb342"/>
+  <rect x="52" y="32" width="4" height="16" fill="#7cb342"/>
+  
+  <!-- Slime top curve -->
+  <rect x="16" y="24" width="32" height="4" fill="#7cb342"/>
+  <rect x="20" y="20" width="24" height="4" fill="#7cb342"/>
+  <rect x="24" y="16" width="16" height="4" fill="#7cb342"/>
+  
+  <!-- Slime highlight -->
+  <rect x="18" y="26" width="8" height="4" fill="#aed581"/>
+  <rect x="22" y="22" width="6" height="4" fill="#aed581"/>
+  
+  <!-- Slime shadow/darker parts -->
+  <rect x="16" y="48" width="32" height="4" fill="#558b2f"/>
+  <rect x="12" y="44" width="4" height="8" fill="#558b2f"/>
+  <rect x="48" y="44" width="4" height="8" fill="#558b2f"/>
+  
+  <!-- Eyes -->
+  <rect x="24" y="34" width="6" height="6" fill="#ffffff"/>
+  <rect x="34" y="34" width="6" height="6" fill="#ffffff"/>
+  
+  <rect x="26" y="36" width="2" height="2" fill="#2c3e50"/>
+  <rect x="36" y="36" width="2" height="2" fill="#2c3e50"/>
+  
+  <!-- Mouth -->
+  <rect x="28" y="44" width="8" height="2" fill="#2c3e50"/>
+  
+  <!-- Shine/sparkle -->
+  <rect x="14" y="20" width="2" height="2" fill="#ffffff" opacity="0.8"/>
+  <rect x="48" y="24" width="2" height="2" fill="#ffffff" opacity="0.6"/>
+</svg>
