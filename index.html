@@ -822,6 +822,49 @@
             .character-stats { grid-template-columns: repeat(2, 1fr); }
             .battle-menu { gap: 8px; }
             .battle-btn { padding: 12px 4px; font-size: 12px; }
+            .sprite { width: 24px !important; height: 24px !important; }
+        }
+
+        /* 像素精灵图样式 */
+        .sprite {
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .emoji-icon {
+            display: inline-block;
+        }
+
+        .enemy-unit .sprite,
+        .enemy-unit .emoji-icon {
+            font-size: 40px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .party-member .sprite,
+        .party-member .emoji-icon {
+            font-size: 28px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .character-avatar .sprite,
+        .character-avatar .emoji-icon {
+            font-size: 36px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>

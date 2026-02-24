@@ -96,6 +96,48 @@ const COSMETICS = {
     }
 };
 
+// ==================== 像素资源路径配置 ====================
+const ASSETS = {
+    useImages: false, // 设置为true启用图片，false使用emoji
+    path: 'assets/',
+    characters: {
+        warrior: 'characters/warrior_idle.png',
+        mage: 'characters/mage_idle.png',
+        archer: 'characters/archer_idle.png',
+        priest: 'characters/priest_idle.png',
+        rogue: 'characters/rogue_idle.png'
+    },
+    monsters: {
+        slimeGreen: 'monsters/slime_green.png',
+        slimeBlue: 'monsters/slime_blue.png',
+        slimeRed: 'monsters/slime_red.png',
+        slimeGold: 'monsters/slime_gold.png',
+        undeadSkeleton: 'monsters/skeleton.png',
+        undeadZombie: 'monsters/zombie.png',
+        undeadGhost: 'monsters/ghost.png',
+        beastWolf: 'monsters/wolf.png',
+        beastBoar: 'monsters/boar.png',
+        beastBear: 'monsters/bear.png',
+        dragonWhelp: 'monsters/dragon_whelp.png',
+        dragonFire: 'monsters/dragon_fire.png',
+        demonImp: 'monsters/imp.png',
+        demonDog: 'monsters/hellhound.png',
+        bugBee: 'monsters/bee.png',
+        bugAnt: 'monsters/ant.png',
+        plantMushroom: 'monsters/mushroom.png',
+        humanBandit: 'monsters/bandit.png'
+    }
+};
+
+// 渲染图片元素（带emoji回退）
+function renderSprite(type, id, icon, size = 32, className = '') {
+    const imagePath = ASSETS[type]?.[id];
+    if (ASSETS.useImages && imagePath) {
+        return `\u003cimg src="${ASSETS.path}${imagePath}" alt="${icon}" class="sprite ${className}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='\u003cspan class=\\'emoji-fallback\\'\u003e${icon}\u003c/span\u003e'"\u003e`;
+    }
+    return `\u003cspan class="emoji-icon ${className}"\u003e${icon}\u003c/span\u003e`;
+}
+
 // ==================== 扩展怪物图鉴（100+种） ====================
 const BESTIARY = {
     // 史莱姆家族
@@ -1216,26 +1258,29 @@ function renderBattle() {
 
     const activeChar = gameState.party[battleState.activeCharIndex];
 
-    // 渲染敌人
-    enemiesContainer.innerHTML = battleState.enemies.map((enemy, index) => `
-        <div class="enemy-unit ${enemy.currentHp <= 0 ? 'dead' : ''} ${battleState.selectedTarget === index ? 'targeted' : ''}"
-             onclick="selectTarget(${index})">
-            <div class="enemy-icon">${enemy.icon}</div>
-            <div class="enemy-name">${enemy.name}</div>
-            <div class="enemy-hp-bar">
-                <div class="hp-fill" style="width: ${(enemy.currentHp / enemy.maxHp) * 100}%; background: #e74c3c;"></div>
+    // 渲染敌人 - 使用renderSprite支持图片/emoji回退
+    enemiesContainer.innerHTML = battleState.enemies.map((enemy, index) => {
+        const enemyId = Object.keys(BESTIARY).find(key => BESTIARY[key].name === enemy.name) || '';
+        return `
+            <div class="enemy-unit ${enemy.currentHp <= 0 ? 'dead' : ''} ${battleState.selectedTarget === index ? 'targeted' : ''}"
+                 onclick="selectTarget(${index})">
+                <div class="enemy-icon">${renderSprite('monsters', enemyId, enemy.icon, 50)}</div>
+                <div class="enemy-name">${enemy.name}</div>
+                <div class="enemy-hp-bar">
+                    <div class="hp-fill" style="width: ${(enemy.currentHp / enemy.maxHp) * 100}%; background: #e74c3c;"></div>
+                </div>
+                <div class="enemy-hp-text">${enemy.currentHp}/${enemy.maxHp}</div>
             </div>
-            <div class="enemy-hp-text">${enemy.currentHp}/${enemy.maxHp}</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
-    // 渲染队伍
+    // 渲染队伍 - 使用renderSprite支持图片/emoji回退
     partyContainer.innerHTML = gameState.party.map((char, index) => {
         const stats = calculateStats(char);
         const isActive = index === battleState.activeCharIndex;
         return `
             <div class="party-member ${isActive ? 'active' : ''} ${char.currentHp <= 0 ? 'dead' : ''}">
-                <div class="member-icon">${char.icon}</div>
+                <div class="member-icon">${renderSprite('characters', char.classId, char.icon, 36)}</div>
                 <div class="member-name">${char.name}</div>
                 <div class="member-hp-bar">
                     <div class="hp-fill" style="width: ${(char.currentHp / stats.hp) * 100}%; background: #27ae60;"></div>
@@ -1429,14 +1474,41 @@ function renderMap() {
 // ==================== 渲染队伍 ====================
 function renderParty() {
     const container = document.getElementById('partyContainer');
+    const unlockInfo = document.getElementById('partyUnlockInfo');
     if (!container) return;
 
-    // 解锁条件配置
+    // 更新解锁信息面板
+    if (unlockInfo) {
+        unlockInfo.style.display = 'block';
+        
+        const unlocks = {
+            'unlock-mage': 'forest',
+            'unlock-archer': 'cave', 
+            'unlock-priest': 'desert',
+            'unlock-rogue': 'volcano'
+        };
+        
+        Object.entries(unlocks).forEach(([id, bossId]) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (gameState.defeatedBosses.includes(bossId)) {
+                    el.classList.add('unlocked');
+                    el.classList.remove('locked');
+                } else {
+                    el.classList.add('locked');
+                    el.classList.remove('unlocked');
+                }
+            }
+        });
+    }
+
+    // 解锁条件配置 (对应角色解锁)
     const unlockConditions = [
-        null, // 第一个角色默认解锁
-        { boss: 'forest', name: '击败森林BOSS解锁', icon: '🔒' },
-        { boss: 'cave', name: '击败洞穴BOSS解锁', icon: '🔒' },
-        { boss: 'desert', name: '击败沙漠BOSS解锁', icon: '🔒' }
+        null, // 第一个角色默认解锁 (勇者)
+        { boss: 'forest', name: '法师 - 击败森林BOSS解锁', icon: '🔮' },
+        { boss: 'cave', name: '弓箭手 - 击败洞穴BOSS解锁', icon: '🏹' },
+        { boss: 'desert', name: '牧师 - 击败沙漠BOSS解锁', icon: '✝️' },
+        { boss: 'volcano', name: '盗贼 - 击败火山BOSS解锁', icon: '🗡️' }
     ];
 
     let html = '';
@@ -1447,7 +1519,7 @@ function renderParty() {
         html += `
             <div class="character-card">
                 <div class="character-header">
-                    <div class="character-avatar">${char.icon}</div>
+                    <div class="character-avatar">${renderSprite('characters', char.classId, char.icon, 60)}</div>
                     <div class="character-info">
                         <h3>${char.name}</h3>
                         <div class="character-class">${char.className} Lv.${char.level}</div>
@@ -1466,6 +1538,44 @@ function renderParty() {
             </div>
         `;
     });
+
+    // 显示锁定的空槽位
+    for (let i = gameState.party.length; i < CONFIG.MAX_PARTY_SIZE; i++) {
+        const condition = unlockConditions[i];
+        const isUnlocked = condition && gameState.defeatedBosses.includes(condition.boss);
+
+        if (isUnlocked) {
+            html += `
+                <div class="character-card" style="opacity:0.6;">
+                    <div class="character-header">
+                        <div class="character-avatar" style="background:#27ae60;">✓</div>
+                        <div class="character-info">
+                            <h3>待加入</h3>
+                            <div class="character-class">条件已满足</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="character-card" style="opacity:0.5; border: 2px dashed rgba(255,255,255,0.2);">
+                    <div class="character-header">
+                        <div class="character-avatar" style="background:linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);">${condition ? condition.icon : '🔒'}</div>
+                        <div class="character-info">
+                            <h3 style="color:#7f8c8d;">未解锁</h3>
+                            <div class="character-class" style="color:#95a5a6;">${condition ? condition.name : '后续版本开放'}</div>
+                        </div>
+                    </div>
+                    <div style="text-align:center; padding:20px; color:#7f8c8d; font-size:13px;">
+                        <span>🎮 ${condition ? '击败BOSS解锁新队友' : '敬请期待'}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    container.innerHTML = html;
+}
 
     // 显示锁定的空槽位
     for (let i = gameState.party.length; i < CONFIG.MAX_PARTY_SIZE; i++) {
@@ -1851,3 +1961,5 @@ window.showStory = showStory;
 window.STORY = STORY;
 window.EASTER_EGGS = EASTER_EGGS;
 window.AudioSystem = AudioSystem;
+window.ASSETS = ASSETS;
+window.renderSprite = renderSprite;
