@@ -772,11 +772,11 @@ const BOSSES = {
 
 // ==================== 职业定义 ====================
 const CLASSES = {
-    warrior: { id: 'warrior', name: '战士', icon: '⚔️', imagePath: 'assets/characters/warrior.svg', baseHp: 120, baseStr: 15, baseDef: 12, baseSpd: 8, baseInt: 5, growth: { hp: 12, str: 3, def: 2, spd: 1, int: 0.5 } },
-    mage: { id: 'mage', name: '法师', icon: '🔮', imagePath: 'assets/characters/mage.svg', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
-    archer: { id: 'archer', name: '弓箭手', icon: '🏹', imagePath: 'assets/characters/archer.svg', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
-    priest: { id: 'priest', name: '牧师', icon: '✝️', imagePath: 'assets/characters/priest.svg', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
-    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
+    warrior: { id: 'warrior', name: '战士', icon: '⚔️', imagePath: 'assets/characters/warrior_v2.svg', baseHp: 120, baseStr: 15, baseDef: 12, baseSpd: 8, baseInt: 5, growth: { hp: 12, str: 3, def: 2, spd: 1, int: 0.5 } },
+    mage: { id: 'mage', name: '法师', icon: '🔮', imagePath: 'assets/characters/mage_v2.svg', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
+    archer: { id: 'archer', name: '弓箭手', icon: '🏹', imagePath: 'assets/characters/archer_v2.svg', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
+    priest: { id: 'priest', name: '牧师', icon: '✝️', imagePath: 'assets/characters/priest_v2.svg', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
+    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue_v2.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
 };
 
 // ==================== 改进的图片辅助函数 ====================
