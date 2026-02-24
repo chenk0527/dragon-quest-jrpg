@@ -110,7 +110,6 @@ const BESTIARY = {
     bugBee: { name: '蜜蜂', icon: '🐝', family: 'insect', level: 2, hp: 25, str: 8, def: 2, xp: 10, gold: 4, desc: '会蜇人的蜜蜂' },
     bugAnt: { name: '巨蚁', icon: '🐜', family: 'insect', level: 3, hp: 35, str: 9, def: 5, xp: 12, gold: 5, desc: '巨大的蚂蚁' },
     bugBeetle: { name: '甲虫', icon: '🪲', family: 'insect', level: 4, hp: 50, str: 12, def: 8, xp: 15, gold: 6, desc: '有坚硬外壳' },
-    bugSpider: { name: '毒蜘蛛', icon: '🕷️', family: 'insect', level: 6, hp: 60, str: 15, def: 6, xp: 22, gold: 10, desc: '有毒的蜘蛛' },
     bugScorpion: { name: '蝎子', icon: '🦂', family: 'insect', level: 8, hp: 80, str: 18, def: 10, xp: 30, gold: 15, desc: '沙漠毒蝎' },
     bugMantis: { name: '螳螂王', icon: '🦗', family: 'insect', level: 20, hp: 300, str: 45, def: 25, xp: 200, gold: 100, desc: '昆虫中的王者' },
     
@@ -182,7 +181,7 @@ const BESTIARY = {
 // 按区域分组的怪物
 const ZONE_ENEMIES = {
     forest: ['slimeGreen', 'slimeBlue', 'bugBee', 'bugAnt', 'beastWolf', 'plantMushroom', 'humanBandit'],
-    cave: ['slimeRed', 'bugSpider', 'bugBeetle', 'undeadSkeleton', 'undeadZombie', 'beastBoar'],
+    cave: ['slimeRed', 'bugBeetle', 'undeadSkeleton', 'undeadZombie', 'beastBoar'],
     mine: ['elementalEarth', 'mechRobot', 'undeadGhost', 'beastBear', 'mythGolem'],
     crypt: ['undeadVampire', 'undeadGhost', 'undeadSkeleton', 'demonImp', 'humanNinja'],
     desert: ['bugScorpion', 'elementalFire', 'plantCactus', 'humanPirate', 'beastLion'],
@@ -792,3 +791,303 @@ function showToast(message, type = 'info') {
 
 // 启动
 window.onload = init;
+
+// ==================== 剧情对话系统 ====================
+const STORY = {
+    prologue: {
+        title: '序章：命运的开始',
+        scenes: [
+            { speaker: ' narrator', text: '在一个平静的村庄，你是一名普通的村民...', bg: '🏘️' },
+            { speaker: '村长', text: '不好了！村外出现了怪物！年轻的勇者啊，请帮帮我们！', bg: '👴' },
+            { speaker: '勇者', text: '交给我吧！我会保护这个村子的！', bg: '⚔️' },
+            { speaker: ' narrator', text: '就这样，你的冒险开始了...', bg: '✨' }
+        ]
+    },
+    forestBoss: {
+        title: '第一章：森林守护者',
+        scenes: [
+            { speaker: ' narrator', text: '深入森林，你感受到了强大的气息...', bg: '🌲' },
+            { speaker: '远古树精', text: '人类...为何要打扰森林的宁静...', bg: '🌳' },
+            { speaker: '勇者', text: '我是来打倒你，保护村庄的！', bg: '⚔️' },
+            { speaker: '远古树精', text: '那就让森林来审判你吧！', bg: '🌿' }
+        ]
+    },
+    volcanoBoss: {
+        title: '火山之章',
+        scenes: [
+            { speaker: ' narrator', text: '炽热的岩浆在脚下流淌...', bg: '🌋' },
+            { speaker: '火焰领主', text: '有趣...居然有人类能来到这里...', bg: '🔥' },
+            { speaker: '勇者', text: '你的火焰会熄灭在我的剑下！', bg: '⚔️' }
+        ]
+    },
+    finalBoss: {
+        title: '终章：混沌之战',
+        scenes: [
+            { speaker: ' narrator', text: '魔王城的最深处，黑暗笼罩着一切...', bg: '🏯' },
+            { speaker: '混沌魔王', text: '终于...又一个勇者来送死了...', bg: '👹' },
+            { speaker: '勇者', text: '我是来结束你的暴政的！', bg: '⚔️' },
+            { speaker: '混沌魔王', text: '哈哈哈！那就试试看吧！', bg: '😈' },
+            { speaker: '混沌魔王', text: '感受混沌的力量吧！', bg: '💀' }
+        ]
+    }
+};
+
+// 对话系统
+let currentDialog = null;
+let dialogIndex = 0;
+
+function showStory(storyId) {
+    const story = STORY[storyId];
+    if (!story) return;
+    
+    currentDialog = story;
+    dialogIndex = 0;
+    
+    createDialogBox();
+    showDialogScene();
+}
+
+function createDialogBox() {
+    // 创建对话界面
+    const dialogHTML = `
+        <div id="storyDialog" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;box-sizing:border-box;">
+            <div style="font-size:80px;text-align:center;margin-bottom:20px;" id="dialogBg">✨</div>
+            <div style="background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:20px;padding:30px;border:3px solid #f39c12;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+                <div style="color:#f39c12;font-size:14px;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;" id="dialogSpeaker"> narrator</div>
+                <div style="color:white;font-size:18px;line-height:1.6;" id="dialogText">...</div>
+                <div style="text-align:center;margin-top:20px;color:#95a5a6;font-size:12px;">点击继续 ▼</div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', dialogHTML);
+    
+    document.getElementById('storyDialog').addEventListener('click', nextDialog);
+}
+
+function showDialogScene() {
+    const scene = currentDialog.scenes[dialogIndex];
+    if (!scene) {
+        closeDialog();
+        return;
+    }
+    
+    document.getElementById('dialogBg').textContent = scene.bg;
+    document.getElementById('dialogSpeaker').textContent = scene.speaker;
+    
+    // 打字机效果
+    const textEl = document.getElementById('dialogText');
+    textEl.textContent = '';
+    let i = 0;
+    const typeInterval = setInterval(() => {
+        if (i < scene.text.length) {
+            textEl.textContent += scene.text[i];
+            i++;
+        } else {
+            clearInterval(typeInterval);
+        }
+    }, 30);
+}
+
+function nextDialog() {
+    dialogIndex++;
+    if (dialogIndex >= currentDialog.scenes.length) {
+        closeDialog();
+    } else {
+        showDialogScene();
+    }
+}
+
+function closeDialog() {
+    const dialog = document.getElementById('storyDialog');
+    if (dialog) {
+        dialog.remove();
+        currentDialog = null;
+    }
+}
+
+// ==================== 彩蛋系统 ====================
+const EASTER_EGGS = {
+    // 点击村庄100次的彩蛋
+    villageClick: {
+        count: 0,
+        threshold: 100,
+        reward: () => {
+            gameState.gold += 1000;
+            showToast('💰 彩蛋解锁！获得1000金币！', 'success');
+        }
+    },
+    
+    // 击败999只史莱姆
+    slimeKiller: {
+        count: 0,
+        threshold: 999,
+        reward: () => {
+            unlockCosmetic('slime', 'pet');
+            showToast('🎉 史莱姆杀手！解锁史莱姆宠物！', 'success');
+        }
+    },
+    
+    // 连续点击勇者头像10次
+    heroClick: {
+        count: 0,
+        threshold: 10,
+        reward: () => {
+            showToast('🤔 你在期待什么？', 'info');
+        }
+    },
+    
+    // 在特定时间登录（午夜）
+    midnightGaming: {
+        check: () => {
+            const hour = new Date().getHours();
+            return hour === 0;
+        },
+        reward: () => {
+            showToast('🌙 夜猫子奖励！快去睡觉！', 'success');
+        }
+    },
+    
+    // 输入Konami代码
+    konami: {
+        sequence: [],
+        target: ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'],
+        reward: () => {
+            gameState.party.forEach(char => {
+                char.level = 99;
+                char.xp = 0;
+            });
+            showToast('🎮 作弊码激活！全员满级！', 'success');
+        }
+    }
+};
+
+// 彩蛋检测
+document.addEventListener('keydown', (e) => {
+    // Konami代码检测
+    EASTER_EGGS.konami.sequence.push(e.key);
+    if (EASTER_EGGS.konami.sequence.length > EASTER_EGGS.konami.target.length) {
+        EASTER_EGGS.konami.sequence.shift();
+    }
+    if (JSON.stringify(EASTER_EGGS.konami.sequence) === JSON.stringify(EASTER_EGGS.konami.target)) {
+        EASTER_EGGS.konami.reward();
+    }
+});
+
+// ==================== 音效系统（使用Web Audio API）====================
+const AudioSystem = {
+    ctx: null,
+    
+    init() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    },
+    
+    // 播放攻击音效
+    playAttack() {
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+        
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.1);
+    },
+    
+    // 播放受伤音效
+    playDamage() {
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
+        
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.2);
+    },
+    
+    // 播放治疗音效
+    playHeal() {
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.3);
+        
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+        
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.3);
+    },
+    
+    // 播放升级音效
+    playLevelUp() {
+        if (!this.ctx) this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C大调和弦
+        
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + i * 0.1 + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.3);
+            
+            osc.start(this.ctx.currentTime + i * 0.1);
+            osc.stop(this.ctx.currentTime + i * 0.1 + 0.3);
+        });
+    },
+    
+    // 播放获得物品音效
+    playItemGet() {
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(1100, this.ctx.currentTime + 0.1);
+        
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.2);
+        
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.2);
+    }
+};
+
+// 导出故事系统
+window.showStory = showStory;
+window.STORY = STORY;
+window.EASTER_EGGS = EASTER_EGGS;
+window.AudioSystem = AudioSystem;

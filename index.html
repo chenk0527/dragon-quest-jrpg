@@ -530,6 +530,139 @@
             cursor: not-allowed;
         }
 
+        /* 图鉴系统 */
+        .bestiary-family {
+            margin-bottom: 30px;
+        }
+
+        .bestiary-family h3 {
+            color: var(--accent);
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .bestiary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        @media (min-width: 768px) {
+            .bestiary-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        .bestiary-entry {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .bestiary-entry:hover.unlocked {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .bestiary-entry.locked {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .bestiary-entry .entry-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .bestiary-entry .entry-name {
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bestiary-entry .entry-count {
+            font-size: 10px;
+            color: #95a5a6;
+            margin-top: 4px;
+        }
+
+        /* 外观系统 */
+        .cosmetic-section {
+            margin-bottom: 30px;
+        }
+
+        .cosmetic-section h3 {
+            color: var(--accent);
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .cosmetic-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        @media (min-width: 768px) {
+            .cosmetic-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        .cosmetic-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .cosmetic-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .cosmetic-item.equipped {
+            border-color: var(--success);
+            background: rgba(39, 174, 96, 0.2);
+        }
+
+        .cosmetic-item .cosmetic-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+        }
+
+        .cosmetic-item .cosmetic-name {
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .cosmetic-item .equipped-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: var(--success);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* 底部导航 */
         .nav-bar {
             display: none;
