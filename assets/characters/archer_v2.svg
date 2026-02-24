@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Archer Pixel Art - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="14" ry="4" fill="#000000" opacity="0.3"/>
+  
+  <!-- Legs - Green pants -->
+  <rect x="22" y="44" width="8" height="12" fill="#2e7d32"/>
+  <rect x="34" y="44" width="8" height="12" fill="#2e7d32"/>
+  
+  <!-- Boots -->
+  <rect x="20" y="52" width="10" height="6" fill="#4a3728"/>
+  <rect x="34" y="52" width="10" height="6" fill="#4a3728"/>
+  
+  <!-- Tunic - Green -->
+  <rect x="20" y="30" width="24" height="18" fill="#4caf50"/>
+  <rect x="18" y="32" width="4" height="14" fill="#388e3c"/>
+  <rect x="42" y="32" width="4" height="14" fill="#388e3c"/>
+  
+  <!-- Tunic trim -->
+  <rect x="20" y="30" width="24" height="3" fill="#81c784"/>
+  <rect x="30" y="36" width="4" height="8" fill="#66bb6a"/>
+  
+  <!-- Belt -->
+  <rect x="20" y="42" width="24" height="3" fill="#4a3728"/>
+  <rect x="30" y="42" width="4" height="3" fill="#ffd700"/>
+  
+  <!-- Quiver on back -->
+  <rect x="44" y="24" width="6" height="16" fill="#8b4513"/>
+  <rect x="45" y="22" width="4" height="4" fill="#6b3d28"/>
+  
+  <!-- Arrows in quiver -->
+  <rect x="46" y="16" width="1" height="8" fill="#ffd700"/>
+  <rect x="48" y="18" width="1" height="6" fill="#ffd700"/>
+  <rect x="44" y="18" width="1" height="6" fill="#ffd700"/>
+  
+  <!-- Arms -->
+  <rect x="10" y="32" width="10" height="8" fill="#d4a574"/>
+  <rect x="44" y="32" width="10" height="8" fill="#d4a574"/>
+  
+  <!-- Gloves -->
+  <rect x="8" y="38" width="8" height="6" fill="#388e3c"/>
+  <rect x="48" y="38" width="8" height="6" fill="#388e3c"/>
+  
+  <!-- Head -->
+  <rect x="24" y="14" width="16" height="16" fill="#d4a574"/>
+  
+  <!-- Hair - Blonde -->
+  <rect x="22" y="10" width="20" height="8" fill="#ffd54f"/>
+  <rect x="20" y="14" width="4" height="8" fill="#ffd54f"/>
+  <rect x="40" y="14" width="4" height="8" fill="#ffd54f"/>
+  <rect x="24" y="8" width="16" height="4" fill="#ffecb3"/>
+  
+  <!-- Headband -->
+  <rect x="22" y="12" width="20" height="3" fill="#2e7d32"/>
+  <rect x="38" y="11" width="4" height="4" fill="#2e7d32"/>
+  
+  <!-- Eyes -->
+  <rect x="28" y="22" width="3" height="3" fill="#2c3e50"/>
+  <rect x="33" y="22" width="3" height="3" fill="#2c3e50"/>
+  <rect x="29" y="23" width="1" height="1" fill="#ffffff"/>
+  <rect x="34" y="23" width="1" height="1" fill="#ffffff"/>
+  
+  <!-- Nose -->
+  <rect x="31" y="26" width="2" height="2" fill="#c49365"/>
+  
+  <!-- Mouth -->
+  <rect x="29" y="30" width="6" height="2" fill="#a67b5b"/>
+  
+  <!-- Bow (Left Hand) -->
+  <path d="M8,28 Q4,36 8,44" fill="none" stroke="#8b4513" stroke-width="3"/>
+  <rect x="6" y="28" width="4" height="20" fill="#6b3d28"/>
+  
+  <!-- Bow string -->
+  <line x1="8" y1="30" x2="8" y2="46" stroke="#ffffff" stroke-width="1"/>
+</svg>

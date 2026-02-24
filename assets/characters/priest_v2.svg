@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Priest Pixel Art - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="14" ry="4" fill="#000000" opacity="0.3"/>
+  
+  <!-- Robe - White/Gold -->
+  <rect x="20" y="32" width="24" height="24" fill="#ffffff"/>
+  <rect x="18" y="36" width="4" height="16" fill="#f5f5f5"/>
+  <rect x="42" y="36" width="4" height="16" fill="#f5f5f5"/>
+  
+  <!-- Robe trim - Gold -->
+  <rect x="20" y="32" width="24" height="3" fill="#ffd700"/>
+  <rect x="20" y="52" width="24" height="4" fill="#ffd700"/>
+  
+  <!-- Robe center - Blue -->
+  <rect x="28" y="38" width="8" height="14" fill="#1976d2"/>
+  <rect x="30" y="40" width="4" height="10" fill="#2196f3"/>
+  
+  <!-- Cross symbol -->
+  <rect x="30" y="42" width="4" height="8" fill="#ffd700"/>
+  <rect x="28" y="45" width="8" height="2" fill="#ffd700"/>
+  
+  <!-- Sleeves -->
+  <rect x="10" y="34" width="10" height="10" fill="#ffffff"/>
+  <rect x="44" y="34" width="10" height="10" fill="#ffffff"/>
+  
+  <!-- Sleeve trim -->
+  <rect x="10" y="34" width="10" height="2" fill="#ffd700"/>
+  <rect x="44" y="34" width="10" height="2" fill="#ffd700"/>
+  
+  <!-- Hands -->
+  <rect x="8" y="42" width="6" height="6" fill="#d4a574"/>
+  <rect x="50" y="42" width="6" height="6" fill="#d4a574"/>
+  
+  <!-- Head -->
+  <rect x="24" y="14" width="16" height="16" fill="#d4a574"/>
+  
+  <!-- Hair - Brown -->
+  <rect x="22" y="10" width="20" height="6" fill="#5d4037"/>
+  <rect x="20" y="14" width="4" height="8" fill="#5d4037"/>
+  <rect x="40" y="14" width="4" height="8" fill="#5d4037"/>
+  
+  <!-- Eyes - Kind -->
+  <rect x="28" y="22" width="3" height="3" fill="#4caf50"/>
+  <rect x="33" y="22" width="3" height="3" fill="#4caf50"/>
+  <rect x="29" y="23" width="1" height="1" fill="#ffffff"/>
+  <rect x="34" y="23" width="1" height="1" fill="#ffffff"/>
+  
+  <!-- Nose -->
+  <rect x="31" y="26" width="2" height="2" fill="#c49365"/>
+  
+  <!-- Mouth - Gentle smile -->
+  <rect x="29" y="30" width="6" height="2" fill="#a67b5b"/>
+  
+  <!-- Halo -->
+  <rect x="22" y="6" width="20" height="2" fill="#ffd700"/>
+  <rect x="20" y="8" width="2" height="2" fill="#ffd700"/>
+  <rect x="42" y="8" width="2" height="2" fill="#ffd700"/>
+  
+  <!-- Holy glow -->
+  <rect x="24" y="4" width="4" height="2" fill="#ffffff" opacity="0.5"/>
+  <rect x="36" y="4" width="4" height="2" fill="#ffffff" opacity="0.5"/>
+  
+  <!-- Staff (Right Hand) -->
+  <rect x="6" y="16" width="4" height="42" fill="#8b4513"/>
+  
+  <!-- Staff gem -->
+  <rect x="4" y="12" width="8" height="8" fill="#ffffff"/>
+  <rect x="6" y="14" width="4" height="4" fill="#e3f2fd"/>
+  
+  <!-- Staff glow -->
+  <rect x="5" y="13" width="6" height="6" fill="#ffffff" opacity="0.3"/>
+</svg>

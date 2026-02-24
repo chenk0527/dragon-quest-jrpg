@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Rogue Pixel Art - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="14" ry="4" fill="#000000" opacity="0.3"/>
+  
+  <!-- Legs - Dark pants -->
+  <rect x="22" y="44" width="8" height="12" fill="#212121"/>
+  <rect x="34" y="44" width="8" height="12" fill="#212121"/>
+  
+  <!-- Boots -->
+  <rect x="20" y="52" width="10" height="6" fill="#000000"/>
+  <rect x="34" y="52" width="10" height="6" fill="#000000"/>
+  
+  <!-- Tunic - Dark purple -->
+  <rect x="20" y="30" width="24" height="18" fill="#4a148c"/>
+  <rect x="18" y="32" width="4" height="14" fill="#311b92"/>
+  <rect x="42" y="32" width="4" height="14" fill="#311b92"/>
+  
+  <!-- Tunic details -->
+  <rect x="30" y="36" width="4" height="8" fill="#7b1fa2"/>
+  
+  <!-- Belt -->
+  <rect x="20" y="42" width="24" height="3" fill="#000000"/>
+  <rect x="30" y="42" width="4" height="3" fill="#ffd700"/>
+  
+  <!-- Hood - Down -->
+  <rect x="18" y="26" width="28" height="6" fill="#4a148c"/>
+  
+  <!-- Arms -->
+  <rect x="10" y="32" width="10" height="8" fill="#d4a574"/>
+  <rect x="44" y="32" width="10" height="8" fill="#d4a574"/>
+  
+  <!-- Gloves - Black -->
+  <rect x="8" y="38" width="8" height="6" fill="#000000"/>
+  <rect x="48" y="38" width="8" height="6" fill="#000000"/>
+  
+  <!-- Head -->
+  <rect x="24" y="14" width="16" height="16" fill="#d4a574"/>
+  
+  <!-- Hair - Black messy -->
+  <rect x="22" y="10" width="20" height="6" fill="#000000"/>
+  <rect x="20" y="14" width="4" height="8" fill="#000000"/>
+  <rect x="40" y="14" width="4" height="8" fill="#000000"/>
+  <rect x="24" y="8" width="4" height="4" fill="#000000"/>
+  <rect x="36" y="8" width="4" height="4" fill="#000000"/>
+  
+  <!-- Bandana -->
+  <rect x="22" y="14" width="20" height="4" fill="#b71c1c"/>
+  <rect x="40" y="16" width="4" height="6" fill="#b71c1c"/>
+  
+  <!-- Eyes - Sharp -->
+  <rect x="28" y="22" width="3" height="2" fill="#ff1744"/>
+  <rect x="33" y="22" width="3" height="2" fill="#ff1744"/>
+  
+  <!-- Mask -->
+  <rect x="28" y="26" width="8" height="3" fill="#000000"/>
+  
+  <!-- Dagger (Right Hand) -->
+  <rect x="54" y="28" width="2" height="14" fill="#bdbdbd"/>
+  <rect x="52" y="40" width="6" height="2" fill="#4a148c"/>
+  <rect x="54" y="38" width="2" height="2" fill="#ffd700"/>
+  
+  <!-- Dagger shine -->
+  <rect x="54" y="30" width="1" height="10" fill="#ffffff" opacity="0.6"/>
+</svg>
