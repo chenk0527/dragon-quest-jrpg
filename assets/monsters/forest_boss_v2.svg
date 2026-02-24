@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Forest Boss - Ancient Treant - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="20" ry="6" fill="#000000" opacity="0.3"/>
+  
+  <!-- Roots/Legs -->
+  <rect x="16" y="48" width="8" height="10" fill="#5d4037"/>
+  <rect x="28" y="48" width="8" height="10" fill="#5d4037"/>
+  <rect x="40" y="48" width="8" height="10" fill="#5d4037"/>
+  
+  <!-- Root details -->
+  <rect x="14" y="52" width="4" height="6" fill="#4e342e"/>
+  <rect x="46" y="52" width="4" height="6" fill="#4e342e"/>
+  
+  <!-- Body - Tree trunk -->
+  <rect x="18" y="24" width="28" height="26" fill="#795548"/>
+  <rect x="16" y="28" width="4" height="20" fill="#6d4c41"/>
+  <rect x="44" y="28" width="4" height="20" fill="#6d4c41"/>
+  
+  <!-- Bark texture -->
+  <rect x="22" y="30" width="4" height="4" fill="#6d4c41"/>
+  <rect x="34" y="36" width="4" height="4" fill="#6d4c41"/>
+  <rect x="26" y="42" width="4" height="4" fill="#6d4c41"/>
+  
+  <!-- Moss on body -->
+  <rect x="20" y="26" width="8" height="6" fill="#558b2f"/>
+  <rect x="38" y="32" width="6" height="4" fill="#558b2f"/>
+  <rect x="24" y="44" width="6" height="4" fill="#558b2f"/>
+  
+  <!-- Arms - Branches -->
+  <rect x="6" y="28" width="12" height="8" fill="#795548"/>
+  <rect x="46" y="28" width="12" height="8" fill="#795548"/>
+  
+  <!-- Branch extensions -->
+  <rect x="2" y="30" width="6" height="4" fill="#6d4c41"/>
+  <rect x="56" y="30" width="6" height="4" fill="#6d4c41"/>
+  
+  <!-- Hands - Claws -->
+  <rect x="0" y="28" width="4" height="8" fill="#3e2723"/>
+  <rect x="60" y="28" width="4" height="8" fill="#3e2723"/>
+  
+  <!-- Head - Tree top -->
+  <rect x="20" y="8" width="24" height="18" fill="#795548"/>
+  
+  <!-- Head branches -->
+  <rect x="16" y="12" width="6" height="6" fill="#6d4c41"/>
+  <rect x="42" y="12" width="6" height="6" fill="#6d4c41"/>
+  
+  <!-- Leaves canopy -->
+  <rect x="14" y="4" width="36" height="10" fill="#2e7d32"/>
+  <rect x="10" y="8" width="8" height="8" fill="#388e3c"/>
+  <rect x="46" y="8" width="8" height="8" fill="#388e3c"/>
+  
+  <rect x="20" y="0" width="24" height="6" fill="#1b5e20"/>
+  
+  <!-- Face - Eyes glowing green -->
+  <rect x="26" y="18" width="4" height="4" fill="#76ff03"/>
+  <rect x="34" y="18" width="4" height="4" fill="#76ff03"/>
+  
+  <rect x="27" y="19" width="2" height="2" fill="#ffffff" opacity="0.5"/>
+  <rect x="35" y="19" width="2" height="2" fill="#ffffff" opacity="0.5"/>
+  
+  <!-- Mouth - Wooden crack -->
+  <rect x="28" y="26" width="8" height="2" fill="#3e2723"/>
+  
+  <!-- Magic glow effect -->
+  <rect x="24" y="16" width="2" height="2" fill="#76ff03" opacity="0.5"/>
+  <rect x="38" y="16" width="2" height="2" fill="#76ff03" opacity="0.5"/>
+</svg>
