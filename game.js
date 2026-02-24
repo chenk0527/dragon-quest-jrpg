@@ -316,10 +316,12 @@ const CLASSES = {
 };
 
 // ==================== 图片辅助函数 ====================
+const CACHE_BUST = '?v=3.0.1';
+
 function getCharImage(char, size = 48) {
     const classData = CLASSES[char.classId];
     if (classData && classData.imagePath) {
-        return `<img src="${classData.imagePath}" alt="${char.name}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:${size*0.7}px>${char.icon}</span>'">`;
+        return `<img src="${classData.imagePath}${CACHE_BUST}" alt="${char.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.7}px>${char.icon}</span>'">`;
     }
     return `<span style="font-size:${size*0.7}px">${char.icon}</span>`;
 }
@@ -327,7 +329,7 @@ function getCharImage(char, size = 48) {
 function getMonsterImage(enemy, size = 50) {
     // Use imagePath if available directly on enemy object
     if (enemy.imagePath) {
-        return `<img src="${enemy.imagePath}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
+        return `<img src="${enemy.imagePath}${CACHE_BUST}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
     }
     
     // Fallback to monster name mapping
@@ -353,7 +355,7 @@ function getMonsterImage(enemy, size = 50) {
     
     const imagePath = monsterImages[enemy.name];
     if (imagePath) {
-        return `<img src="${imagePath}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
+        return `<img src="${imagePath}${CACHE_BUST}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
     }
     return `<span style="font-size:${size*0.8}px">${enemy.icon}</span>`;
 }
