@@ -1,0 +1,119 @@
+{
+  "version": "1.0",
+  "source": "Emoji Fallback Assets",
+  "description": "Using emoji as pixel art fallback until proper assets are downloaded",
+  
+  "characters": {
+    "warrior": {
+      "emoji": "⚔️",
+      "sprites": {
+        "idle": "assets/characters/warrior_idle.png",
+        "walk": "assets/characters/warrior_walk.png",
+        "attack": "assets/characters/warrior_attack.png"
+      }
+    },
+    "mage": {
+      "emoji": "🔮",
+      "sprites": {
+        "idle": "assets/characters/mage_idle.png",
+        "walk": "assets/characters/mage_walk.png",
+        "attack": "assets/characters/mage_attack.png"
+      }
+    },
+    "archer": {
+      "emoji": "🏹",
+      "sprites": {
+        "idle": "assets/characters/archer_idle.png",
+        "walk": "assets/characters/archer_walk.png",
+        "attack": "assets/characters/archer_attack.png"
+      }
+    },
+    "priest": {
+      "emoji": "✝️",
+      "sprites": {
+        "idle": "assets/characters/priest_idle.png",
+        "walk": "assets/characters/priest_walk.png",
+        "attack": "assets/characters/priest_attack.png"
+      }
+    },
+    "rogue": {
+      "emoji": "🗡️",
+      "sprites": {
+        "idle": "assets/characters/rogue_idle.png",
+        "walk": "assets/characters/rogue_walk.png",
+        "attack": "assets/characters/rogue_attack.png"
+      }
+    }
+  },
+  
+  "monsters": {
+    "slime": {
+      "emoji": "🟢",
+      "sprite": "assets/monsters/slime.png"
+    },
+    "goblin": {
+      "emoji": "👺",
+      "sprite": "assets/monsters/goblin.png"
+    },
+    "skeleton": {
+      "emoji": "💀",
+      "sprite": "assets/monsters/skeleton.png"
+    },
+    "wolf": {
+      "emoji": "🐺",
+      "sprite": "assets/monsters/wolf.png"
+    },
+    "ghost": {
+      "emoji": "👻",
+      "sprite": "assets/monsters/ghost.png"
+    },
+    "demon": {
+      "emoji": "👿",
+      "sprite": "assets/monsters/demon.png"
+    },
+    "dragon": {
+      "emoji": "🐲",
+      "sprite": "assets/monsters/dragon.png"
+    },
+    "orc": {
+      "emoji": "👹",
+      "sprite": "assets/monsters/orc.png"
+    },
+    "spider": {
+      "emoji": "🕷️",
+      "sprite": "assets/monsters/spider.png"
+    },
+    "bat": {
+      "emoji": "🦇",
+      "sprite": "assets/monsters/bat.png"
+    }
+  },
+  
+  "ui": {
+    "button_normal": "assets/ui/button_normal.png",
+    "button_hover": "assets/ui/button_hover.png",
+    "button_pressed": "assets/ui/button_pressed.png",
+    "frame_panel": "assets/ui/frame_panel.png",
+    "frame_window": "assets/ui/frame_window.png",
+    "hp_bar": "assets/ui/hp_bar.png",
+    "mp_bar": "assets/ui/mp_bar.png",
+    "xp_bar": "assets/ui/xp_bar.png",
+    "icons": {
+      "gold": "💰",
+      "gem": "💎",
+      "heart": "❤️",
+      "star": "⭐",
+      "sword": "⚔️",
+      "shield": "🛡️",
+      "potion": "🧪"
+    }
+  },
+  
+  "tilesets": {
+    "grass": "assets/tilesets/grass.png",
+    "dirt": "assets/tilesets/dirt.png",
+    "water": "assets/tilesets/water.png",
+    "stone": "assets/tilesets/stone.png",
+    "lava": "assets/tilesets/lava.png"
+  }
+}

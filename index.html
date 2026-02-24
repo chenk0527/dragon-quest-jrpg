@@ -377,7 +377,60 @@
             margin-top: 4px;
         }
 
-        /* 战斗界面 */
+        /* 队伍解锁进度 */
+        .party-unlock-info {
+            background: rgba(243, 156, 18, 0.2);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .party-unlock-info h3 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .unlock-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .unlock-item {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .unlock-item.locked {
+            opacity: 0.5;
+        }
+
+        .unlock-item.unlocked {
+            border: 1px solid var(--success);
+            background: rgba(39, 174, 96, 0.2);
+        }
+
+        /* 锁定效果 */
+        .character-locked {
+            opacity: 0.6;
+            filter: grayscale(80%);
+        }
+
+        .character-locked::after {
+            content: '🔒';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+        }
+
+        /* 战斗界面改进 */
         .battle-field {
             background: rgba(0,0,0,0.3);
             border-radius: 16px;
@@ -400,6 +453,7 @@
             border-radius: 12px;
             transition: all 0.2s;
             min-width: 80px;
+            position: relative;
         }
 
         .enemy-unit:hover:not(.dead) {
@@ -409,6 +463,17 @@
         .enemy-unit.targeted {
             background: rgba(231, 76, 60, 0.3);
             box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .enemy-unit.dead {
+            opacity: 0.3;
+            filter: grayscale(100%);
         }
 
         .enemy-unit .enemy-icon {
@@ -423,11 +488,17 @@
 
         .enemy-unit .enemy-hp-bar {
             width: 70px;
-            height: 6px;
+            height: 8px;
             background: rgba(0,0,0,0.5);
-            border-radius: 3px;
+            border-radius: 4px;
             overflow: hidden;
             margin: 0 auto 4px;
+        }
+
+        .enemy-hp-bar .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+            transition: width 0.3s ease;
         }
 
         .enemy-unit .enemy-hp-text {
@@ -435,7 +506,6 @@
             color: #95a5a6;
         }
 
-        /* 队伍 */
         .battle-party {
             display: flex;
             justify-content: center;
@@ -451,6 +521,7 @@
             border-radius: 12px;
             min-width: 70px;
             border: 2px solid transparent;
+            transition: all 0.2s;
         }
 
         .party-member.active {
@@ -477,14 +548,19 @@
 
         .party-member .member-hp-bar {
             width: 60px;
-            height: 5px;
+            height: 6px;
             background: rgba(0,0,0,0.5);
             border-radius: 3px;
             overflow: hidden;
             margin: 0 auto;
         }
 
-        /* 战斗日志 */
+        .member-hp-bar .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #27ae60 0%, #2ecc71 100%);
+            transition: width 0.3s ease;
+        }
+
         .battle-log {
             background: rgba(0,0,0,0.5);
             border-radius: 12px;
@@ -496,19 +572,6 @@
             line-height: 1.6;
         }
 
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 2px 0;
-        }
-
-        .log-entry.crit { color: #f39c12; font-weight: bold; }
-        .log-entry.damage { color: #e74c3c; }
-        .log-entry.heal { color: #2ecc71; }
-        .log-entry.buff { color: #3498db; }
-        .log-entry.loot { color: #9b59b6; }
-        .log-entry.levelup { color: #f1c40f; font-weight: bold; }
-
-        /* 战斗按钮 */
         .battle-menu {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -672,12 +735,14 @@
 
         /* 底部导航 */
         .nav-bar {
-            display: none;
+            display: flex;
             justify-content: space-around;
             padding: 12px;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             border-top: 1px solid rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
+            position: sticky;
+            bottom: 0;
         }
 
         .nav-btn {
@@ -787,6 +852,27 @@
             <!-- 队伍界面 -->
             <div class="scene" id="sceneParty">
                 <div id="partyContainer"></div>
+                <div class="party-unlock-info" id="partyUnlockInfo" style="display:none;">
+                    <h3>🎭 角色解锁进度</h3>
+                    <div class="unlock-list">
+                        <div class="unlock-item" id="unlock-mage">
+                            <span>🔮 法师</span><br>
+                            <small>击败森林BOSS解锁</small>
+                        </div>
+                        <div class="unlock-item" id="unlock-archer">
+                            <span>🏹 弓箭手</span><br>
+                            <small>击败洞穴BOSS解锁</small>
+                        </div>
+                        <div class="unlock-item" id="unlock-priest">
+                            <span>✝️ 牧师</span><br>
+                            <small>击败沙漠BOSS解锁</small>
+                        </div>
+                        <div class="unlock-item" id="unlock-rogue">
+                            <span>🗡️ 盗贼</span><br>
+                            <small>击败火山BOSS解锁</small>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- 地图界面 -->
