@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" shape-rendering="crispEdges">
+  <!-- Forest Boss - Ancient Treant -->
+  <!-- Roots/Feet -->
+  <rect x="8" y="42" width="6" height="6" fill="#5D4037"/>
+  <rect x="34" y="42" width="6" height="6" fill="#5D4037"/>
+  <rect x="20" y="44" width="8" height="4" fill="#4E342E"/>
+  
+  <!-- Trunk Body -->
+  <rect x="12" y="24" width="24" height="18" fill="#6D4C41"/>
+  <rect x="14" y="26" width="20" height="14" fill="#795548"/>
+  
+  <!-- Bark texture -->
+  <rect x="16" y="28" width="2" height="4" fill="#4E342E"/>
+  <rect x="22" y="32" width="2" height="4" fill="#4E342E"/>
+  <rect x="28" y="30" width="2" height="3" fill="#4E342E"/>
+  
+  <!-- Face -->
+  <!-- Eyes -->
+  <rect x="16" y="30" width="4" height="4" fill="#FFEB3B"/>
+  <rect x="28" y="30" width="4" height="4" fill="#FFEB3B"/>
+  <rect x="17" y="31" width="2" height="2" fill="#000"/>
+  <rect x="29" y="31" width="2" height="2" fill="#000"/>
+  
+  <!-- Angry eyebrows -->
+  <rect x="14" y="28" width="6" height="2" fill="#3E2723"/>
+  <rect x="28" y="28" width="6" height="2" fill="#3E2723"/>
+  
+  <!-- Mouth -->
+  <rect x="20" y="36" width="8" height="3" fill="#3E2723"/>
+  
+  <!-- Branches/Arms -->
+  <rect x="2" y="28" width="10" height="4" fill="#5D4037"/>
+  <rect x="36" y="28" width="10" height="4" fill="#5D4037"/>
+  <rect x="0" y="26" width="4" height="8" fill="#5D4037"/>
+  <rect x="44" y="26" width="4" height="8" fill="#5D4037"/>
+  
+  <!-- Leaves -->
+  <rect x="2" y="22" width="8" height="6" fill="#4CAF50"/>
+  <rect x="38" y="22" width="8" height="6" fill="#4CAF50"/>
+  <rect x="6" y="18" width="6" height="6" fill="#66BB6A"/>
+  <rect x="36" y="18" width="6" height="6" fill="#66BB6A"/>
+  <rect x="10" y="14" width="8" height="6" fill="#4CAF50"/>
+  <rect x="30" y="14" width="8" height="6" fill="#4CAF50"/>
+  
+  <!-- Top canopy -->
+  <rect x="16" y="8" width="16" height="12" fill="#388E3C"/>
+  <rect x="14" y="10" width="4" height="8" fill="#4CAF50"/>
+  <rect x="30" y="10" width="4" height="8" fill="#4CAF50"/>
+  <rect x="18" y="6" width="12" height="4" fill="#66BB6A"/>
+  
+  <!-- Moss details -->
+  <rect x="14" y="34" width="4" height="4" fill="#81C784"/>
+  <rect x="30" y="32" width="4" height="4" fill="#81C784"/>
+</svg>

@@ -1,0 +1,20 @@
+<!-- Archer Sprite - Pixel Art Style SVG -->
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#2c3e50"/>
+  
+  <!-- Body -->
+  <rect x="24" y="28" width="16" height="20" fill="#27ae60"/>
+  
+  <!-- Head -->
+  <rect x="26" y="16" width="12" height="12" fill="#f5cba7"/>
+  
+  <!-- Hood -->
+  <rect x="24" y="14" width="16" height="8" fill="#1e8449"/>
+  
+  <!-- Bow -->
+  <path d="M 46 20 Q 54 32 46 44" stroke="#8b4513" stroke-width="3" fill="none"/>
+  <line x1="46" y1="20" x2="46" y2="44" stroke="#bdc3c7" stroke-width="1"/>
+  
+  <!-- Quiver -->
+  <rect x="16" y="24" width="6" height="16" fill="#8b4513"/>
+</svg>

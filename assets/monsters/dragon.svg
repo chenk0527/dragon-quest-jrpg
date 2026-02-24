@@ -1,0 +1,29 @@
+<!-- Dragon Boss - Pixel Art Style SVG -->
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#1a1a2e"/>
+  
+  <!-- Body -->
+  <rect x="20" y="32" width="28" height="20" fill="#c0392b"/>
+  
+  <!-- Head -->
+  <rect x="16" y="20" width="20" height="16" fill="#e74c3c"/>
+  
+  <!-- Eye -->
+  <rect x="18" y="24" width="6" height="6" fill="#f1c40f"/>
+  <rect x="20" y="26" width="2" height="2" fill="#000"/>
+  
+  <!-- Horns -->
+  <rect x="14" y="16" width="4" height="8" fill="#f1c40f"/>
+  <rect x="30" y="16" width="4" height="8" fill="#f1c40f"/>
+  
+  <!-- Wings -->
+  <rect x="10" y="30" width="10" height="16" fill="#922b21"/>
+  <rect x="44" y="30" width="10" height="16" fill="#922b21"/>
+  
+  <!-- Tail -->
+  <rect x="48" y="40" width="12" height="6" fill="#c0392b"/>
+  
+  <!-- Fire breath -->
+  <rect x="4" y="26" width="12" height="4" fill="#e67e22"/>
+  <rect x="2" y="28" width="8" height="4" fill="#f39c12"/>
+</svg>

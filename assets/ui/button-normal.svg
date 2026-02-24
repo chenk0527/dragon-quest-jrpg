@@ -1,0 +1,6 @@
+<!-- UI Button Normal -->
+<svg width="120" height="40" viewBox="0 0 120 40" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="40" rx="8" fill="#3498db"/>
+  <rect x="2" y="2" width="116" height="36" rx="6" fill="#5dade2"/>
+  <text x="60" y="25" text-anchor="middle" font-family="Arial" font-size="14" fill="white" font-weight="bold">按钮</text>
+</svg>

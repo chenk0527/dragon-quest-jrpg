@@ -1,0 +1,6 @@
+<!-- UI Frame Panel -->
+<svg width="200" height="150" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="150" rx="12" fill="#2c3e50"/>
+  <rect x="4" y="4" width="192" height="142" rx="8" fill="#34495e"/>
+  <rect x="8" y="8" width="184" height="134" rx="4" fill="#1a1a2e"/>
+</svg>

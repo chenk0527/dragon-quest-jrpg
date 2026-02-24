@@ -1,0 +1,20 @@
+<!-- Rogue Sprite - Pixel Art Style SVG -->
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#2c3e50"/>
+  
+  <!-- Body -->
+  <rect x="24" y="28" width="16" height="20" fill="#2c3e50"/>
+  
+  <!-- Head -->
+  <rect x="26" y="16" width="12" height="12" fill="#f5cba7"/>
+  
+  <!-- Mask -->
+  <rect x="26" y="20" width="12" height="4" fill="#1a1a2e"/>
+  
+  <!-- Hood -->
+  <rect x="24" y="14" width="16" height="6" fill="#1a1a2e"/>
+  
+  <!-- Daggers -->
+  <rect x="42" y="30" width="3" height="12" fill="#bdc3c7"/>
+  <rect x="19" y="30" width="3" height="12" fill="#bdc3c7"/>
+</svg>

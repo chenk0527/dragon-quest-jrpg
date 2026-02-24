@@ -1,0 +1,19 @@
+<!-- Priest Sprite - Pixel Art Style SVG -->
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#2c3e50"/>
+  
+  <!-- Body/Robe -->
+  <rect x="22" y="28" width="20" height="24" fill="#ecf0f1"/>
+  
+  <!-- Head -->
+  <rect x="26" y="16" width="12" height="12" fill="#f5cba7"/>
+  
+  <!-- Halo -->
+  <ellipse cx="32" cy="12" rx="10" ry="3" fill="#f1c40f"/>
+  
+  <!-- Holy Staff -->
+  <rect x="46" y="16" width="4" height="40" fill="#d4ac0d"/>
+  <circle cx="48" cy="14" r="5" fill="#f1c40f"/>
+  
+  <cross x="48" y="10" width="6" height="8" fill="#fff"/>
+</svg>

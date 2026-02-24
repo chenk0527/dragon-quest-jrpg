@@ -1,0 +1,47 @@
+{
+  "version": "1.1",
+  "description": "Dragon Quest JRPG Assets",
+  "lastUpdated": "2026-02-24",
+  
+  "characters": {
+    "warrior": {
+      "name": "勇者",
+      "emoji": "⚔️",
+      "sprite": "assets/characters/hero-warrior.svg"
+    },
+    "mage": {
+      "name": "法师",
+      "emoji": "🔮",
+      "sprite": "assets/characters/hero-mage.svg"
+    },
+    "archer": {
+      "name": "弓箭手",
+      "emoji": "🏹",
+      "sprite": "assets/characters/hero-archer.svg"
+    },
+    "priest": {
+      "name": "牧师",
+      "emoji": "✝️",
+      "sprite": "assets/characters/hero-priest.svg"
+    },
+    "rogue": {
+      "name": "盗贼",
+      "emoji": "🗡️",
+      "sprite": "assets/characters/hero-rogue.svg"
+    }
+  },
+  
+  "monsters": [
+    { "id": "slime", "name": "史莱姆", "emoji": "🟢", "sprite": "assets/monsters/slime.svg" },
+    { "id": "goblin", "name": "哥布林", "emoji": "👺", "sprite": "assets/monsters/goblin.svg" },
+    { "id": "skeleton", "name": "骷髅", "emoji": "💀", "sprite": "assets/monsters/skeleton.svg" },
+    { "id": "dragon", "name": "龙", "emoji": "🐲", "sprite": "assets/monsters/dragon.svg" }
+  ],
+  
+  "ui": {
+    "buttonNormal": "assets/ui/button-normal.svg",
+    "buttonHover": "assets/ui/button-normal.svg",
+    "framePanel": "assets/ui/frame-panel.svg",
+    "hpBar": "assets/ui/hp-bar.svg"
+  }
+}

@@ -1,0 +1,21 @@
+<!-- Mage Sprite - Pixel Art Style SVG -->
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" fill="#2c3e50"/>
+  
+  <!-- Body/Robe -->
+  <rect x="22" y="28" width="20" height="24" fill="#9b59b6"/>
+  
+  <!-- Head -->
+  <rect x="26" y="16" width="12" height="12" fill="#f5cba7"/>
+  
+  <!-- Hat -->
+  <polygon points="20,18 32,4 44,18" fill="#9b59b6"/>
+  <rect x="20" y="16" width="24" height="4" fill="#8e44ad"/>
+  
+  <!-- Staff -->
+  <rect x="46" y="16" width="4" height="40" fill="#8b4513"/>
+  <circle cx="48" cy="14" r="6" fill="#e74c3c"/>
+  
+  <!-- Beard -->
+  <rect x="28" y="26" width="8" height="4" fill="#ecf0f1"/>
+</svg>
