@@ -233,7 +233,7 @@ const BOSSES = {
         desc: '不死族的统治者'
     },
     desert: { 
-        name: '法老王', icon: '👳', level: 35, hp: 4000, str: 85, def: 55, spd: 15, 
+        name: '法老王', icon: '👳', imagePath: 'assets/monsters/desert_boss.svg', level: 35, hp: 4000, str: 85, def: 55, spd: 15, 
         xp: 2000, gold: 1500, 
         skills: ['curse', 'sandstorm', 'mummyCall'],
         desc: '沉睡千年的王者'
@@ -245,7 +245,7 @@ const BOSSES = {
         desc: '沼泽的神秘统治者'
     },
     volcano: { 
-        name: '火焰领主', icon: '🔥', level: 48, hp: 6000, str: 120, def: 70, spd: 25, 
+        name: '火焰领主', icon: '🔥', imagePath: 'assets/monsters/volcano_boss.svg', level: 48, hp: 6000, str: 120, def: 70, spd: 25, 
         xp: 3500, gold: 2500, 
         skills: ['inferno', 'magmaArmor', 'eruption'],
         desc: '掌控熔岩的魔王'
@@ -308,11 +308,11 @@ const BOSSES = {
 
 // ==================== 职业定义 ====================
 const CLASSES = {
-    warrior: { id: 'warrior', name: '战士', icon: '⚔️', imagePath: 'assets/characters/hero-warrior.svg', baseHp: 120, baseStr: 15, baseDef: 12, baseSpd: 8, baseInt: 5, growth: { hp: 12, str: 3, def: 2, spd: 1, int: 0.5 } },
-    mage: { id: 'mage', name: '法师', icon: '🔮', imagePath: 'assets/characters/hero-mage.svg', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
-    archer: { id: 'archer', name: '弓箭手', icon: '🏹', imagePath: 'assets/characters/hero-archer.svg', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
-    priest: { id: 'priest', name: '牧师', icon: '✝️', imagePath: 'assets/characters/hero-priest.svg', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
-    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/hero-rogue.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
+    warrior: { id: 'warrior', name: '战士', icon: '⚔️', imagePath: 'assets/characters/warrior.svg', baseHp: 120, baseStr: 15, baseDef: 12, baseSpd: 8, baseInt: 5, growth: { hp: 12, str: 3, def: 2, spd: 1, int: 0.5 } },
+    mage: { id: 'mage', name: '法师', icon: '🔮', imagePath: 'assets/characters/mage.svg', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
+    archer: { id: 'archer', name: '弓箭手', icon: '🏹', imagePath: 'assets/characters/archer.svg', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
+    priest: { id: 'priest', name: '牧师', icon: '✝️', imagePath: 'assets/characters/priest.svg', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
+    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
 };
 
 // ==================== 图片辅助函数 ====================
@@ -325,21 +325,30 @@ function getCharImage(char, size = 48) {
 }
 
 function getMonsterImage(enemy, size = 50) {
-    // 简单的怪物图片映射
+    // Use imagePath if available directly on enemy object
+    if (enemy.imagePath) {
+        return `<img src="${enemy.imagePath}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
+    }
+    
+    // Fallback to monster name mapping
     const monsterImages = {
         '绿史莱姆': 'assets/monsters/slime.svg',
         '蓝史莱姆': 'assets/monsters/slime.svg',
         '红史莱姆': 'assets/monsters/slime.svg',
         '黄金史莱姆': 'assets/monsters/slime.svg',
         '史莱姆王': 'assets/monsters/slime.svg',
+        '金属史莱姆': 'assets/monsters/slime.svg',
         '骷髅兵': 'assets/monsters/skeleton.svg',
         '幼龙': 'assets/monsters/dragon.svg',
         '火龙': 'assets/monsters/dragon.svg',
         '冰龙': 'assets/monsters/dragon.svg',
         '龙王': 'assets/monsters/dragon.svg',
-        '远古树精': 'assets/monsters/dragon.svg',
-        '洞穴巨魔': 'assets/monsters/goblin.svg',
-        '火焰领主': 'assets/monsters/dragon.svg'
+        '野狼': 'assets/monsters/wolf.svg',
+        '远古树精': 'assets/monsters/forest_boss.svg',
+        '洞穴巨魔': 'assets/monsters/cave_boss.svg',
+        '法老王': 'assets/monsters/desert_boss.svg',
+        '火焰领主': 'assets/monsters/volcano_boss.svg',
+        '混沌魔王': 'assets/monsters/final_boss.svg'
     };
     
     const imagePath = monsterImages[enemy.name];
@@ -1777,6 +1786,8 @@ window.renderCosmetics = renderCosmetics;
 window.unlockCharacter = unlockCharacter;
 window.showStory = showStory;
 window.AudioSystem = AudioSystem;
+window.getCharImage = getCharImage;
+window.getMonsterImage = getMonsterImage;
 
 // 启动
 window.onload = init;
