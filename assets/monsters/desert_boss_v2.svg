@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Desert Boss - Pharaoh - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="16" ry="4" fill="#000000" opacity="0.3"/>
+  
+  <!-- Legs - Mummy wraps -->
+  <rect x="24" y="44" width="6" height="12" fill="#d4c4a8"/>
+  <rect x="34" y="44" width="6" height="12" fill="#d4c4a8"/>
+  
+  <!-- Leg bandages pattern -->
+  <rect x="24" y="46" width="6" height="1" fill="#c9b896"/>
+  <rect x="24" y="50" width="6" height="1" fill="#c9b896"/>
+  <rect x="34" y="46" width="6" height="1" fill="#c9b896"/>
+  <rect x="34" y="50" width="6" height="1" fill="#c9b896"/>
+  
+  <!-- Body - Mummy wraps -->
+  <rect x="22" y="28" width="20" height="18" fill="#d4c4a8"/>
+  
+  <!-- Body bandages pattern -->
+  <rect x="22" y="32" width="20" height="2" fill="#c9b896"/>
+  <rect x="22" y="38" width="20" height="2" fill="#c9b896"/>
+  
+  <!-- Chest - Gold ornament -->
+  <rect x="28" y="34" width="8" height="6" fill="#ffd700"/>
+  <rect x="30" y="36" width="4" height="2" fill="#ff8f00"/>
+  
+  <!-- Shoulders -->
+  <rect x="18" y="28" width="6" height="8" fill="#d4c4a8"/>
+  <rect x="40" y="28" width="6" height="8" fill="#d4c4a8"/>
+  
+  <!-- Arms -->
+  <rect x="12" y="30" width="8" height="8" fill="#d4c4a8"/>
+  <rect x="44" y="30" width="8" height="8" fill="#d4c4a8"/>
+  
+  <!-- Hands -->
+  <rect x="10" y="36" width="6" height="6" fill="#d4c4a8"/>
+  <rect x="48" y="36" width="6" height="6" fill="#d4c4a8"/>
+  
+  <!-- Head -->
+  <rect x="26" y="14" width="12" height="16" fill="#d4c4a8"/>
+  
+  <!-- Head bandages -->
+  <rect x="26" y="18" width="12" height="2" fill="#c9b896"/>
+  <rect x="26" y="24" width="12" height="2" fill="#c9b896"/>
+  
+  <!-- Eyes - Glowing green -->
+  <rect x="28" y="20" width="3" height="3" fill="#76ff03"/>
+  <rect x="33" y="20" width="3" height="3" fill="#76ff03"/>
+  
+  <rect x="29" y="21" width="1" height="1" fill="#ffffff" opacity="0.5"/>
+  <rect x="34" y="21" width="1" height="1" fill="#ffffff" opacity="0.5"/>
+  
+  <!-- Eye glow -->
+  <rect x="27" y="19" width="5" height="5" fill="#76ff03" opacity="0.2"/>
+  <rect x="32" y="19" width="5" height="5" fill="#76ff03" opacity="0.2"/>
+  
+  <!-- Nemes Headdress -->
+  <rect x="22" y="8" width="20" height="8" fill="#1976d2"/>
+  
+  <!-- Headdress stripes -->
+  <rect x="24" y="8" width="2" height="8" fill="#ffd700"/>
+  <rect x="30" y="8" width="2" height="8" fill="#ffd700"/>
+  <rect x="36" y="8" width="2" height="8" fill="#ffd700"/>
+  
+  <!-- Headdress sides -->
+  <rect x="18" y="10" width="6" height="12" fill="#1976d2"/>
+  <rect x="40" y="10" width="6" height="12" fill="#1976d2"/>
+  
+  <!-- Gold bands on headdress -->
+  <rect x="18" y="12" width="6" height="2" fill="#ffd700"/>
+  <rect x="40" y="12" width="6" height="2" fill="#ffd700"/>
+  
+  <!-- Uraeus (cobra) -->
+  <rect x="30" y="6" width="4" height="4" fill="#ffd700"/>
+  
+  <!-- Staff (Right Hand) -->
+  <rect x="8" y="16" width="3" height="42" fill="#8b4513"/>
+  
+  <!-- Staff top - Ankh -->
+  <rect x="6" y="12" width="7" height="6" fill="#ffd700"/>
+  <rect x="8" y="8" width="3" height="8" fill="#ffd700"/>
+  
+  <!-- Ankh cross -->
+  <rect x="7" y="14" width="5" height="2" fill="#ff8f00"/>
+  <rect x="9" y="10" width="1" height="6" fill="#ff8f00"/>
+  
+  <!-- Magic aura -->
+  <rect x="20" y="12" width="2" height="2" fill="#76ff03" opacity="0.4"/>
+  <rect x="42" y="12" width="2" height="2" fill="#76ff03" opacity="0.4"/>
+</svg>
