@@ -19,6 +19,8 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
 
         body {
@@ -29,12 +31,17 @@
         }
 
         .game-container {
-            max-width: 1200px;
+            max-width: 480px;
             margin: 0 auto;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            background: var(--bg-dark);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
+
+        /* 像素字体 */
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
         /* 头部 */
         .header {
