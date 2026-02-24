@@ -1,19 +1,124 @@
 /**
- * Dragon Quest JRPG 3.0 - 完整版
- * 新增：时装系统、100+怪物、外观收集
+ * Dragon Quest JRPG 4.0 - Overhaul Edition
+ * Enhanced with better graphics, animations, and features
  */
 
 // ==================== 游戏配置 ====================
 const CONFIG = {
     MAX_PARTY_SIZE: 4,
     MAX_LEVEL: 99,
-    VERSION: '3.0',
+    VERSION: '4.0',
     RARITY_WEIGHTS: { common: 45, magic: 30, rare: 15, epic: 8, legendary: 2 },
     AUTO_SAVE_INTERVAL: 30000,
     XP_BASE: 100,
     XP_CURVE: 1.9,
     MAX_ENHANCE: 15,
-    COSMETIC_SLOTS: ['hair', 'face', 'body', 'back', 'weaponSkin', 'pet']
+    COSMETIC_SLOTS: ['hair', 'face', 'body', 'back', 'weaponSkin', 'pet'],
+    ASSETS_VERSION: '4.0.0'
+};
+
+// ==================== 资源加载管理器 ====================
+const AssetLoader = {
+    loaded: false,
+    loadProgress: 0,
+    errors: [],
+    
+    // 检查图片是否存在并可加载
+    async checkImage(src) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const timeout = setTimeout(() => {
+                resolve({ exists: false, src, error: 'timeout' });
+            }, 5000);
+            
+            img.onload = () => {
+                clearTimeout(timeout);
+                resolve({ exists: true, src, width: img.width, height: img.height });
+            };
+            
+            img.onerror = () => {
+                clearTimeout(timeout);
+                resolve({ exists: false, src, error: 'load failed' });
+            };
+            
+            img.src = src;
+        });
+    },
+    
+    // 预加载所有资源
+    async preloadAssets() {
+        console.log('[AssetLoader] Starting asset preload...');
+        this.loaded = false;
+        this.loadProgress = 0;
+        this.errors = [];
+        
+        const assets = [];
+        
+        // 收集角色图片
+        Object.values(CLASSES).forEach(cls => {
+            if (cls.imagePath) assets.push(cls.imagePath);
+        });
+        
+        // 收集怪物图片
+        Object.values(BESTIARY).forEach(monster => {
+            if (monster.imagePath) assets.push(monster.imagePath);
+        });
+        
+        // 收集BOSS图片
+        Object.values(BOSSES).forEach(boss => {
+            if (boss.imagePath) assets.push(boss.imagePath);
+        });
+        
+        // 收集背景图片
+        Object.values(ZONE_BACKGROUNDS).forEach(bg => {
+            if (bg.imagePath) assets.push(bg.imagePath);
+        });
+        
+        // 去重
+        const uniqueAssets = [...new Set(assets)];
+        console.log(`[AssetLoader] Found ${uniqueAssets.length} unique assets to check`);
+        
+        let loaded = 0;
+        const results = [];
+        
+        for (const src of uniqueAssets) {
+            const result = await this.checkImage(src + '?v=' + CONFIG.ASSETS_VERSION);
+            results.push(result);
+            if (!result.exists) {
+                this.errors.push(result);
+                console.warn(`[AssetLoader] Failed to load: ${src}`, result.error);
+            } else {
+                console.log(`[AssetLoader] Loaded: ${src}`);
+            }
+            loaded++;
+            this.loadProgress = Math.floor((loaded / uniqueAssets.length) * 100);
+            this.updateLoadingScreen();
+        }
+        
+        this.loaded = true;
+        console.log(`[AssetLoader] Preload complete. ${this.errors.length} errors.`);
+        return results;
+    },
+    
+    updateLoadingScreen() {
+        const progressBar = document.getElementById('loadingProgress');
+        const loadingText = document.getElementById('loadingText');
+        if (progressBar) progressBar.style.width = this.loadProgress + '%';
+        if (loadingText) loadingText.textContent = `加载资源中... ${this.loadProgress}%`;
+    },
+    
+    showLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) loadingScreen.classList.add('active');
+    },
+    
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => loadingScreen.classList.remove('active'), 500);
+        }
+    }
 };
 
 // ==================== 角色解锁配置 ====================
@@ -22,6 +127,365 @@ const CHARACTER_UNLOCKS = {
     cave: { classId: 'archer', name: '弓箭手', desc: '洞穴中的猎人加入了你的队伍！' },
     desert: { classId: 'priest', name: '牧师', desc: '沙漠的圣者加入了你的队伍！' },
     volcano: { classId: 'rogue', name: '盗贼', desc: '火山中的刺客加入了你的队伍！' }
+};
+
+// ==================== 区域背景 ====================
+const ZONE_BACKGROUNDS = {
+    forest: { color: 'linear-gradient(180deg, #1a3a1a 0%, #0d1f0d 100%)', particles: 'leaf' },
+    cave: { color: 'linear-gradient(180deg, #2a2a3a 0%, #1a1a2a 100%)', particles: 'dust' },
+    mine: { color: 'linear-gradient(180deg, #3a2a1a 0%, #1f150d 100%)', particles: 'spark' },
+    crypt: { color: 'linear-gradient(180deg, #1a1a2a 0%, #0d0d1f 100%)', particles: 'mist' },
+    desert: { color: 'linear-gradient(180deg, #3a3020 0%, #2a2010 100%)', particles: 'sand' },
+    swamp: { color: 'linear-gradient(180deg, #1a2a1a 0%, #0d1f0d 100%)', particles: 'bubble' },
+    volcano: { color: 'linear-gradient(180deg, #3a1a1a 0%, #2a0d0d 100%)', particles: 'ember' },
+    darkForest: { color: 'linear-gradient(180deg, #0d1a0d 0%, #050f05 100%)', particles: 'shadow' },
+    castle: { color: 'linear-gradient(180deg, #1a1a2a 0%, #0f0f1f 100%)', particles: 'ghost' },
+    snow: { color: 'linear-gradient(180deg, #2a3a4a 0%, #1a2a3a 100%)', particles: 'snow' },
+    skyCity: { color: 'linear-gradient(180deg, #2a3a5a 0%, #1a2a4a 100%)', particles: 'cloud' },
+    abyss: { color: 'linear-gradient(180deg, #1a0a2a 0%, #0f051f 100%)', particles: 'void' },
+    rift: { color: 'linear-gradient(180deg, #2a1a3a 0%, #1a0d2a 100%)', particles: 'time' },
+    divine: { color: 'linear-gradient(180deg, #3a3a5a 0%, #2a2a4a 100%)', particles: 'light' },
+    dragonRealm: { color: 'linear-gradient(180deg, #3a2a1a 0%, #2a1a0d 100%)', particles: 'fire' },
+    demonCastle: { color: 'linear-gradient(180deg, #2a0a0a 0%, #1a0505 100%)', particles: 'chaos' }
+};
+
+// ==================== 粒子效果系统 ====================
+const ParticleSystem = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    animationId: null,
+    
+    init() {
+        this.canvas = document.getElementById('particleCanvas');
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+    },
+    
+    resize() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    },
+    
+    createParticle(type, x, y) {
+        const particle = {
+            type,
+            x: x || Math.random() * this.canvas.width,
+            y: y || Math.random() * this.canvas.height,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            life: 1,
+            decay: 0.01 + Math.random() * 0.02,
+            size: 2 + Math.random() * 4
+        };
+        
+        switch(type) {
+            case 'damage':
+                particle.vy = -2 - Math.random() * 2;
+                particle.color = '#ff4444';
+                break;
+            case 'heal':
+                particle.vy = -1 - Math.random();
+                particle.color = '#44ff44';
+                break;
+            case 'critical':
+                particle.vx *= 3;
+                particle.vy *= 3;
+                particle.color = '#ffaa00';
+                particle.size *= 2;
+                break;
+            case 'levelup':
+                particle.vy = -3 - Math.random() * 2;
+                particle.color = '#aa44ff';
+                particle.size *= 1.5;
+                break;
+        }
+        
+        this.particles.push(particle);
+        if (!this.animationId) this.animate();
+    },
+    
+    createBurst(type, x, y, count = 10) {
+        for (let i = 0; i < count; i++) {
+            this.createParticle(type, x, y);
+        }
+    },
+    
+    animate() {
+        if (!this.ctx) return;
+        
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= p.decay;
+            
+            if (p.life > 0) {
+                this.ctx.globalAlpha = p.life;
+                this.ctx.fillStyle = p.color;
+                this.ctx.fillRect(p.x, p.y, p.size, p.size);
+                return true;
+            }
+            return false;
+        });
+        
+        if (this.particles.length > 0) {
+            this.animationId = requestAnimationFrame(() => this.animate());
+        } else {
+            this.animationId = null;
+        }
+    },
+    
+    clear() {
+        this.particles = [];
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        if (this.ctx) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+};
+
+// ==================== 战斗动画系统 ====================
+const BattleAnimations = {
+    shakeElement(element, intensity = 5, duration = 300) {
+        if (!element) return;
+        const originalTransform = element.style.transform;
+        const startTime = Date.now();
+        
+        const shake = () => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed < duration) {
+                const x = (Math.random() - 0.5) * intensity;
+                const y = (Math.random() - 0.5) * intensity;
+                element.style.transform = `translate(${x}px, ${y}px)`;
+                requestAnimationFrame(shake);
+            } else {
+                element.style.transform = originalTransform;
+            }
+        };
+        shake();
+    },
+    
+    flashElement(element, color = '#fff', duration = 200) {
+        if (!element) return;
+        const originalFilter = element.style.filter;
+        element.style.filter = `brightness(2) drop-shadow(0 0 10px ${color})`;
+        setTimeout(() => {
+            element.style.filter = originalFilter;
+        }, duration);
+    },
+    
+    showDamageNumber(target, damage, isCritical = false) {
+        const rect = target.getBoundingClientRect();
+        const number = document.createElement('div');
+        number.className = 'damage-number' + (isCritical ? ' critical' : '');
+        number.textContent = damage;
+        number.style.left = rect.left + rect.width / 2 + 'px';
+        number.style.top = rect.top + 'px';
+        document.body.appendChild(number);
+        
+        // Animate
+        setTimeout(() => {
+            number.style.transform = 'translateY(-50px)';
+            number.style.opacity = '0';
+        }, 10);
+        
+        setTimeout(() => number.remove(), 1000);
+    },
+    
+    attackAnimation(attacker, target, callback) {
+        const attackerEl = document.querySelector(`[data-char-id="${attacker.id}"]`);
+        const targetEl = document.querySelector(`[data-enemy-index="${target}"]`);
+        
+        if (attackerEl) {
+            attackerEl.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                attackerEl.style.transform = 'translateX(0)';
+            }, 200);
+        }
+        
+        setTimeout(() => {
+            if (targetEl) {
+                this.shakeElement(targetEl, 8, 300);
+                this.flashElement(targetEl, '#ff0000', 150);
+            }
+            if (callback) callback();
+        }, 200);
+    },
+    
+    skillAnimation(skillName, target, callback) {
+        // Create skill effect overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'skill-effect-overlay';
+        overlay.innerHTML = `<div class="skill-name">${skillName}</div>`;
+        document.body.appendChild(overlay);
+        
+        setTimeout(() => {
+            overlay.classList.add('active');
+        }, 10);
+        
+        setTimeout(() => {
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 300);
+            if (callback) callback();
+        }, 800);
+    }
+};
+
+// ==================== 声音设置 ====================
+let SoundEnabled = true;
+
+function toggleSound() {
+    SoundEnabled = !SoundEnabled;
+    localStorage.setItem('dq_sound_enabled', SoundEnabled);
+    showToast(SoundEnabled ? '🔊 声音已开启' : '🔇 声音已关闭', 'info');
+    return SoundEnabled;
+}
+
+function loadSoundSetting() {
+    const saved = localStorage.getItem('dq_sound_enabled');
+    if (saved !== null) {
+        SoundEnabled = saved === 'true';
+    }
+}
+
+// ==================== 更新后的音效系统 ====================
+const AudioSystem = {
+    ctx: null,
+    
+    init() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    },
+    
+    canPlay() {
+        return SoundEnabled && this.ctx;
+    },
+    
+    playAttack() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.1);
+    },
+    
+    playDamage() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.2);
+    },
+    
+    playHeal() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.3);
+    },
+    
+    playLevelUp() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + i * 0.1 + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.3);
+            osc.start(this.ctx.currentTime + i * 0.1);
+            osc.stop(this.ctx.currentTime + i * 0.1 + 0.3);
+        });
+    },
+    
+    playCritical() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.15);
+    },
+    
+    playVictory() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.15);
+            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + i * 0.15 + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.15 + 0.4);
+            osc.start(this.ctx.currentTime + i * 0.15);
+            osc.stop(this.ctx.currentTime + i * 0.15 + 0.4);
+        });
+    },
+    
+    playDefeat() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const notes = [523.25, 440, 349.23, 261.63];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'sawtooth';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, this.ctx.currentTime + i * 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.3 + 0.4);
+            osc.start(this.ctx.currentTime + i * 0.3);
+            osc.stop(this.ctx.currentTime + i * 0.3 + 0.4);
+        });
+    }
 };
 
 // ==================== 时装/外观系统 ====================
@@ -110,9 +574,9 @@ const BESTIARY = {
     slimeGreen: { name: '绿史莱姆', icon: '🟢', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 1, hp: 30, str: 5, def: 2, xp: 8, gold: 3, desc: '最弱小的史莱姆' },
     slimeBlue: { name: '蓝史莱姆', icon: '🔵', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 3, hp: 45, str: 7, def: 3, xp: 12, gold: 5, desc: '水属性的史莱姆' },
     slimeRed: { name: '红史莱姆', icon: '🔴', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 5, hp: 60, str: 10, def: 4, xp: 18, gold: 7, desc: '火属性的史莱姆' },
-    slimeGold: { name: '黄金史莱姆', icon: '🟡', family: 'slime', level: 15, hp: 100, str: 15, def: 10, xp: 100, gold: 50, desc: '稀有史莱姆，掉落大量金币' },
-    slimeKing: { name: '史莱姆王', icon: '👑', family: 'slime', level: 25, hp: 500, str: 30, def: 20, xp: 300, gold: 150, desc: '史莱姆的王者' },
-    slimeMetal: { name: '金属史莱姆', icon: '⚪', family: 'slime', level: 30, hp: 20, str: 5, def: 99, xp: 1000, gold: 10, desc: '超高防御，逃跑很快' },
+    slimeGold: { name: '黄金史莱姆', icon: '🟡', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 15, hp: 100, str: 15, def: 10, xp: 100, gold: 50, desc: '稀有史莱姆，掉落大量金币' },
+    slimeKing: { name: '史莱姆王', icon: '👑', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 25, hp: 500, str: 30, def: 20, xp: 300, gold: 150, desc: '史莱姆的王者' },
+    slimeMetal: { name: '金属史莱姆', icon: '⚪', imagePath: 'assets/monsters/slime.svg', family: 'slime', level: 30, hp: 20, str: 5, def: 99, xp: 1000, gold: 10, desc: '超高防御，逃跑很快' },
     
     // 昆虫家族
     bugBee: { name: '蜜蜂', icon: '🐝', family: 'insect', level: 2, hp: 25, str: 8, def: 2, xp: 10, gold: 4, desc: '会蜇人的蜜蜂' },
@@ -128,14 +592,14 @@ const BESTIARY = {
     beastTiger: { name: '老虎', icon: '🐅', family: 'beast', level: 15, hp: 200, str: 35, def: 18, xp: 90, gold: 50, desc: '森林之王' },
     beastLion: { name: '狮子', icon: '🦁', family: 'beast', level: 18, hp: 250, str: 40, def: 20, xp: 120, gold: 70, desc: '草原霸主' },
     beastElephant: { name: '巨象', icon: '🐘', family: 'beast', level: 25, hp: 400, str: 50, def: 35, xp: 200, gold: 120, desc: '皮糙肉厚' },
-    beastWerewolf: { name: '狼人', icon: '🐺', family: 'beast', level: 30, hp: 350, str: 55, def: 25, xp: 250, gold: 150, desc: '月圆之夜出没' },
+    beastWerewolf: { name: '狼人', icon: '🐺', imagePath: 'assets/monsters/wolf.svg', family: 'beast', level: 30, hp: 350, str: 55, def: 25, xp: 250, gold: 150, desc: '月圆之夜出没' },
     
     // 龙族
     dragonWhelp: { name: '幼龙', icon: '🐉', imagePath: 'assets/monsters/dragon.svg', family: 'dragon', level: 20, hp: 300, str: 45, def: 30, xp: 180, gold: 100, desc: '年幼的龙' },
-    dragonFire: { name: '火龙', icon: '🔥', family: 'dragon', level: 35, hp: 800, str: 80, def: 50, xp: 500, gold: 300, desc: '掌控火焰' },
-    dragonIce: { name: '冰龙', icon: '❄️', family: 'dragon', level: 38, hp: 850, str: 75, def: 55, xp: 550, gold: 320, desc: '掌控冰霜' },
-    dragonThunder: { name: '雷龙', icon: '⚡', family: 'dragon', level: 40, hp: 900, str: 85, def: 50, xp: 600, gold: 350, desc: '掌控雷电' },
-    dragonKing: { name: '龙王', icon: '👑', family: 'dragon', level: 50, hp: 2000, str: 120, def: 80, xp: 1500, gold: 1000, desc: '龙族之王' },
+    dragonFire: { name: '火龙', icon: '🔥', imagePath: 'assets/monsters/dragon.svg', family: 'dragon', level: 35, hp: 800, str: 80, def: 50, xp: 500, gold: 300, desc: '掌控火焰' },
+    dragonIce: { name: '冰龙', icon: '❄️', imagePath: 'assets/monsters/dragon.svg', family: 'dragon', level: 38, hp: 850, str: 75, def: 55, xp: 550, gold: 320, desc: '掌控冰霜' },
+    dragonThunder: { name: '雷龙', icon: '⚡', imagePath: 'assets/monsters/dragon.svg', family: 'dragon', level: 40, hp: 900, str: 85, def: 50, xp: 600, gold: 350, desc: '掌控雷电' },
+    dragonKing: { name: '龙王', icon: '👑', imagePath: 'assets/monsters/dragon.svg', family: 'dragon', level: 50, hp: 2000, str: 120, def: 80, xp: 1500, gold: 1000, desc: '龙族之王' },
     
     // 不死族
     undeadSkeleton: { name: '骷髅兵', icon: '💀', imagePath: 'assets/monsters/skeleton.svg', family: 'undead', level: 8, hp: 70, str: 18, def: 5, xp: 28, gold: 12, desc: '复活的骷髅' },
@@ -315,21 +779,34 @@ const CLASSES = {
     rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
 };
 
-// ==================== 图片辅助函数 ====================
-const CACHE_BUST = '?v=3.0.1';
-
+// ==================== 改进的图片辅助函数 ====================
 function getCharImage(char, size = 48) {
     const classData = CLASSES[char.classId];
+    const cacheBust = '?v=' + CONFIG.ASSETS_VERSION;
+    
     if (classData && classData.imagePath) {
-        return `<img src="${classData.imagePath}${CACHE_BUST}" alt="${char.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.7}px>${char.icon}</span>'">`;
+        // Try SVG first, fallback to emoji
+        return `<img src="${classData.imagePath}${cacheBust}" 
+                     alt="${char.name}" 
+                     class="char-sprite"
+                     style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;"
+                     onerror="this.onerror=null; this.parentElement.innerHTML='<span style=font-size:${size*0.7}px class=emoji-fallback>${char.icon}</span>';"
+                     loading="eager">`;
     }
-    return `<span style="font-size:${size*0.7}px">${char.icon}</span>`;
+    return `<span class="emoji-fallback" style="font-size:${size*0.7}px">${char.icon}</span>`;
 }
 
 function getMonsterImage(enemy, size = 50) {
+    const cacheBust = '?v=' + CONFIG.ASSETS_VERSION;
+    
     // Use imagePath if available directly on enemy object
     if (enemy.imagePath) {
-        return `<img src="${enemy.imagePath}${CACHE_BUST}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
+        return `<img src="${enemy.imagePath}${cacheBust}" 
+                     alt="${enemy.name}" 
+                     class="monster-sprite"
+                     style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;"
+                     onerror="this.onerror=null; this.parentElement.innerHTML='<span style=font-size:${size*0.8}px class=emoji-fallback>${enemy.icon}</span>';"
+                     loading="eager">`;
     }
     
     // Fallback to monster name mapping
@@ -346,6 +823,7 @@ function getMonsterImage(enemy, size = 50) {
         '冰龙': 'assets/monsters/dragon.svg',
         '龙王': 'assets/monsters/dragon.svg',
         '野狼': 'assets/monsters/wolf.svg',
+        '狼人': 'assets/monsters/wolf.svg',
         '远古树精': 'assets/monsters/forest_boss.svg',
         '洞穴巨魔': 'assets/monsters/cave_boss.svg',
         '法老王': 'assets/monsters/desert_boss.svg',
@@ -355,9 +833,14 @@ function getMonsterImage(enemy, size = 50) {
     
     const imagePath = monsterImages[enemy.name];
     if (imagePath) {
-        return `<img src="${imagePath}${CACHE_BUST}" alt="${enemy.name}" style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;" onerror="this.outerHTML='<span style=font-size:${size*0.8}px>${enemy.icon}</span>'">`;
+        return `<img src="${imagePath}${cacheBust}" 
+                     alt="${enemy.name}" 
+                     class="monster-sprite"
+                     style="width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;"
+                     onerror="this.onerror=null; this.parentElement.innerHTML='<span style=font-size:${size*0.8}px class=emoji-fallback>${enemy.icon}</span>';"
+                     loading="eager">`;
     }
-    return `<span style="font-size:${size*0.8}px">${enemy.icon}</span>`;
+    return `<span class="emoji-fallback" style="font-size:${size*0.8}px">${enemy.icon}</span>`;
 }
 
 // ==================== 装备类型 ====================
@@ -799,6 +1282,9 @@ function startBattle(zoneId) {
     const zone = MAP_ZONES[zoneId];
     if (!zone) return;
     
+    // Apply battle background
+    applyBattleBackground(zoneId);
+    
     battleState = {
         zone: { id: zoneId, ...zone },
         enemies: generateEnemies(zoneId),
@@ -820,6 +1306,9 @@ function startBattle(zoneId) {
 function startBossBattle(zoneId) {
     const boss = BOSSES[zoneId];
     if (!boss) return;
+    
+    // Apply battle background
+    applyBattleBackground(zoneId);
     
     battleState = {
         zone: { id: zoneId, ...MAP_ZONES[zoneId] },
@@ -844,6 +1333,16 @@ function startBossBattle(zoneId) {
     addBattleLog(`${boss.desc}`, 'info');
     
     nextTurn();
+}
+
+// 应用战斗背景
+function applyBattleBackground(zoneId) {
+    const battleField = document.getElementById('battleField');
+    const bg = ZONE_BACKGROUNDS[zoneId];
+    
+    if (battleField && bg) {
+        battleField.style.background = bg.color;
+    }
 }
 
 // 下一回合
@@ -883,7 +1382,7 @@ function nextTurn() {
 function enemyTurn() {
     if (!battleState) return;
     
-    battleState.enemies.forEach(enemy => {
+    battleState.enemies.forEach((enemy, idx) => {
         if (enemy.currentHp > 0) {
             // 随机选择目标
             const aliveChars = gameState.party.filter(c => c.currentHp > 0);
@@ -895,9 +1394,16 @@ function enemyTurn() {
             const damage = Math.max(1, enemy.str - stats.def / 2);
             target.currentHp = Math.max(0, target.currentHp - damage);
             
+            // Visual feedback
+            const targetEl = document.querySelector(`[data-char-id="${target.id}"]`);
+            if (targetEl) {
+                BattleAnimations.shakeElement(targetEl, 5, 200);
+                BattleAnimations.flashElement(targetEl, '#ff0000', 150);
+            }
+            
             addBattleLog(`${enemy.icon} ${enemy.name} 攻击 ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'damage');
             
-            if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playDamage();
+            if (SoundEnabled) AudioSystem.playDamage();
         }
     });
     
@@ -943,13 +1449,42 @@ function performAttack(char, stats) {
     if (aliveEnemies.length === 0) return;
     
     const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
-    const damage = Math.max(1, stats.str * (0.9 + Math.random() * 0.2) - target.def / 2);
+    const isCritical = Math.random() < 0.15; // 15% crit chance
+    const critMultiplier = isCritical ? 1.5 : 1;
+    const damage = Math.max(1, stats.str * (0.9 + Math.random() * 0.2) * critMultiplier - target.def / 2);
+    const finalDamage = Math.floor(damage);
     
-    target.currentHp = Math.max(0, target.currentHp - damage);
+    target.currentHp = Math.max(0, target.currentHp - finalDamage);
     
-    addBattleLog(`${char.icon} ${char.name} 攻击 ${target.icon} ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'normal');
+    // Animation
+    const attackerEl = document.querySelector(`[data-char-id="${char.id}"]`);
+    const targetEl = document.querySelector(`[data-enemy-index="${battleState.selectedTarget % aliveEnemies.length}"]`);
     
-    if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playAttack();
+    if (attackerEl) {
+        attackerEl.style.transform = 'translateX(15px)';
+        setTimeout(() => attackerEl.style.transform = '', 200);
+    }
+    
+    setTimeout(() => {
+        if (targetEl) {
+            BattleAnimations.shakeElement(targetEl, 8, 300);
+            BattleAnimations.flashElement(targetEl, isCritical ? '#ffaa00' : '#ff0000', 200);
+        }
+    }, 200);
+    
+    // Particle effects
+    if (isCritical && ParticleSystem.canvas) {
+        const rect = targetEl?.getBoundingClientRect();
+        if (rect) {
+            ParticleSystem.createBurst('critical', rect.left + rect.width/2, rect.top);
+        }
+        AudioSystem.playCritical();
+    } else {
+        AudioSystem.playAttack();
+    }
+    
+    const critText = isCritical ? ' 💥暴击!' : '';
+    addBattleLog(`${char.icon} ${char.name} 攻击 ${target.icon} ${target.name} 造成 ${finalDamage} 伤害！${critText}`, isCritical ? 'damage' : 'normal');
     
     if (target.currentHp <= 0) {
         addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
@@ -972,12 +1507,22 @@ function performSkill(char, stats) {
     const skill = skills[char.classId];
     if (!skill) return;
     
+    // Skill animation
+    BattleAnimations.skillAnimation(skill.name);
+    
     if (skill.heal) {
         const target = gameState.party[battleState.activeCharIndex];
         const maxHp = calculateStats(target).hp;
+        const prevHp = target.currentHp;
         target.currentHp = Math.min(maxHp, target.currentHp + skill.heal);
-        addBattleLog(`✨ ${char.name} 使用 ${skill.name} 恢复了 ${skill.heal} 生命！`, 'heal');
-        if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playHeal();
+        const healed = target.currentHp - prevHp;
+        
+        // Heal visual
+        const targetEl = document.querySelector(`[data-char-id="${target.id}"]`);
+        if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+        
+        addBattleLog(`✨ ${char.name} 使用 ${skill.name} 恢复了 ${healed} 生命！`, 'heal');
+        AudioSystem.playHeal();
     } else {
         const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
         if (aliveEnemies.length === 0) return;
@@ -986,9 +1531,16 @@ function performSkill(char, stats) {
         const damage = Math.max(1, stats.str * skill.damage - target.def / 2);
         
         target.currentHp = Math.max(0, target.currentHp - damage);
-        addBattleLog(`⚡ ${char.name} 使用 ${skill.name} 造成 ${Math.floor(damage)} 伤害！`, 'normal');
         
-        if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playAttack();
+        // Damage visual
+        const targetEl = document.querySelector(`[data-enemy-index="${battleState.selectedTarget % aliveEnemies.length}"]`);
+        if (targetEl) {
+            BattleAnimations.shakeElement(targetEl, 10, 400);
+            BattleAnimations.flashElement(targetEl, '#ff6600', 300);
+        }
+        
+        addBattleLog(`⚡ ${char.name} 使用 ${skill.name} 造成 ${Math.floor(damage)} 伤害！`, 'normal');
+        AudioSystem.playAttack();
         
         if (target.currentHp <= 0) {
             addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
@@ -1016,7 +1568,12 @@ function attemptFlee() {
     const fleeChance = 0.5;
     if (Math.random() < fleeChance) {
         addBattleLog('🏃 成功逃跑！', 'normal');
-        setTimeout(() => showScene('map'), 1000);
+        setTimeout(() => {
+            showScene('map');
+            // Reset battle background
+            const battleField = document.getElementById('battleField');
+            if (battleField) battleField.style.background = '';
+        }, 1000);
     } else {
         addBattleLog('❌ 逃跑失败！', 'normal');
         endTurn();
@@ -1037,8 +1594,12 @@ function showItemMenu() {
         const index = gameState.inventory.indexOf(healItem);
         if (index > -1) gameState.inventory.splice(index, 1);
         
+        // Heal visual
+        const targetEl = document.querySelector(`[data-char-id="${char.id}"]`);
+        if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+        
         addBattleLog(`🧪 使用 ${healItem.name} 恢复了 50 生命！`, 'heal');
-        if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playHeal();
+        AudioSystem.playHeal();
         endTurn();
     } else {
         addBattleLog('❌ 没有可用的道具！', 'normal');
@@ -1054,6 +1615,7 @@ function renderBattle() {
     // 渲染敌人
     enemiesContainer.innerHTML = battleState.enemies.map((enemy, index) => `
         <div class="enemy-unit ${enemy.currentHp <= 0 ? 'dead' : ''} ${battleState.selectedTarget === index ? 'targeted' : ''}" 
+             data-enemy-index="${index}"
              onclick="selectTarget(${index})">
             <div class="enemy-icon">${getMonsterImage(enemy, 50)}</div>
             <div class="enemy-name">${enemy.name}</div>
@@ -1069,7 +1631,8 @@ function renderBattle() {
         const stats = calculateStats(char);
         const isActive = index === battleState.activeCharIndex;
         return `
-            <div class="party-member ${isActive ? 'active' : ''} ${char.currentHp <= 0 ? 'dead' : ''}">
+            <div class="party-member ${isActive ? 'active' : ''} ${char.currentHp <= 0 ? 'dead' : ''}" 
+                 data-char-id="${char.id}">
                 <div class="member-icon">${getCharImage(char, 36)}</div>
                 <div class="member-name">${char.name}</div>
                 <div class="member-hp-bar">
@@ -1099,7 +1662,7 @@ function gainXp(char, amount) {
         const stats = calculateStats(char);
         char.currentHp = stats.hp;
         
-        if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playLevelUp();
+        if (SoundEnabled) AudioSystem.playLevelUp();
     }
     
     return levelsGained;
@@ -1139,6 +1702,12 @@ function victory() {
     });
     
     addBattleLog(`🏆 战斗胜利！获得 ${totalXp} 经验和 ${totalGold} 金币！`, 'reward');
+    
+    // 播放胜利音效
+    AudioSystem.playVictory();
+    
+    // 显示胜利画面
+    showVictoryScreen(totalXp, totalGold);
     
     // 掉落装备
     const avgLevel = Math.floor(gameState.party.reduce((sum, c) => sum + c.level, 0) / gameState.party.length);
@@ -1204,34 +1773,59 @@ function victory() {
     
     updateUI();
     saveGame();
+}
+
+// 显示胜利画面
+function showVictoryScreen(xp, gold) {
+    const overlay = document.createElement('div');
+    overlay.className = 'victory-overlay';
+    overlay.innerHTML = `
+        <div class="victory-content">
+            <div class="victory-title">🏆 胜利！</div>
+            <div class="victory-stats">
+                <div class="victory-stat">✨ 经验值: ${xp}</div>
+                <div class="victory-stat">💰 金币: ${gold}</div>
+            </div>
+            <button class="btn btn-primary" onclick="this.closest('.victory-overlay').remove(); showScene('map');">继续</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
     
-    setTimeout(() => {
-        const msg = battleState.isBossBattle ? 
-            `🎉 BOSS击败！\n获得 ${totalXp} 经验\n获得 ${totalGold} 金币\n解锁新区域！` :
-            `战斗胜利！\n获得 ${totalXp} 经验\n获得 ${totalGold} 金币`;
-        alert(msg);
-        showScene('map');
-    }, 1500);
+    // Animate in
+    setTimeout(() => overlay.classList.add('active'), 10);
 }
 
 // 失败处理
 function defeat() {
     addBattleLog('💀 队伍全灭...', 'damage');
-    setTimeout(() => {
-        alert('战斗失败！回到村庄恢复...');
-        
-        // 恢复角色
-        gameState.party.forEach(char => {
-            const stats = calculateStats(char);
-            char.currentHp = Math.floor(stats.hp * 0.5);
-        });
-        
-        gameState.currentMap = 'village';
-        gameState.gold = Math.floor(gameState.gold * 0.9);
-        
-        showScene('map');
-        updateUI();
-    }, 1500);
+    AudioSystem.playDefeat();
+    
+    // Show defeat screen
+    const overlay = document.createElement('div');
+    overlay.className = 'defeat-overlay';
+    overlay.innerHTML = `
+        <div class="defeat-content">
+            <div class="defeat-title">💀 战斗失败</div>
+            <div class="defeat-message">队伍已撤退到村庄恢复...</div>
+            <button class="btn btn-secondary" onclick="this.closest('.defeat-overlay').remove(); continueAfterDefeat();">继续</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function continueAfterDefeat() {
+    // 恢复角色
+    gameState.party.forEach(char => {
+        const stats = calculateStats(char);
+        char.currentHp = Math.floor(stats.hp * 0.5);
+    });
+    
+    gameState.currentMap = 'village';
+    gameState.gold = Math.floor(gameState.gold * 0.9);
+    
+    showScene('map');
+    updateUI();
 }
 
 // 保存游戏
@@ -1494,7 +2088,7 @@ function renderBestiary() {
                         return `
                             <div class="bestiary-entry ${unlocked ? 'unlocked' : 'locked'}"
                                  onclick="showEnemyDetail('${enemy.id}')">
-                                <div class="entry-icon">${unlocked ? enemy.icon : '?'}</div>
+                                <div class="entry-icon">${unlocked ? getMonsterImage(enemy, 32) : '?'}</div>
                                 <div class="entry-name">${unlocked ? enemy.name : '???'}</div>
                                 ${unlocked ? `<div class="entry-count">击败：${gameState.bestiary[enemy.id]?.killed || 0}</div>` : ''}
                             </div>
@@ -1552,17 +2146,46 @@ function unlockCosmetic(cosmeticId, slot) {
 }
 
 // ==================== 初始化 ====================
-function init() {
+async function init() {
+    console.log('[DragonQuest] Initializing v' + CONFIG.VERSION);
+    
+    // Load sound setting
+    loadSoundSetting();
+    
+    // Initialize particle system
+    ParticleSystem.init();
+    
+    // Show loading screen
+    AssetLoader.showLoadingScreen();
+    
+    // Preload assets
+    await AssetLoader.preloadAssets();
+    
+    // Hide loading screen
+    AssetLoader.hideLoadingScreen();
+    
+    // Load game
     loadGame();
     updateUI();
+    
+    // Setup auto-save
     setInterval(autoSave, CONFIG.AUTO_SAVE_INTERVAL);
     setInterval(() => gameState.playTime++, 1000);
+    
+    console.log('[DragonQuest] Initialization complete');
 }
 
 // ==================== 更新UI ====================
 function updateUI() {
     const goldEl = document.getElementById('headerGold');
     if (goldEl) goldEl.textContent = gameState.gold;
+    
+    // Update continue button
+    const continueBtn = document.getElementById('continueBtn');
+    if (continueBtn) {
+        const hasSave = localStorage.getItem('dragonQuestSave') !== null;
+        continueBtn.style.display = hasSave ? 'block' : 'none';
+    }
 }
 
 // ==================== 提示 ====================
@@ -1703,77 +2326,6 @@ function closeDialog() {
     }
 }
 
-// ==================== 音效系统 ====================
-const AudioSystem = {
-    ctx: null,
-    
-    init() {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    },
-    
-    playAttack() {
-        if (!this.ctx) this.init();
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-        osc.start(this.ctx.currentTime);
-        osc.stop(this.ctx.currentTime + 0.1);
-    },
-    
-    playDamage() {
-        if (!this.ctx) this.init();
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
-        osc.start(this.ctx.currentTime);
-        osc.stop(this.ctx.currentTime + 0.2);
-    },
-    
-    playHeal() {
-        if (!this.ctx) this.init();
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.3);
-        osc.start(this.ctx.currentTime);
-        osc.stop(this.ctx.currentTime + 0.3);
-    },
-    
-    playLevelUp() {
-        if (!this.ctx) this.init();
-        const notes = [523.25, 659.25, 783.99, 1046.50];
-        notes.forEach((freq, i) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.type = 'triangle';
-            osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.1);
-            gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + i * 0.1 + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.3);
-            osc.start(this.ctx.currentTime + i * 0.1);
-            osc.stop(this.ctx.currentTime + i * 0.1 + 0.3);
-        });
-    }
-};
-
 // ==================== 导出 ====================
 window.startNewGame = startNewGame;
 window.continueGame = continueGame;
@@ -1790,6 +2342,10 @@ window.showStory = showStory;
 window.AudioSystem = AudioSystem;
 window.getCharImage = getCharImage;
 window.getMonsterImage = getMonsterImage;
+window.toggleSound = toggleSound;
+window.ParticleSystem = ParticleSystem;
+window.BattleAnimations = BattleAnimations;
+window.continueAfterDefeat = continueAfterDefeat;
 
 // 启动
 window.onload = init;

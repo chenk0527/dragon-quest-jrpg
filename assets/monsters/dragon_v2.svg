@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Dragon Pixel Art - 64x64 -->
+  <!-- Shadow -->
+  <ellipse cx="32" cy="58" rx="22" ry="6" fill="#000000" opacity="0.3"/>
+  
+  <!-- Tail -->
+  <rect x="4" y="36" width="12" height="8" fill="#c62828"/>
+  <rect x="2" y="38" width="4" height="6" fill="#c62828"/>
+  <rect x="0" y="40" width="2" height="4" fill="#ff5722"/>
+  
+  <!-- Back legs -->
+  <rect x="16" y="44" width="8" height="12" fill="#8b0000"/>
+  <rect x="40" y="44" width="8" height="12" fill="#8b0000"/>
+  
+  <!-- Body -->
+  <rect x="16" y="28" width="32" height="20" fill="#c62828"/>
+  <rect x="20" y="32" width="24" height="12" fill="#d32f2f"/>
+  
+  <!-- Belly scales -->
+  <rect x="24" y="36" width="4" height="4" fill="#ffcc80"/>
+  <rect x="30" y="36" width="4" height="4" fill="#ffcc80"/>
+  <rect x="36" y="36" width="4" height="4" fill="#ffcc80"/>
+  
+  <!-- Front legs -->
+  <rect x="20" y="46" width="6" height="10" fill="#c62828"/>
+  <rect x="38" y="46" width="6" height="10" fill="#c62828"/>
+  
+  <!-- Claws -->
+  <rect x="20" y="54" width="2" height="4" fill="#ffeb3b"/>
+  <rect x="24" y="54" width="2" height="4" fill="#ffeb3b"/>
+  <rect x="38" y="54" width="2" height="4" fill="#ffeb3b"/>
+  <rect x="42" y="54" width="2" height="4" fill="#ffeb3b"/>
+  
+  <!-- Neck -->
+  <rect x="44" y="20" width="12" height="14" fill="#c62828"/>
+  <rect x="46" y="22" width="8" height="10" fill="#d32f2f"/>
+  
+  <!-- Head -->
+  <rect x="48" y="12" width="14" height="12" fill="#c62828"/>
+  <rect x="50" y="14" width="10" height="8" fill="#d32f2f"/>
+  
+  <!-- Snout -->
+  <rect x="60" y="16" width="4" height="6" fill="#c62828"/>
+  
+  <!-- Eye -->
+  <rect x="54" y="16" width="4" height="4" fill="#ffeb3b"/>
+  <rect x="55" y="17" width="2" height="2" fill="#ff0000"/>
+  
+  <!-- Nostril -->
+  <rect x="62" y="18" width="1" height="1" fill="#000000"/>
+  
+  <!-- Horn -->
+  <rect x="52" y="8" width="4" height="4" fill="#ffeb3b"/>
+  <rect x="54" y="6" width="2" height="2" fill="#ffeb3b"/>
+  
+  <!-- Wing left -->
+  <rect x="12" y="20" width="16" height="8" fill="#8b0000"/>
+  <rect x="10" y="22" width="4" height="6" fill="#8b0000"/>
+  <rect x="8" y="24" width="2" height="4" fill="#ff5722"/>
+  
+  <!-- Wing membrane -->
+  <rect x="14" y="22" width="10" height="4" fill="#ff5722" opacity="0.6"/>
+  
+  <!-- Fire breath effect -->
+  <rect x="62" y="20" width="2" height="2" fill="#ff5722"/>
+  <rect x="64" y="18" width="2" height="4" fill="#ff9800"/>
+  <rect x="66" y="16" width="2" height="6" fill="#ffeb3b"/>
+</svg>
