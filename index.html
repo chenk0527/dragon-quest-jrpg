@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勇者斗恶龙 JRPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2c3e50;
+            --secondary: #e74c3c;
+            --accent: #f39c12;
+            --bg-dark: #1a1a2e;
+            --bg-light: #16213e;
+            --text: #ecf0f1;
+            --rarity-common: #95a5a6;
+            --rarity-magic: #2ecc71;
+            --rarity-rare: #3498db;
+            --rarity-epic: #9b59b6;
+            --rarity-legendary: #f39c12;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-light) 100%);
+            min-height: 100vh;
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 标题栏 */
+        .header {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        .header-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* 主游戏区域 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        /* 场景切换 */
+        .scene {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .scene.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 主菜单 */
+        .main-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 70vh;
+            gap: 30px;
+        }
+
+        .game-title {
+            font-size: 48px;
+            text-align: center;
+            text-shadow: 0 0 30px rgba(231, 76, 60, 0.5);
+            margin-bottom: 20px;
+        }
+
+        .game-title .subtitle {
+            font-size: 20px;
+            color: var(--accent);
+            display: block;
+            margin-top: 10px;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--secondary) 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--primary) 0%, #34495e 100%);
+            color: white;
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent) 0%, #d68910 100%);
+            color: white;
+        }
+
+        /* 队伍界面 */
+        .party-screen {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        @media (min-width: 768px) {
+            .party-screen {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .character-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.2s;
+        }
+
+        .character-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .character-card.active {
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .character-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .character-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .character-info h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .character-class {
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        .character-level {
+            font-size: 12px;
+            color: #95a5a6;
+        }
+
+        .character-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            color: #95a5a6;
+        }
+
+        .stat-value {
+            font-weight: bold;
+        }
+
+        /* 血条/蓝条 */
+        .bar-container {
+            margin: 5px 0;
+        }
+
+        .bar-label {
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+
+        .bar {
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .hp-bar { background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%); }
+        .mp-bar { background: linear-gradient(90deg, #3498db 0%, #2980b9 100%); }
+        .xp-bar { background: linear-gradient(90deg, #f39c12 0%, #d68910 100%); }
+
+        /* 装备系统 */
+        .equipment-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .equipment-title {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .equipment-slots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .equipment-slot {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .equipment-slot:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .equipment-slot.empty {
+            color: #7f8c8d;
+        }
+
+        .equipment-slot .slot-icon {
+            font-size: 20px;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .equipment-slot .slot-name {
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 品质颜色 */
+        .rarity-common { color: var(--rarity-common); }
+        .rarity-magic { color: var(--rarity-magic); }
+        .rarity-rare { color: var(--rarity-rare); }
+        .rarity-epic { color: var(--rarity-epic); }
+        .rarity-legendary { color: var(--rarity-legendary); text-shadow: 0 0 10px var(--rarity-legendary); }
+
+        /* 战斗界面 */
+        .battle-screen {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .battle-field {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            min-height: 300px;
+            position: relative;
+        }
+
+        .battle-enemies {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .enemy-unit {
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .enemy-unit:hover {
+            transform: scale(1.05);
+        }
+
+        .enemy-unit.targeted {
+            filter: drop-shadow(0 0 15px #e74c3c);
+        }
+
+        .enemy-sprite {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .enemy-hp-bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .battle-party {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .party-member {
+            text-align: center;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            min-width: 80px;
+        }
+
+        .party-member.active {
+            background: rgba(231, 76, 60, 0.3);
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        .party-member.dead {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+
+        .member-sprite {
+            font-size: 40px;
+            margin-bottom: 5px;
+        }
+
+        .member-name {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .member-hp {
+            font-size: 10px;
+            color: #e74c3c;
+        }
+
+        /* 战斗菜单 */
+        .battle-menu {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .battle-btn {
+            padding: 15px 10px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, #34495e 100%);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .battle-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .battle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 战斗日志 */
+        .battle-log {
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            padding: 15px;
+            height: 120px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            animation: logIn 0.3s ease;
+        }
+
+        @keyframes logIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-damage { color: #e74c3c; }
+        .log-heal { color: #2ecc71; }
+        .log-buff { color: #f39c12; }
+        .log-loot { color: #9b59b6; }
+
+        /* 物品/装备弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-light) 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* 物品列表 */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .item-row:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .item-stats {
+            font-size: 11px;
+            color: #95a5a6;
+        }
+
+        /* 底部导航 */
+        .nav-bar {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0,0,0,0.5);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: #95a5a6;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-btn.active {
+            color: var(--accent);
+        }
+
+        .nav-btn:hover {
+            color: white;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        /* 浮动伤害数字 */
+        .damage-number {
+            position: fixed;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            animation: damageFloat 1s ease-out forwards;
+            z-index: 100;
+        }
+
+        @keyframes damageFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.2); }
+        }
+
+        /* 地图界面 */
+        .map-screen {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .map-screen {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .map-node {
+            aspect-ratio: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .map-node:hover:not(.locked) {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .map-node.current {
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .map-node.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .map-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .map-name {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 标题栏 -->
+        <header class="header">
+            <h1>⚔️ 勇者斗恶龙 JRPG</h1>
+            <div class="header-stats">
+                <div class="header-stat">
+                    <span>💰</span>
+                    <span id="headerGold">0</span>
+                </div>
+                <div class="header-stat">
+                    <span>🏆</span>
+                    <span id="headerFame">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 主菜单 -->
+            <div class="scene active" id="sceneMenu">
+                <div class="main-menu">
+                    <div class="game-title">
+                        勇者斗恶龙
+                        <span class="subtitle">Dragon Quest JRPG</span>
+                    </div>
+                    <div class="menu-buttons">
+                        <button class="btn btn-primary" onclick="startNewGame()">🎮 开始新游戏</button>
+                        <button class="btn btn-secondary" onclick="continueGame()" id="continueBtn" style="display:none;">📂 继续游戏</button>
+                        <button class="btn btn-accent" onclick="showScene('sceneParty')">👥 队伍编成</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 队伍界面 -->
+            <div class="scene" id="sceneParty">
+                <div class="party-screen" id="partyContainer">
+                    <!-- 角色卡片动态生成 -->
+                </div>
+            </div>
+
+            <!-- 地图界面 -->
+            <div class="scene" id="sceneMap">
+                <div class="map-screen" id="mapContainer">
+                    <!-- 地图节点动态生成 -->
+                </div>
+            </div>
+
+            <!-- 战斗界面 -->
+            <div class="scene" id="sceneBattle">
+                <div class="battle-screen">
+                    <div class="battle-field">
+                        <div class="battle-enemies" id="battleEnemies">
+                            <!-- 敌人动态生成 -->
+                        </div>
+                        <div class="battle-party" id="battleParty">
+                            <!-- 队伍动态生成 -->
+                        </div>
+                    </div>
+                    <div class="battle-log" id="battleLog">
+                        <!-- 战斗日志 -->
+                    </div>
+                    <div class="battle-menu" id="battleMenu">
+                        <button class="battle-btn" onclick="battleAction('attack')">⚔️ 攻击</button>
+                        <button class="battle-btn" onclick="battleAction('skill')">🔥 技能</button>
+                        <button class="battle-btn" onclick="battleAction('item')">💊 物品</button>
+                        <button class="battle-btn" onclick="battleAction('defend')">🛡️ 防御</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 底部导航 -->
+        <nav class="nav-bar" id="navBar" style="display:none;">
+            <button class="nav-btn active" onclick="showScene('sceneMenu')">
+                <span class="nav-icon">🏠</span>
+                <span>主菜单</span>
+            </button>
+            <button class="nav-btn" onclick="showScene('sceneParty')">
+                <span class="nav-icon">👥</span>
+                <span>队伍</span>
+            </button>
+            <button class="nav-btn" onclick="showScene('sceneMap')">
+                <span class="nav-icon">🗺️</span>
+                <span>冒险</span>
+            </button>
+            <button class="nav-btn" onclick="showScene('sceneBattle')">
+                <span class="nav-icon">⚔️</span>
+                <span>战斗</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">标题</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-content" id="modalContent">
+                <!-- 内容动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
