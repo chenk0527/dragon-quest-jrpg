@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="crispEdges">
+  <!-- Ghost Pixel Art - 64x64 -->
+  <!-- Body - Translucent -->
+  <rect x="20" y="20" width="24" height="30" fill="#e0e0e0" opacity="0.7"/>
+  
+  <!-- Body gradient effect -->
+  <rect x="22" y="22" width="20" height="26" fill="#f5f5f5" opacity="0.5"/>
+  
+  <!-- Wispy bottom -->
+  <rect x="18" y="46" width="6" height="6" fill="#e0e0e0" opacity="0.6"/>
+  <rect x="26" y="48" width="4" height="6" fill="#e0e0e0" opacity="0.6"/>
+  <rect x="34" y="48" width="4" height="6" fill="#e0e0e0" opacity="0.6"/>
+  <rect x="40" y="46" width="6" height="6" fill="#e0e0e0" opacity="0.6"/>
+  
+  <!-- Head -->
+  <rect x="22" y="12" width="20" height="16" fill="#e0e0e0" opacity="0.8"/>
+  
+  <!-- Eyes - Hollow black -->
+  <rect x="26" y="18" width="4" height="5" fill="#000000"/>
+  <rect x="34" y="18" width="4" height="5" fill="#000000"/>
+  
+  <!-- Eye sockets glow -->
+  <rect x="27" y="19" width="2" height="2" fill="#4a148c" opacity="0.5"/>
+  <rect x="35" y="19" width="2" height="2" fill="#4a148c" opacity="0.5"/>
+  
+  <!-- Mouth - O shape -->
+  <rect x="30" y="26" width="4" height="4" fill="#000000"/>
+  
+  <rect x="31" y="27" width="2" height="2" fill="#4a148c" opacity="0.3"/>
+  
+  <!-- Arms - Wispy -->
+  <rect x="10" y="28" width="10" height="4" fill="#e0e0e0" opacity="0.5"/>
+  <rect x="44" y="28" width="10" height="4" fill="#e0e0e0" opacity="0.5"/>
+  
+  <rect x="6" y="26" width="6" height="3" fill="#e0e0e0" opacity="0.4"/>
+  <rect x="52" y="26" width="6" height="3" fill="#e0e0e0" opacity="0.4"/>
+  
+  <!-- Ghost particles -->
+  <rect x="16" y="14" width="2" height="2" fill="#e0e0e0" opacity="0.4"/>
+  <rect x="46" y="16" width="2" height="2" fill="#e0e0e0" opacity="0.4"/>
+  <rect x="48" y="42" width="2" height="2" fill="#e0e0e0" opacity="0.3"/>
+  <rect x="14" y="38" width="2" height="2" fill="#e0e0e0" opacity="0.3"/>
+</svg>
