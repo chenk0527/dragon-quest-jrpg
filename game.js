@@ -636,8 +636,655 @@ const MAP_ZONES = {
     demonCastle: { id: 'demonCastle', name: '魔王城', icon: '🏯', type: 'boss', level: 99, desc: '最终决战之地' }
 };
 
-// ==================== 其他代码保持不变 ... ====================
-// init, saveGame, loadGame, createCharacter, calculateStats 等函数保留之前的实现
+// ==================== 缺失的核心函数 ====================
+
+// 职业定义
+const CLASSES = {
+    warrior: { id: 'warrior', name: '战士', icon: '⚔️', baseHp: 120, baseStr: 15, baseDef: 12, baseSpd: 8, baseInt: 5, growth: { hp: 12, str: 3, def: 2, spd: 1, int: 0.5 } },
+    mage: { id: 'mage', name: '法师', icon: '🔮', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
+    archer: { id: 'archer', name: '弓箭手', icon: '🏹', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
+    priest: { id: 'priest', name: '牧师', icon: '✝️', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
+    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
+};
+
+// 装备类型
+const EQUIPMENT_TYPES = {
+    weapon: { name: '武器', stat: 'str' },
+    helmet: { name: '头盔', stat: 'def' },
+    armor: { name: '护甲', stat: 'def' },
+    shield: { name: '盾牌', stat: 'def' },
+    accessory: { name: '饰品', stat: 'spd' }
+};
+
+// 稀有度
+const RARITY_NAMES = {
+    common: '普通',
+    magic: '魔法',
+    rare: '稀有',
+    epic: '史诗',
+    legendary: '传说'
+};
+
+// 词缀池
+const AFFIX_POOL = {
+    common: ['破损的', '生锈的', '简陋的', '普通的'],
+    magic: ['精良的', '锋利的', '坚固的', '迅捷的'],
+    rare: ['卓越的', '狂暴的', '守护的', '神秘的'],
+    epic: ['传说的', '毁灭的', '不朽的', '睿智的'],
+    legendary: ['神话的', '创世的', '灭世的', '永恒的']
+};
+
+// 战斗状态
+let battleState = null;
+
+// 开始新游戏
+function startNewGame() {
+    gameState = {
+        party: [],
+        inventory: [],
+        storage: [],
+        gold: 500,
+        gems: 0,
+        fame: 0,
+        currentMap: 'village',
+        defeatedBosses: [],
+        unlockedMaps: ['village', 'forest'],
+        playTime: 0,
+        newGamePlus: 0,
+        achievements: [],
+        bestiary: {},
+        cosmetics: {
+            hair: ['warriorDefault', 'mageDefault'],
+            face: ['none'],
+            body: ['default'],
+            back: ['none'],
+            weaponSkin: ['default'],
+            pet: ['none']
+        },
+        equippedCosmetics: {
+            hair: 'warriorDefault',
+            face: 'none',
+            body: 'default',
+            back: 'none',
+            weaponSkin: 'default',
+            pet: 'none'
+        },
+        enhancementMaterials: { common: 0, magic: 0, rare: 0, epic: 0, legendary: 0 }
+    };
+    
+    // 创建初始角色
+    createCharacter('勇者', 'warrior');
+    createCharacter('法师', 'mage');
+    
+    saveGame();
+    showScene('party');
+    showToast('🎮 新游戏开始！', 'success');
+    showStory('prologue');
+}
+
+// 继续游戏
+function continueGame() {
+    if (loadGame()) {
+        showScene('party');
+        showToast('📂 游戏已加载', 'success');
+    } else {
+        showToast('❌ 没有存档', 'error');
+    }
+}
+
+// 创建角色
+function createCharacter(name, classId) {
+    const classData = CLASSES[classId];
+    if (!classData) return null;
+    
+    const char = {
+        id: Date.now() + Math.random(),
+        name: name,
+        classId: classId,
+        className: classData.name,
+        icon: classData.icon,
+        level: 1,
+        xp: 0,
+        xpToNext: 100,
+        baseHp: classData.baseHp,
+        currentHp: classData.baseHp,
+        equipment: {
+            weapon: null,
+            helmet: null,
+            armor: null,
+            shield: null,
+            accessory: null
+        }
+    };
+    
+    gameState.party.push(char);
+    return char;
+}
+
+// 计算角色属性
+function calculateStats(char) {
+    const classData = CLASSES[char.classId];
+    if (!classData) return { hp: 100, str: 10, def: 10, spd: 10, int: 10 };
+    
+    const level = char.level;
+    let stats = {
+        hp: Math.floor(classData.baseHp + (level - 1) * classData.growth.hp),
+        str: Math.floor(classData.baseStr + (level - 1) * classData.growth.str),
+        def: Math.floor(classData.baseDef + (level - 1) * classData.growth.def),
+        spd: Math.floor(classData.baseSpd + (level - 1) * classData.growth.spd),
+        int: Math.floor(classData.baseInt + (level - 1) * classData.growth.int)
+    };
+    
+    // 添加装备加成
+    if (char.equipment) {
+        Object.values(char.equipment).forEach(equip => {
+            if (equip) {
+                stats.str += equip.str || 0;
+                stats.def += equip.def || 0;
+                stats.spd += equip.spd || 0;
+                stats.int += equip.int || 0;
+                stats.hp += equip.hp || 0;
+            }
+        });
+    }
+    
+    return stats;
+}
+
+// 生成装备
+function generateEquipment(slot, level, forcedRarity = null) {
+    const rarities = ['common', 'magic', 'rare', 'epic', 'legendary'];
+    const rarityWeights = [45, 30, 15, 8, 2];
+    
+    let rarity;
+    if (forcedRarity) {
+        rarity = forcedRarity;
+    } else {
+        const totalWeight = rarityWeights.reduce((a, b) => a + b, 0);
+        let random = Math.random() * totalWeight;
+        for (let i = 0; i < rarities.length; i++) {
+            random -= rarityWeights[i];
+            if (random <= 0) {
+                rarity = rarities[i];
+                break;
+            }
+        }
+        rarity = rarity || 'common';
+    }
+    
+    const prefixes = AFFIX_POOL[rarity];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const typeName = EQUIPMENT_TYPES[slot]?.name || '装备';
+    
+    const baseStat = Math.floor(level * (1 + Math.random() * 0.5));
+    const multiplier = { common: 1, magic: 1.5, rare: 2.2, epic: 3, legendary: 4.5 }[rarity];
+    
+    const equip = {
+        id: Date.now() + Math.random(),
+        name: `${prefix}${typeName}`,
+        slot: slot,
+        rarity: rarity,
+        level: level,
+        icon: getEquipIcon(slot, rarity)
+    };
+    
+    // 根据槽位添加属性
+    if (slot === 'weapon') {
+        equip.str = Math.floor(baseStat * multiplier);
+    } else if (['helmet', 'armor', 'shield'].includes(slot)) {
+        equip.def = Math.floor(baseStat * multiplier);
+        equip.hp = Math.floor(baseStat * multiplier * 0.5);
+    } else if (slot === 'accessory') {
+        equip.spd = Math.floor(baseStat * multiplier * 0.7);
+        equip.int = Math.floor(baseStat * multiplier * 0.5);
+    }
+    
+    return equip;
+}
+
+// 获取装备图标
+function getEquipIcon(slot, rarity) {
+    const icons = {
+        weapon: { common: '🗡️', magic: '⚔️', rare: '🔪', epic: '🗡️', legendary: '⚡' },
+        helmet: { common: '🎩', magic: '🧢', rare: '⛑️', epic: '🪖', legendary: '👑' },
+        armor: { common: '👕', magic: '🦺', rare: '🥋', epic: '🛡️', legendary: '🏆' },
+        shield: { common: '🥏', magic: '🔹', rare: '🛡️', epic: '⬡', legendary: '🔷' },
+        accessory: { common: '💍', magic: '💎', rare: '🔮', epic: '⭐', legendary: '🌟' }
+    };
+    return icons[slot]?.[rarity] || '❓';
+}
+
+// 添加物品到背包
+function addItemToInventory(item) {
+    if (gameState.inventory.length >= 50) {
+        showToast('背包已满！', 'error');
+        return false;
+    }
+    gameState.inventory.push(item);
+    return true;
+}
+
+// 添加战斗日志
+function addBattleLog(message, type = 'normal') {
+    if (!battleState) return;
+    battleState.logs.push({ message, type, time: Date.now() });
+    
+    // 只保留最近50条日志
+    if (battleState.logs.length > 50) {
+        battleState.logs.shift();
+    }
+    
+    renderBattleLog();
+}
+
+// 渲染战斗日志
+function renderBattleLog() {
+    const logContainer = document.getElementById('battleLog');
+    if (!logContainer) return;
+    
+    const typeColors = {
+        normal: '#fff',
+        damage: '#ff6b6b',
+        heal: '#51cf66',
+        loot: '#ffd43b',
+        levelup: '#cc5de8',
+        boss: '#ff6b6b',
+        unlock: '#74c0fc',
+        info: '#868e96'
+    };
+    
+    logContainer.innerHTML = battleState.logs.map(log => 
+        `<div style="color: ${typeColors[log.type] || '#fff'}; margin: 4px 0; font-size: 14px;">${log.message}</div>`
+    ).join('');
+    
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
+// 进入区域
+function enterZone(zoneId) {
+    const zone = MAP_ZONES[zoneId];
+    if (!zone) return;
+    
+    gameState.currentMap = zoneId;
+    
+    if (zone.type === 'boss') {
+        // BOSS战特殊处理
+        if (gameState.defeatedBosses.includes(zoneId)) {
+            alert('你已经击败了这个BOSS！');
+            return;
+        }
+        
+        const bossStories = {
+            forest: 'forestBoss',
+            volcano: 'volcanoBoss',
+            demonCastle: 'finalBoss'
+        };
+        
+        if (bossStories[zoneId]) {
+            showStory(bossStories[zoneId]);
+            setTimeout(() => startBossBattle(zoneId), 100);
+        } else {
+            startBossBattle(zoneId);
+        }
+    } else if (zone.type === 'combat') {
+        startBattle(zoneId);
+    } else if (zone.type === 'safe') {
+        showToast('这里是安全区', 'info');
+    }
+}
+
+// 开始战斗
+function startBattle(zoneId) {
+    const zone = MAP_ZONES[zoneId];
+    if (!zone) return;
+    
+    battleState = {
+        zone: { id: zoneId, ...zone },
+        enemies: generateEnemies(zoneId),
+        turn: 0,
+        activeCharIndex: 0,
+        selectedTarget: 0,
+        logs: [],
+        isBossBattle: false
+    };
+    
+    showScene('battle');
+    renderBattle();
+    addBattleLog(`⚔️ 遭遇敌人！`, 'normal');
+    
+    nextTurn();
+}
+
+// 下一回合
+function nextTurn() {
+    if (!battleState) return;
+    
+    // 检查战斗结束
+    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    const aliveChars = gameState.party.filter(c => c.currentHp > 0);
+    
+    if (aliveEnemies.length === 0) {
+        victory();
+        return;
+    }
+    
+    if (aliveChars.length === 0) {
+        defeat();
+        return;
+    }
+    
+    // 找到下一个存活的角色
+    while (battleState.activeCharIndex < gameState.party.length) {
+        const char = gameState.party[battleState.activeCharIndex];
+        if (char.currentHp > 0) {
+            addBattleLog(`🎯 ${char.name} 的回合`, 'normal');
+            renderBattle();
+            return;
+        }
+        battleState.activeCharIndex++;
+    }
+    
+    // 所有角色行动完毕，敌人回合
+    enemyTurn();
+}
+
+// 敌人回合
+function enemyTurn() {
+    if (!battleState) return;
+    
+    battleState.enemies.forEach(enemy => {
+        if (enemy.currentHp > 0) {
+            // 随机选择目标
+            const aliveChars = gameState.party.filter(c => c.currentHp > 0);
+            if (aliveChars.length === 0) return;
+            
+            const target = aliveChars[Math.floor(Math.random() * aliveChars.length)];
+            const stats = calculateStats(target);
+            
+            const damage = Math.max(1, enemy.str - stats.def / 2);
+            target.currentHp = Math.max(0, target.currentHp - damage);
+            
+            addBattleLog(`${enemy.icon} ${enemy.name} 攻击 ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'damage');
+            
+            if (AudioSystem) AudioSystem.playDamage();
+        }
+    });
+    
+    // 重置角色回合
+    battleState.activeCharIndex = 0;
+    battleState.turn++;
+    
+    setTimeout(() => nextTurn(), 500);
+}
+
+// 战斗行动
+function battleAction(action) {
+    if (!battleState) return;
+    
+    const char = gameState.party[battleState.activeCharIndex];
+    if (!char || char.currentHp <= 0) return;
+    
+    const stats = calculateStats(char);
+    
+    switch (action) {
+        case 'attack':
+            performAttack(char, stats);
+            break;
+        case 'skill':
+            performSkill(char, stats);
+            break;
+        case 'item':
+            showItemMenu();
+            break;
+        case 'defend':
+            addBattleLog(`🛡️ ${char.name} 采取防御姿态！`, 'normal');
+            endTurn();
+            break;
+        case 'flee':
+            attemptFlee();
+            break;
+    }
+}
+
+// 执行攻击
+function performAttack(char, stats) {
+    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    if (aliveEnemies.length === 0) return;
+    
+    const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+    const damage = Math.max(1, stats.str * (0.9 + Math.random() * 0.2) - target.def / 2);
+    
+    target.currentHp = Math.max(0, target.currentHp - damage);
+    
+    addBattleLog(`${char.icon} ${char.name} 攻击 ${target.icon} ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'normal');
+    
+    if (AudioSystem) AudioSystem.playAttack();
+    
+    if (target.currentHp <= 0) {
+        addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
+    }
+    
+    endTurn();
+}
+
+// 执行技能
+function performSkill(char, stats) {
+    // 简化的技能系统
+    const skills = {
+        warrior: { name: '猛击', damage: 2.0, mp: 0 },
+        mage: { name: '火球术', damage: 2.5, mp: 0 },
+        archer: { name: '多重射击', damage: 1.8, mp: 0 },
+        priest: { name: '治疗术', heal: 50, mp: 0 },
+        rogue: { name: '背刺', damage: 2.2, mp: 0 }
+    };
+    
+    const skill = skills[char.classId];
+    if (!skill) return;
+    
+    if (skill.heal) {
+        const target = gameState.party[battleState.activeCharIndex];
+        const maxHp = calculateStats(target).hp;
+        target.currentHp = Math.min(maxHp, target.currentHp + skill.heal);
+        addBattleLog(`✨ ${char.name} 使用 ${skill.name} 恢复了 ${skill.heal} 生命！`, 'heal');
+        if (AudioSystem) AudioSystem.playHeal();
+    } else {
+        const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+        if (aliveEnemies.length === 0) return;
+        
+        const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+        const damage = Math.max(1, stats.str * skill.damage - target.def / 2);
+        
+        target.currentHp = Math.max(0, target.currentHp - damage);
+        addBattleLog(`⚡ ${char.name} 使用 ${skill.name} 造成 ${Math.floor(damage)} 伤害！`, 'normal');
+        
+        if (AudioSystem) AudioSystem.playAttack();
+        
+        if (target.currentHp <= 0) {
+            addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
+        }
+    }
+    
+    endTurn();
+}
+
+// 选择目标
+function selectTarget(index) {
+    if (!battleState) return;
+    battleState.selectedTarget = index;
+    renderBattle();
+}
+
+// 结束回合
+function endTurn() {
+    battleState.activeCharIndex++;
+    setTimeout(() => nextTurn(), 500);
+}
+
+// 尝试逃跑
+function attemptFlee() {
+    const fleeChance = 0.5;
+    if (Math.random() < fleeChance) {
+        addBattleLog('🏃 成功逃跑！', 'normal');
+        setTimeout(() => showScene('map'), 1000);
+    } else {
+        addBattleLog('❌ 逃跑失败！', 'normal');
+        endTurn();
+    }
+}
+
+// 显示物品菜单
+function showItemMenu() {
+    // 简化处理：使用第一个治疗道具
+    const healItem = gameState.inventory.find(item => item.type === 'consumable');
+    
+    if (healItem) {
+        const char = gameState.party[battleState.activeCharIndex];
+        const maxHp = calculateStats(char).hp;
+        char.currentHp = Math.min(maxHp, char.currentHp + 50);
+        
+        // 移除使用的道具
+        const index = gameState.inventory.indexOf(healItem);
+        if (index > -1) gameState.inventory.splice(index, 1);
+        
+        addBattleLog(`🧪 使用 ${healItem.name} 恢复了 50 生命！`, 'heal');
+        if (AudioSystem) AudioSystem.playHeal();
+        endTurn();
+    } else {
+        addBattleLog('❌ 没有可用的道具！', 'normal');
+    }
+}
+
+// 渲染战斗界面
+function renderBattle() {
+    const container = document.getElementById('battleContainer');
+    if (!container) return;
+    
+    const activeChar = gameState.party[battleState.activeCharIndex];
+    
+    container.innerHTML = `
+        <div class="battle-scene">
+            <div class="battle-enemies">
+                ${battleState.enemies.map((enemy, index) => `
+                    <div class="enemy ${enemy.currentHp <= 0 ? 'dead' : ''} ${battleState.selectedTarget === index ? 'targeted' : ''}" 
+                         onclick="selectTarget(${index})">
+                        <div class="enemy-icon">${enemy.icon}</div>
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-hp-bar">
+                            <div class="hp-fill" style="width: ${(enemy.currentHp / enemy.maxHp) * 100}%"></div>
+                        </div>
+                        <div class="enemy-hp-text">${enemy.currentHp}/${enemy.maxHp}</div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="battle-party">
+                ${gameState.party.map((char, index) => {
+                    const stats = calculateStats(char);
+                    const isActive = index === battleState.activeCharIndex;
+                    return `
+                        <div class="party-member ${isActive ? 'active' : ''} ${char.currentHp <= 0 ? 'dead' : ''}">
+                            <div class="char-icon">${char.icon}</div>
+                            <div class="char-info">
+                                <div class="char-name">${char.name}</div>
+                                <div class="char-hp-bar">
+                                    <div class="hp-fill" style="width: ${(char.currentHp / stats.hp) * 100}%"></div>
+                                </div>
+                                <div class="char-hp-text">${char.currentHp}/${stats.hp}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+            
+            <div class="battle-actions">
+                ${activeChar && activeChar.currentHp > 0 ? `
+                    <button onclick="battleAction('attack')" class="action-btn attack">⚔️ 攻击</button>
+                    <button onclick="battleAction('skill')" class="action-btn skill">✨ 技能</button>
+                    <button onclick="battleAction('item')" class="action-btn item">🧪 道具</button>
+                    <button onclick="battleAction('defend')" class="action-btn defend">🛡️ 防御</button>
+                    <button onclick="battleAction('flee')" class="action-btn flee">🏃 逃跑</button>
+                ` : ''}
+            </div>
+            
+            <div id="battleLog" class="battle-log"></div>
+        </div>
+    `;
+    
+    renderBattleLog();
+}
+
+// 获取经验值
+function gainXp(char, amount) {
+    char.xp += amount;
+    let levelsGained = 0;
+    
+    while (char.xp >= char.xpToNext && char.level < CONFIG.MAX_LEVEL) {
+        char.xp -= char.xpToNext;
+        char.level++;
+        levelsGained++;
+        
+        // 计算下一级所需经验
+        char.xpToNext = Math.floor(CONFIG.XP_BASE * Math.pow(char.level, CONFIG.XP_CURVE));
+        
+        // 恢复满血
+        const stats = calculateStats(char);
+        char.currentHp = stats.hp;
+        
+        if (AudioSystem) AudioSystem.playLevelUp();
+    }
+    
+    return levelsGained;
+}
+
+// 失败处理
+function defeat() {
+    addBattleLog('💀 队伍全灭...', 'damage');
+    setTimeout(() => {
+        alert('战斗失败！回到村庄恢复...');
+        
+        // 恢复角色
+        gameState.party.forEach(char => {
+            const stats = calculateStats(char);
+            char.currentHp = Math.floor(stats.hp * 0.5); // 恢复一半生命
+        });
+        
+        gameState.currentMap = 'village';
+        gameState.gold = Math.floor(gameState.gold * 0.9); // 损失10%金币
+        
+        showScene('map');
+        updateUI();
+    }, 1500);
+}
+
+// 保存游戏
+function saveGame() {
+    try {
+        localStorage.setItem('dragonQuestSave', JSON.stringify(gameState));
+        return true;
+    } catch (e) {
+        console.error('保存失败:', e);
+        return false;
+    }
+}
+
+// 加载游戏
+function loadGame() {
+    try {
+        const saveData = localStorage.getItem('dragonQuestSave');
+        if (saveData) {
+            gameState = { ...gameState, ...JSON.parse(saveData) };
+            return true;
+        }
+    } catch (e) {
+        console.error('加载失败:', e);
+    }
+    return false;
+}
+
+// 自动保存
+function autoSave() {
+    saveGame();
+}
 
 // 导出函数
 window.startNewGame = startNewGame;
