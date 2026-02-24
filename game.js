@@ -561,6 +561,12 @@ function victory() {
     // BOSS战特殊奖励
     if (battleState.isBossBattle) {
         const boss = battleState.enemies[0];
+        const zoneId = battleState.zone.id;
+        
+        // 解锁新角色（首次击败时）
+        if (!gameState.defeatedBosses.includes(zoneId)) {
+            unlockCharacter(zoneId);
+        }
         
         // 解锁时装
         const cosmeticDrops = {
@@ -677,6 +683,14 @@ const AFFIX_POOL = {
 // 战斗状态
 let battleState = null;
 
+// 角色解锁配置
+const CHARACTER_UNLOCKS = {
+    forest: { classId: 'mage', name: '法师', desc: '森林的智者加入了你的队伍！' },
+    cave: { classId: 'archer', name: '弓箭手', desc: '洞穴中的猎人加入了你的队伍！' },
+    desert: { classId: 'priest', name: '牧师', desc: '沙漠的圣者加入了你的队伍！' },
+    volcano: { classId: 'rogue', name: '盗贼', desc: '火山中的刺客加入了你的队伍！' }
+};
+
 // 开始新游戏
 function startNewGame() {
     gameState = {
@@ -689,12 +703,13 @@ function startNewGame() {
         currentMap: 'village',
         defeatedBosses: [],
         unlockedMaps: ['village', 'forest'],
+        unlockedCharacters: ['warrior'],
         playTime: 0,
         newGamePlus: 0,
         achievements: [],
         bestiary: {},
         cosmetics: {
-            hair: ['warriorDefault', 'mageDefault'],
+            hair: ['warriorDefault'],
             face: ['none'],
             body: ['default'],
             back: ['none'],
@@ -712,14 +727,42 @@ function startNewGame() {
         enhancementMaterials: { common: 0, magic: 0, rare: 0, epic: 0, legendary: 0 }
     };
     
-    // 创建初始角色
+    // 创建初始角色 - 只有勇者
     createCharacter('勇者', 'warrior');
-    createCharacter('法师', 'mage');
     
     saveGame();
     showScene('party');
     showToast('🎮 新游戏开始！', 'success');
     showStory('prologue');
+}
+
+// 解锁新角色
+function unlockCharacter(bossId) {
+    const unlock = CHARACTER_UNLOCKS[bossId];
+    if (!unlock) return false;
+    
+    // 检查是否已经解锁
+    if (gameState.party.some(c => c.classId === unlock.classId)) {
+        return false;
+    }
+    
+    // 检查角色栏是否已满
+    if (gameState.party.length >= CONFIG.MAX_PARTY_SIZE) {
+        showToast(`⚠️ 队伍已满！${unlock.name}无法加入。`, 'error');
+        return false;
+    }
+    
+    // 解锁角色
+    createCharacter(unlock.name, unlock.classId);
+    gameState.unlockedCharacters.push(unlock.classId);
+    
+    // 添加对应的发型外观
+    if (unlock.classId === 'mage' && !gameState.cosmetics.hair.includes('mageDefault')) {
+        gameState.cosmetics.hair.push('mageDefault');
+    }
+    
+    showToast(`🎉 ${unlock.desc}`, 'success');
+    return true;
 }
 
 // 继续游戏
@@ -903,33 +946,44 @@ function renderBattleLog() {
 // 进入区域
 function enterZone(zoneId) {
     const zone = MAP_ZONES[zoneId];
-    if (!zone) return;
+    if (!zone) {
+        console.error('Zone not found:', zoneId);
+        return;
+    }
+    
+    // 检查是否已解锁
+    if (!gameState.unlockedMaps.includes(zoneId)) {
+        showToast('🔒 该区域尚未解锁！', 'error');
+        return;
+    }
     
     gameState.currentMap = zoneId;
     
     if (zone.type === 'boss') {
         // BOSS战特殊处理
         if (gameState.defeatedBosses.includes(zoneId)) {
-            alert('你已经击败了这个BOSS！');
+            showToast('✅ 你已经击败了这个BOSS！', 'info');
             return;
         }
         
         const bossStories = {
             forest: 'forestBoss',
+            cave: 'caveBoss',
+            desert: 'desertBoss',
             volcano: 'volcanoBoss',
             demonCastle: 'finalBoss'
         };
         
-        if (bossStories[zoneId]) {
+        if (bossStories[zoneId] && STORY[bossStories[zoneId]]) {
             showStory(bossStories[zoneId]);
-            setTimeout(() => startBossBattle(zoneId), 100);
+            setTimeout(() => startBossBattle(zoneId), 2000);
         } else {
             startBossBattle(zoneId);
         }
     } else if (zone.type === 'combat') {
         startBattle(zoneId);
     } else if (zone.type === 'safe') {
-        showToast('这里是安全区', 'info');
+        showToast('🏘️ 这里是安全区', 'info');
     }
 }
 
@@ -1006,7 +1060,7 @@ function enemyTurn() {
             
             addBattleLog(`${enemy.icon} ${enemy.name} 攻击 ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'damage');
             
-            if (AudioSystem) AudioSystem.playDamage();
+            if (typeof AudioSystem !== 'undefined' && AudioSystem) AudioSystem.playDamage();
         }
     });
     
@@ -1297,7 +1351,7 @@ window.equipCosmetic = equipCosmetic;
 window.showEnemyDetail = showEnemyDetail;
 window.renderBestiary = renderBestiary;
 window.renderCosmetics = renderCosmetics;
-window.showScene = showScene;
+window.unlockCharacter = unlockCharacter;
 
 // ==================== 渲染场景 ====================
 function showScene(sceneId) {
@@ -1459,12 +1513,31 @@ const STORY = {
             { speaker: '远古树精', text: '那就让森林来审判你吧！', bg: '🌿' }
         ]
     },
-    volcanoBoss: {
-        title: '火山之章',
+    caveBoss: {
+        title: '第二章：洞穴深处',
         scenes: [
-            { speaker: ' narrator', text: '炽热的岩浆在脚下流淌...', bg: '🌋' },
+            { speaker: ' narrator', text: '洞穴深处传来沉重的脚步声...', bg: '🕳️' },
+            { speaker: '洞穴巨魔', text: '又有新鲜的食物送上门了...', bg: '👹' },
+            { speaker: '勇者', text: '我不会让你伤害任何人的！', bg: '⚔️' },
+            { speaker: '洞穴巨魔', text: '那就成为我的晚餐吧！', bg: '👿' }
+        ]
+    },
+    desertBoss: {
+        title: '第三章：沙漠王者',
+        scenes: [
+            { speaker: ' narrator', text: '金字塔中传来古老的呢喃...', bg: '🏜️' },
+            { speaker: '法老王', text: '沉睡千年...终于有人唤醒我了...', bg: '👳' },
+            { speaker: '勇者', text: '你的诅咒到此为止了！', bg: '⚔️' },
+            { speaker: '法老王', text: '放肆！感受沙漠的愤怒！', bg: '🌪️' }
+        ]
+    },
+    volcanoBoss: {
+        title: '第四章：烈焰试炼',
+        scenes: [
+            { speaker: ' narrator', text: '火山在咆哮，岩浆在沸腾...', bg: '🌋' },
             { speaker: '火焰领主', text: '有趣...居然有人类能来到这里...', bg: '🔥' },
-            { speaker: '勇者', text: '你的火焰会熄灭在我的剑下！', bg: '⚔️' }
+            { speaker: '勇者', text: '你的火焰会熄灭在我的剑下！', bg: '⚔️' },
+            { speaker: '火焰领主', text: '狂妄！让你见识真正的地狱之火！', bg: '🔥' }
         ]
     },
     finalBoss: {
