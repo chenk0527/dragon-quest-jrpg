@@ -32,6 +32,7 @@
     let isInitialized = false;
     let isRunning = false;
     let konamiCode = [];
+    let moveEffect = null; // 移动效果
     
     // 地图数据
     let mapData = [];
@@ -454,6 +455,8 @@
                 // 记录方向用于 Konami 代码
                 konamiCode.push(newDir);
                 if (konamiCode.length > 10) konamiCode.shift();
+                // 添加移动效果
+                moveEffect = { x: newX, y: newY, time: Date.now() };
                 console.log('[World] Player moved to:', player.x, player.y, 'Konami:', konamiCode);
             } else if (tile === TILES.CHEST) {
                 const chest = chests.find(c => c.x === newX && c.y === newY);
@@ -710,12 +713,23 @@
         const centerX = Math.floor(canvas.width / 2 / TILE_SIZE) * TILE_SIZE + (canvas.width / 2 % TILE_SIZE) - TILE_SIZE / 2;
         const centerY = Math.floor(canvas.height / 2 / TILE_SIZE) * TILE_SIZE + (canvas.height / 2 % TILE_SIZE) - TILE_SIZE / 2;
         
+        // 绘制玩家阴影
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(centerX + 10, centerY + 28, 12, 4);
+        
+        // 绘制玩家身体
         ctx.fillStyle = '#4169e1';
         ctx.fillRect(centerX + 8, centerY + 12, 16, 16);
+        
+        // 绘制玩家头
         ctx.fillStyle = '#ffdbac';
         ctx.fillRect(centerX + 10, centerY + 4, 12, 12);
+        
+        // 绘制头发
         ctx.fillStyle = '#8b4513';
         ctx.fillRect(centerX + 10, centerY + 2, 12, 4);
+        
+        // 绘制眼睛（根据方向）
         ctx.fillStyle = '#000';
         switch(player.dir) {
             case 'down':
@@ -723,8 +737,7 @@
                 ctx.fillRect(centerX + 18, centerY + 10, 2, 2);
                 break;
             case 'up':
-                ctx.fillRect(centerX + 12, centerY + 6, 2, 2);
-                ctx.fillRect(centerX + 18, centerY + 6, 2, 2);
+                // 向上时不画眼睛（看后脑勺）
                 break;
             case 'left':
                 ctx.fillRect(centerX + 12, centerY + 8, 2, 2);
@@ -734,22 +747,31 @@
                 break;
         }
         
+        // 绘制移动效果（脚印）
+        if (moveEffect && Date.now() - moveEffect.time < 300) {
+            const alpha = 1 - (Date.now() - moveEffect.time) / 300;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+            ctx.fillRect(centerX + 12, centerY + 26, 8, 4);
+        }
+        
         // 绘制调试信息
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(10, 10, 200, 60);
+        ctx.fillRect(10, 10, 220, 75);
         ctx.fillStyle = '#0f0';
         ctx.font = '12px monospace';
         ctx.textAlign = 'left';
         ctx.fillText(`Player: ${player.x}, ${player.y}`, 20, 30);
         ctx.fillText(`Camera: ${camera.x}, ${camera.y}`, 20, 45);
         ctx.fillText(`Dir: ${player.dir}`, 20, 60);
+        ctx.fillText(`Map: ${MAP_WIDTH}x${MAP_HEIGHT}`, 20, 75);
         
         // 绘制操作提示
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(10, canvas.height - 60, 200, 50);
+        ctx.fillRect(10, canvas.height - 70, 220, 60);
         ctx.fillStyle = '#fff';
-        ctx.fillText('WASD/方向键移动', 20, canvas.height - 40);
-        ctx.fillText('点击/滑动也可移动', 20, canvas.height - 25);
+        ctx.fillText('WASD/方向键移动', 20, canvas.height - 50);
+        ctx.fillText('点击/滑动也可移动', 20, canvas.height - 35);
+        ctx.fillText('按A键与NPC对话', 20, canvas.height - 20);
     }
 
     // 暴露给全局
