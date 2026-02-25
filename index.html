@@ -1473,148 +1473,53 @@
             }
         }
 
-        /* ============== 世界探索场景 ============== */
+        /* ============== 世界探索场景 - 简化版 ============== */
         #worldScene {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            z-index: 100;
-            background: var(--dq-bg-dark);
+            z-index: 1000;
+            background: #1a1a2e;
+            display: none;
         }
         
-        #worldScene.scene.active {
+        #worldScene.active {
             display: flex !important;
             flex-direction: column;
         }
 
-        .world-container {
-            flex: 1;
+        .world-header {
+            height: 50px;
+            background: linear-gradient(180deg, #2c5aa0 0%, #4a90e2 100%);
             display: flex;
-            flex-direction: column;
-            position: relative;
-            background: var(--dq-bg-dark);
-            overflow: hidden;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 4px solid #b8860b;
         }
 
-        .world-canvas {
+        .world-title {
+            font-size: 14px;
+            color: #ffd700;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .world-content {
+            flex: 1;
+            position: relative;
+            background: #0f0f1a;
+        }
+
+        #worldCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             display: block;
             background: #1a3a1a;
-            image-rendering: pixelated;
-            image-rendering: -moz-crisp-edges;
-            image-rendering: crisp-edges;
-        }
-
-        /* 虚拟摇杆 */
-        .virtual-joystick {
-            position: absolute;
-            bottom: 100px;
-            left: 20px;
-            width: 100px;
-            height: 100px;
-            z-index: 100;
-            display: none; /* 桌面端隐藏 */
-        }
-
-        @media (max-width: 768px) {
-            .virtual-joystick {
-                display: block;
-            }
-        }
-
-        .joystick-base {
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.2);
-            border: 3px solid var(--dq-blue);
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .joystick-stick {
-            width: 40px;
-            height: 40px;
-            background: var(--dq-blue);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(74, 144, 226, 0.5);
-        }
-
-        /* 动作按钮 */
-        .action-buttons {
-            position: absolute;
-            bottom: 100px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            z-index: 100;
-        }
-
-        @media (min-width: 769px) {
-            .action-buttons {
-                display: none;
-            }
-        }
-
-        .action-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid var(--dq-gold);
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: transform 0.1s;
-        }
-
-        .action-btn:active {
-            transform: scale(0.95);
-        }
-
-        .action-icon {
-            font-size: 20px;
-        }
-
-        .action-text {
-            font-size: 8px;
-            color: var(--dq-gold);
-            margin-top: 2px;
-        }
-
-        /* 地图信息 */
-        .world-info {
-            position: absolute;
-            top: 60px;
-            left: 0;
-            right: 0;
-            padding: 10px;
-            pointer-events: none;
-        }
-
-        .world-controls-hint {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            font-size: 8px;
-            color: rgba(255, 255, 255, 0.7);
-            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        }
-
-        @media (max-width: 768px) {
-            .world-controls-hint {
-                display: none;
-            }
         }
 
         /* 场景过渡 */
@@ -1786,43 +1691,13 @@
 
         <!-- 世界探索场景 -->
         <div id="worldScene" class="scene">
-            <div class="scene-header">
+            <div class="world-header">
                 <button class="back-btn" onclick="showScene('party')">◀ 返回</button>
-                <h2 class="scene-title" id="worldMapName">新手村</h2>
+                <h2 class="world-title">新手村</h2>
                 <div style="width: 60px;"></div>
             </div>
-            
-            <div class="world-container">
-                <!-- 游戏画布 -->
-                <canvas id="worldCanvas" class="world-canvas"></canvas>
-                
-                <!-- 虚拟摇杆（移动端） -->
-                <div id="virtualJoystick" class="virtual-joystick">
-                    <div class="joystick-base">
-                        <div class="joystick-stick"></div>
-                    </div>
-                </div>
-                
-                <!-- 动作按钮 -->
-                <div class="action-buttons">
-                    <button class="action-btn" id="btnAction" onclick="WorldSystem.handleAction()">
-                        <span class="action-icon">🗣️</span>
-                        <span class="action-text">A</span>
-                    </button>
-                    <button class="action-btn" id="btnMenu" onclick="WorldSystem.toggleMenu()">
-                        <span class="action-icon">📋</span>
-                        <span class="action-text">B</span>
-                    </button>
-                </div>
-                
-                <!-- 地图信息 -->
-                <div class="world-info">
-                    <div class="world-controls-hint">
-                        <span>WASD/方向键移动</span>
-                        <span>Enter/空格 对话</span>
-                        <span>ESC 菜单</span>
-                    </div>
-                </div>
+            <div class="world-content">
+                <canvas id="worldCanvas"></canvas>
             </div>
         </div>
         
