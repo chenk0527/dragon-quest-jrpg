@@ -1086,7 +1086,12 @@ function victory() {
                     }
                     
                     battleState = null;
-                    showScene('map');
+                    // 检查是否从世界探索进入的战斗
+                    if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
+                        showScene('world');
+                    } else {
+                        showScene('map');
+                    }
                     BGM.play('village');
                 });
             }, 1000);
@@ -1118,7 +1123,12 @@ function victory() {
 
     setTimeout(() => {
         battleState = null;
-        showScene('map');
+        // 检查是否从世界探索进入的战斗
+        if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
+            showScene('world');
+        } else {
+            showScene('map');
+        }
         BGM.play('village');
     }, 2000);
 }
@@ -1143,8 +1153,14 @@ function defeat() {
             char.currentMp = calculateStats(char).mp;
         });
         battleState = null;
-        showScene('party');
-        showToast('队伍被击败了，但在附近恢复了...', 'error');
+        // 检查是否从世界探索进入的战斗
+        if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
+            showScene('world');
+            showToast('队伍被击败了，但在附近恢复了...', 'error');
+        } else {
+            showScene('party');
+            showToast('队伍被击败了...', 'error');
+        }
         BGM.play('village');
     }, 2000);
 }

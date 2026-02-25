@@ -468,13 +468,38 @@
             } else if (tile === TILES.MONSTER) {
                 const monster = monsters.find(m => m.x === newX && m.y === newY);
                 if (monster) {
-                    alert('👹 遭遇 ' + (monster.type === 'slime' ? '史莱姆' : '哥布林') + '！');
-                    monsters = monsters.filter(m => m !== monster);
-                    mapData[newY][newX] = TILES.GRASS;
+                    console.log('[World] Encountered monster:', monster.type);
+                    
+                    // 触发战斗系统
+                    if (typeof startBattle === 'function') {
+                        // 保存玩家位置，战斗后恢复
+                        const savedX = player.x;
+                        const savedY = player.y;
+                        
+                        // 移除怪物
+                        monsters = monsters.filter(m => m !== monster);
+                        mapData[newY][newX] = TILES.GRASS;
+                        
+                        // 进入战斗
+                        player.x = newX;
+                        player.y = newY;
+                        player.dir = newDir;
+                        
+                        // 延迟进入战斗，让玩家先看到移动
+                        setTimeout(() => {
+                            startBattle('forest'); // 使用森林区域战斗
+                        }, 100);
+                    } else {
+                        // 备用：简单提示
+                        alert('👹 遭遇 ' + (monster.type === 'slime' ? '史莱姆' : '哥布林') + '！');
+                        monsters = monsters.filter(m => m !== monster);
+                        mapData[newY][newX] = TILES.GRASS;
+                        player.x = newX;
+                        player.y = newY;
+                        player.dir = newDir;
+                    }
                 }
-                player.x = newX;
-                player.y = newY;
-                player.dir = newDir;
+                return; // 不要继续执行后面的代码
             } else if (tile === TILES.WALL || tile === TILES.TREE || tile === TILES.WATER) {
                 player.dir = newDir;
                 console.log('[World] Blocked by:', tile);
@@ -730,10 +755,19 @@
     // 暴露给全局
     window.WorldSystem = {
         init: init,
-        handleAction: function() { console.log('[World] Action!'); },
+        handleAction: handleActionButton,
         toggleMenu: function() { 
             console.log('[World] Toggle menu');
             if (typeof showScene === 'function') showScene('party'); 
+        },
+        // 标记是否从世界探索进入战斗
+        fromWorldExploration: true,
+        // 返回世界探索
+        returnToWorld: function() {
+            console.log('[World] Returning to world exploration');
+            if (typeof showScene === 'function') {
+                showScene('world');
+            }
         }
     };
 
