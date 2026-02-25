@@ -1362,8 +1362,8 @@ function enterWorldWithEffect() {
     const navBtns = document.querySelectorAll('.nav-btn');
     if (navBtns[2]) navBtns[2].classList.add('active');
     
-    // 播放进入音效
-    if (AudioSystem) AudioSystem.playSFX('enter_world');
+    // 显示消息
+    showEnteringMessage();
     
     // 显示过渡动画
     if (overlay) {
@@ -1371,29 +1371,34 @@ function enterWorldWithEffect() {
         overlay.classList.add('active');
     }
     
-    // 显示消息
-    showEnteringMessage();
-    
     setTimeout(() => {
         // 激活世界场景
-        if (worldScene) worldScene.classList.add('active');
+        if (worldScene) {
+            worldScene.classList.add('active');
+            console.log('[World] Scene activated');
+        }
         
         // 初始化世界系统
         setTimeout(() => {
             if (typeof WorldSystem !== 'undefined' && WorldSystem.init) {
-                WorldSystem.init();
+                const result = WorldSystem.init();
+                console.log('[World] Init result:', result);
+            } else {
+                console.error('[World] WorldSystem not found!');
             }
         }, 100);
         
         // 移除遮罩
         setTimeout(() => {
             if (overlay) overlay.classList.remove('active');
-        }, 500);
+        }, 300);
         
     }, 300);
     
     // 播放BGM
-    BGM.play('village');
+    if (typeof BGM !== 'undefined' && BGM.play) {
+        BGM.play('village');
+    }
 }
 
 // 显示进入冒险的消息彩蛋

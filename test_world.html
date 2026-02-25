@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #1a1a2e; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header { 
+            height: 50px; 
+            background: #2c5aa0;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            color: white;
+        }
+        .world-container {
+            flex: 1;
+            position: relative;
+            background: #0f0f1a;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">DQ JRPG - 世界探索测试</div>
+    <div class="world-container" id="worldContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resize() {
+            const container = document.getElementById('worldContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            console.log('Canvas size:', canvas.width, 'x', canvas.height);
+        }
+        
+        window.addEventListener('resize', resize);
+        resize();
+        
+        // 简单的地图数据
+        const TILE_SIZE = 32;
+        const MAP_WIDTH = 20;
+        const MAP_HEIGHT = 15;
+        
+        let player = { x: 10, y: 7 };
+        let camera = { x: 0, y: 0 };
+        
+        function draw() {
+            // 清空
+            ctx.fillStyle = '#1a3a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 计算相机位置
+            camera.x = player.x - Math.floor(canvas.width / TILE_SIZE / 2);
+            camera.y = player.y - Math.floor(canvas.height / TILE_SIZE / 2);
+            camera.x = Math.max(0, Math.min(camera.x, MAP_WIDTH - Math.floor(canvas.width / TILE_SIZE)));
+            camera.y = Math.max(0, Math.min(camera.y, MAP_HEIGHT - Math.floor(canvas.height / TILE_SIZE)));
+            
+            // 绘制地图格子
+            const tilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
+            const tilesY = Math.ceil(canvas.height / TILE_SIZE) + 1;
+            
+            for (let y = 0; y < tilesY; y++) {
+                for (let x = 0; x < tilesX; x++) {
+                    const mapX = camera.x + x;
+                    const mapY = camera.y + y;
+                    
+                    if (mapX >= 0 && mapX < MAP_WIDTH && mapY >= 0 && mapY < MAP_HEIGHT) {
+                        // 交替颜色
+                        ctx.fillStyle = (mapX + mapY) % 2 === 0 ? '#4a7c4e' : '#3d6b40';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        
+                        // 绘制格子边框
+                        ctx.strokeStyle = '#2a4a2e';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+            
+            // 绘制玩家（屏幕中央）
+            const playerScreenX = Math.floor(canvas.width / 2 / TILE_SIZE) * TILE_SIZE;
+            const playerScreenY = Math.floor(canvas.height / 2 / TILE_SIZE) * TILE_SIZE;
+            
+            // 身体
+            ctx.fillStyle = '#4169e1';
+            ctx.fillRect(playerScreenX + 8, playerScreenY + 12, 16, 12);
+            
+            // 头
+            ctx.fillStyle = '#ffdbac';
+            ctx.fillRect(playerScreenX + 10, playerScreenY + 4, 12, 10);
+            
+            // 头发
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(playerScreenX + 10, playerScreenY + 2, 12, 4);
+            
+            // 眼睛
+            ctx.fillStyle = '#000';
+            ctx.fillRect(playerScreenX + 12, playerScreenY + 8, 2, 2);
+            ctx.fillRect(playerScreenX + 18, playerScreenY + 8, 2, 2);
+            
+            requestAnimationFrame(draw);
+        }
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            let moved = false;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': case 'W':
+                    if (player.y > 0) { player.y--; moved = true; }
+                    break;
+                case 'ArrowDown': case 's': case 'S':
+                    if (player.y < MAP_HEIGHT - 1) { player.y++; moved = true; }
+                    break;
+                case 'ArrowLeft': case 'a': case 'A':
+                    if (player.x > 0) { player.x--; moved = true; }
+                    break;
+                case 'ArrowRight': case 'd': case 'D':
+                    if (player.x < MAP_WIDTH - 1) { player.x++; moved = true; }
+                    break;
+            }
+            if (moved) {
+                e.preventDefault();
+                console.log('Player position:', player.x, player.y);
+            }
+        });
+        
+        draw();
+        console.log('Game initialized!');
+    </script>
+</body>
+</html>
