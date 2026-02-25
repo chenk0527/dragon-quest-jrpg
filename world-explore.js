@@ -1,10 +1,12 @@
 /**
- * Dragon Quest JRPG - 地图探索系统
- * 支持键盘和触摸控制
+ * Dragon Quest JRPG - 地图探索系统 V2
+ * 更健壮的实现，带详细调试
  */
 
 (function() {
     'use strict';
+
+    console.log('[World] Script loaded');
 
     // 配置
     const TILE_SIZE = 32;
@@ -28,9 +30,7 @@
     let player = { x: 12, y: 10, dir: 'down' };
     let camera = { x: 0, y: 0 };
     let isInitialized = false;
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchStartTime = 0;
+    let isRunning = false;
     
     // 地图数据
     let mapData = [];
@@ -40,6 +40,7 @@
     
     // 生成地图
     function generateMap() {
+        console.log('[World] Generating map...');
         mapData = [];
         monsters = [];
         npcs = [];
@@ -52,10 +53,8 @@
                 if (x === 0 || x === MAP_WIDTH - 1 || y === 0 || y === MAP_HEIGHT - 1) {
                     mapData[y][x] = TILES.WALL;
                 } else if (x > 5 && x < 10 && y > 5 && y < 10) {
-                    // 一片小树林
                     mapData[y][x] = Math.random() < 0.7 ? TILES.TREE : TILES.GRASS;
                 } else if (x > 15 && x < 20 && y > 12 && y < 17) {
-                    // 小池塘
                     mapData[y][x] = TILES.WATER;
                 } else if (Math.random() < 0.08) {
                     mapData[y][x] = TILES.TREE;
@@ -67,9 +66,6 @@
         
         // 确保玩家起始位置是草地
         mapData[player.y][player.x] = TILES.GRASS;
-        mapData[player.y][player.x + 1] = TILES.GRASS;
-        mapData[player.y + 1][player.x] = TILES.GRASS;
-        mapData[player.y - 1][player.x] = TILES.GRASS;
         
         // 添加NPC
         npcs.push({ x: 5, y: 5, name: '村长', color: '#daa520', dialog: '欢迎来到新手村！' });
@@ -78,71 +74,78 @@
         // 添加怪物
         for (let i = 0; i < 5; i++) {
             let mx, my;
+            let attempts = 0;
             do {
                 mx = Math.floor(Math.random() * (MAP_WIDTH - 2)) + 1;
                 my = Math.floor(Math.random() * (MAP_HEIGHT - 2)) + 1;
-            } while (mapData[my][mx] !== TILES.GRASS || (Math.abs(mx - player.x) < 3 && Math.abs(my - player.y) < 3));
+                attempts++;
+            } while ((mapData[my][mx] !== TILES.GRASS || (Math.abs(mx - player.x) < 3 && Math.abs(my - player.y) < 3)) && attempts < 100);
             
-            monsters.push({
-                x: mx,
-                y: my,
-                type: Math.random() < 0.5 ? 'slime' : 'goblin',
-                color: Math.random() < 0.5 ? '#00ff00' : '#228b22',
-                moveTimer: 0
-            });
-            mapData[my][mx] = TILES.MONSTER;
+            if (attempts < 100) {
+                monsters.push({
+                    x: mx,
+                    y: my,
+                    type: Math.random() < 0.5 ? 'slime' : 'goblin',
+                    color: Math.random() < 0.5 ? '#00ff00' : '#228b22',
+                    moveTimer: 0
+                });
+                mapData[my][mx] = TILES.MONSTER;
+            }
         }
         
         // 添加宝箱
         for (let i = 0; i < 3; i++) {
             let cx, cy;
+            let attempts = 0;
             do {
                 cx = Math.floor(Math.random() * (MAP_WIDTH - 2)) + 1;
                 cy = Math.floor(Math.random() * (MAP_HEIGHT - 2)) + 1;
-            } while (mapData[cy][cx] !== TILES.GRASS);
+                attempts++;
+            } while (mapData[cy][cx] !== TILES.GRASS && attempts < 100);
             
-            chests.push({ x: cx, y: cy, opened: false });
-            mapData[cy][cx] = TILES.CHEST;
+            if (attempts < 100) {
+                chests.push({ x: cx, y: cy, opened: false });
+                mapData[cy][cx] = TILES.CHEST;
+            }
         }
+        
+        console.log('[World] Map generated:', MAP_WIDTH, 'x', MAP_HEIGHT);
     }
 
     // 初始化
     function init() {
+        console.log('[World] Init called, isInitialized:', isInitialized);
+        
         if (isInitialized) {
             console.log('[World] Already initialized');
             return true;
         }
         
         canvas = document.getElementById('worldCanvas');
+        console.log('[World] Canvas element:', canvas);
+        
         if (!canvas) {
             console.error('[World] Canvas not found!');
             return false;
         }
 
         ctx = canvas.getContext('2d');
+        console.log('[World] Context:', ctx);
         
         // 生成地图
         generateMap();
         
         // 设置画布大小
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
         
-        // 键盘事件
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
-        
-        // 触摸事件
-        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-        canvas.addEventListener('touchend', onTouchEnd, { passive: false });
-        
-        // 鼠标点击（用于测试）
-        canvas.addEventListener('click', onClick);
+        // 绑定事件
+        bindEvents();
         
         isInitialized = true;
+        isRunning = true;
         
         // 开始游戏循环
+        console.log('[World] Starting game loop');
         requestAnimationFrame(gameLoop);
         
         console.log('[World] Initialized successfully');
@@ -151,20 +154,58 @@
 
     function resizeCanvas() {
         if (!canvas) return;
+        
         const container = canvas.parentElement;
+        console.log('[World] Container:', container);
+        
         if (container) {
-            canvas.width = container.clientWidth;
-            canvas.height = container.clientHeight;
-            console.log('[World] Canvas size:', canvas.width, 'x', canvas.height);
+            const rect = container.getBoundingClientRect();
+            console.log('[World] Container rect:', rect.width, 'x', rect.height);
+            
+            if (rect.width > 0 && rect.height > 0) {
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                console.log('[World] Canvas resized to:', canvas.width, 'x', canvas.height);
+            } else {
+                // 如果容器还没渲染，使用窗口大小
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight - 100; // 减去头部
+                console.log('[World] Canvas resized to window:', canvas.width, 'x', canvas.height);
+            }
         }
+    }
+
+    function bindEvents() {
+        console.log('[World] Binding events...');
+        
+        // 键盘事件 - 使用 window 确保全局捕获
+        window.addEventListener('keydown', onKeyDown, true);
+        window.addEventListener('keyup', onKeyUp, true);
+        
+        // 触摸事件
+        if (canvas) {
+            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+            canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+            canvas.addEventListener('click', onClick);
+        }
+        
+        // 窗口大小变化
+        window.addEventListener('resize', resizeCanvas);
+        
+        console.log('[World] Events bound');
     }
 
     // 键盘控制
     function onKeyDown(e) {
-        console.log('[World] Key pressed:', e.key);
+        console.log('[World] Key pressed:', e.key, 'Code:', e.code);
         
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'].includes(e.key)) {
+        const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
+                          'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
+        
+        if (validKeys.includes(e.key)) {
             e.preventDefault();
+            e.stopPropagation();
             movePlayer(e.key);
         }
     }
@@ -174,10 +215,12 @@
     }
 
     function movePlayer(key) {
+        console.log('[World] Moving player:', key);
+        
         let newX = player.x;
         let newY = player.y;
         let newDir = player.dir;
-        
+
         switch(key) {
             case 'ArrowUp': case 'w': case 'W':
                 newY--;
@@ -196,18 +239,20 @@
                 newDir = 'right';
                 break;
         }
-        
+
+        console.log('[World] New position:', newX, newY, 'Dir:', newDir);
+
         // 检查边界和障碍物
         if (newX >= 0 && newX < MAP_WIDTH && newY >= 0 && newY < MAP_HEIGHT) {
             const tile = mapData[newY][newX];
-            
+            console.log('[World] Tile at new position:', tile);
+
             if (tile === TILES.GRASS) {
                 player.x = newX;
                 player.y = newY;
                 player.dir = newDir;
                 console.log('[World] Player moved to:', player.x, player.y);
             } else if (tile === TILES.CHEST) {
-                // 开启宝箱
                 const chest = chests.find(c => c.x === newX && c.y === newY);
                 if (chest && !chest.opened) {
                     chest.opened = true;
@@ -218,11 +263,9 @@
                 player.y = newY;
                 player.dir = newDir;
             } else if (tile === TILES.MONSTER) {
-                // 进入战斗
                 const monster = monsters.find(m => m.x === newX && m.y === newY);
                 if (monster) {
                     alert('👹 遭遇 ' + (monster.type === 'slime' ? '史莱姆' : '哥布林') + '！');
-                    // 移除怪物
                     monsters = monsters.filter(m => m !== monster);
                     mapData[newY][newX] = TILES.GRASS;
                 }
@@ -230,10 +273,11 @@
                 player.y = newY;
                 player.dir = newDir;
             } else if (tile === TILES.WALL || tile === TILES.TREE || tile === TILES.WATER) {
-                // 撞墙，只改变方向
                 player.dir = newDir;
-                console.log('[World] Blocked!');
+                console.log('[World] Blocked by:', tile);
             }
+        } else {
+            console.log('[World] Out of bounds');
         }
     }
 
@@ -241,10 +285,9 @@
     function onTouchStart(e) {
         e.preventDefault();
         const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        touchStartTime = Date.now();
-        console.log('[World] Touch start:', touchStartX, touchStartY);
+        canvas.dataset.touchStartX = touch.clientX;
+        canvas.dataset.touchStartY = touch.clientY;
+        canvas.dataset.touchStartTime = Date.now();
     }
 
     function onTouchMove(e) {
@@ -254,68 +297,52 @@
     function onTouchEnd(e) {
         e.preventDefault();
         const touch = e.changedTouches[0];
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        const dt = Date.now() - touchStartTime;
+        const startX = parseFloat(canvas.dataset.touchStartX);
+        const startY = parseFloat(canvas.dataset.touchStartY);
         
-        console.log('[World] Touch end. dx:', dx, 'dy:', dy, 'dt:', dt);
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
         
-        // 判断滑动方向
+        console.log('[World] Touch swipe:', dx, dy);
+
         if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
             if (Math.abs(dx) > Math.abs(dy)) {
-                // 水平滑动
-                if (dx > 0) {
-                    movePlayer('ArrowRight');
-                } else {
-                    movePlayer('ArrowLeft');
-                }
+                movePlayer(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
             } else {
-                // 垂直滑动
-                if (dy > 0) {
-                    movePlayer('ArrowDown');
-                } else {
-                    movePlayer('ArrowUp');
-                }
+                movePlayer(dy > 0 ? 'ArrowDown' : 'ArrowUp');
             }
         }
     }
 
-    // 鼠标点击移动（用于桌面测试）
+    // 鼠标点击移动
     function onClick(e) {
         const rect = canvas.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
         const clickY = e.clientY - rect.top;
         
-        // 计算点击位置相对于玩家的方向
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         
         const dx = clickX - centerX;
         const dy = clickY - centerY;
         
+        console.log('[World] Click at:', clickX, clickY, 'dx:', dx, 'dy:', dy);
+
         if (Math.abs(dx) > Math.abs(dy)) {
-            if (dx > 0) movePlayer('ArrowRight');
-            else movePlayer('ArrowLeft');
+            movePlayer(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
         } else {
-            if (dy > 0) movePlayer('ArrowDown');
-            else movePlayer('ArrowUp');
+            movePlayer(dy > 0 ? 'ArrowDown' : 'ArrowUp');
         }
     }
 
     // 更新怪物
     function updateMonsters() {
         monsters.forEach(monster => {
-            monster.moveTimer++;
-            if (monster.moveTimer > 60) { // 每60帧移动一次
+            monster.moveTimer = (monster.moveTimer || 0) + 1;
+            if (monster.moveTimer > 60) {
                 monster.moveTimer = 0;
                 
-                // 简单的随机移动
-                const dirs = [
-                    { x: 0, y: -1 },
-                    { x: 0, y: 1 },
-                    { x: -1, y: 0 },
-                    { x: 1, y: 0 }
-                ];
+                const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
                 const dir = dirs[Math.floor(Math.random() * dirs.length)];
                 
                 const newX = monster.x + dir.x;
@@ -323,7 +350,6 @@
                 
                 if (newX >= 1 && newX < MAP_WIDTH - 1 && newY >= 1 && newY < MAP_HEIGHT - 1) {
                     if (mapData[newY][newX] === TILES.GRASS) {
-                        // 移动怪物
                         mapData[monster.y][monster.x] = TILES.GRASS;
                         monster.x = newX;
                         monster.y = newY;
@@ -336,6 +362,8 @@
 
     // 游戏循环
     function gameLoop() {
+        if (!isRunning) return;
+        
         updateMonsters();
         render();
         requestAnimationFrame(gameLoop);
@@ -343,22 +371,22 @@
 
     // 渲染
     function render() {
-        if (!ctx) return;
+        if (!ctx || !canvas) return;
         
-        // 更新相机位置（跟随玩家）
+        // 更新相机位置
         camera.x = player.x - Math.floor(canvas.width / TILE_SIZE / 2);
         camera.y = player.y - Math.floor(canvas.height / TILE_SIZE / 2);
         camera.x = Math.max(0, Math.min(camera.x, MAP_WIDTH - Math.floor(canvas.width / TILE_SIZE)));
         camera.y = Math.max(0, Math.min(camera.y, MAP_HEIGHT - Math.floor(canvas.height / TILE_SIZE)));
-        
+
         // 清空画布
         ctx.fillStyle = '#1a3a1a';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
+
         // 计算可视范围
         const tilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
         const tilesY = Math.ceil(canvas.height / TILE_SIZE) + 1;
-        
+
         // 绘制地图
         for (let y = 0; y < tilesY; y++) {
             for (let x = 0; x < tilesX; x++) {
@@ -411,7 +439,7 @@
                 }
             }
         }
-        
+
         // 绘制NPC
         npcs.forEach(npc => {
             if (npc.x >= camera.x && npc.x < camera.x + tilesX &&
@@ -419,20 +447,17 @@
                 const screenX = (npc.x - camera.x) * TILE_SIZE;
                 const screenY = (npc.y - camera.y) * TILE_SIZE;
                 
-                // 身体
                 ctx.fillStyle = npc.color;
                 ctx.fillRect(screenX + 8, screenY + 12, 16, 16);
-                // 头
                 ctx.fillStyle = '#ffdbac';
                 ctx.fillRect(screenX + 10, screenY + 4, 12, 12);
-                // 名字
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(npc.name, screenX + 16, screenY);
             }
         });
-        
+
         // 绘制怪物
         monsters.forEach(monster => {
             if (monster.x >= camera.x && monster.x < camera.x + tilesX &&
@@ -440,12 +465,10 @@
                 const screenX = (monster.x - camera.x) * TILE_SIZE;
                 const screenY = (monster.y - camera.y) * TILE_SIZE;
                 
-                // 史莱姆身体
                 ctx.fillStyle = monster.color;
                 ctx.beginPath();
                 ctx.ellipse(screenX + 16, screenY + 20, 12, 10, 0, 0, Math.PI * 2);
                 ctx.fill();
-                // 眼睛
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(screenX + 12, screenY + 16, 4, 4);
                 ctx.fillRect(screenX + 20, screenY + 16, 4, 4);
@@ -454,21 +477,17 @@
                 ctx.fillRect(screenX + 21, screenY + 17, 2, 2);
             }
         });
-        
+
         // 绘制玩家（屏幕中央）
         const centerX = Math.floor(canvas.width / 2 / TILE_SIZE) * TILE_SIZE + (canvas.width / 2 % TILE_SIZE) - TILE_SIZE / 2;
         const centerY = Math.floor(canvas.height / 2 / TILE_SIZE) * TILE_SIZE + (canvas.height / 2 % TILE_SIZE) - TILE_SIZE / 2;
         
-        // 身体
         ctx.fillStyle = '#4169e1';
         ctx.fillRect(centerX + 8, centerY + 12, 16, 16);
-        // 头
         ctx.fillStyle = '#ffdbac';
         ctx.fillRect(centerX + 10, centerY + 4, 12, 12);
-        // 头发
         ctx.fillStyle = '#8b4513';
         ctx.fillRect(centerX + 10, centerY + 2, 12, 4);
-        // 眼睛（根据方向）
         ctx.fillStyle = '#000';
         switch(player.dir) {
             case 'down':
@@ -487,25 +506,34 @@
                 break;
         }
         
-        // 绘制提示文字
+        // 绘制调试信息
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(10, canvas.height - 50, 200, 40);
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
+        ctx.fillRect(10, 10, 200, 60);
+        ctx.fillStyle = '#0f0';
+        ctx.font = '12px monospace';
         ctx.textAlign = 'left';
-        ctx.fillText('WASD/方向键移动', 20, canvas.height - 30);
-        ctx.fillText('滑动屏幕也可移动', 20, canvas.height - 15);
+        ctx.fillText(`Player: ${player.x}, ${player.y}`, 20, 30);
+        ctx.fillText(`Camera: ${camera.x}, ${camera.y}`, 20, 45);
+        ctx.fillText(`Dir: ${player.dir}`, 20, 60);
+        
+        // 绘制操作提示
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(10, canvas.height - 60, 200, 50);
+        ctx.fillStyle = '#fff';
+        ctx.fillText('WASD/方向键移动', 20, canvas.height - 40);
+        ctx.fillText('点击/滑动也可移动', 20, canvas.height - 25);
     }
 
     // 暴露给全局
     window.WorldSystem = {
         init: init,
-        handleAction: function() { 
-            console.log('[World] Action!'); 
-        },
+        handleAction: function() { console.log('[World] Action!'); },
         toggleMenu: function() { 
+            console.log('[World] Toggle menu');
             if (typeof showScene === 'function') showScene('party'); 
         }
     };
+
+    console.log('[World] Module loaded, WorldSystem:', window.WorldSystem);
 
 })();
