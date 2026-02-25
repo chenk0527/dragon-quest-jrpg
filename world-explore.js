@@ -560,17 +560,13 @@ const WorldSystem = {
         
         this.ctx = this.canvas.getContext('2d');
         
-        // 获取容器大小并设置画布
-        const container = this.canvas.parentElement;
-        if (container) {
-            const rect = container.getBoundingClientRect();
-            this.canvas.width = rect.width;
-            this.canvas.height = rect.height;
-        } else {
-            // 设置默认大小
-            this.canvas.width = WORLD_CONFIG.VIEW_WIDTH * WORLD_CONFIG.TILE_SIZE;
-            this.canvas.height = WORLD_CONFIG.VIEW_HEIGHT * WORLD_CONFIG.TILE_SIZE;
-        }
+        // 等待DOM渲染完成后设置画布大小
+        setTimeout(() => {
+            this.resizeCanvas();
+        }, 50);
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', () => this.resizeCanvas());
         
         // 禁用图像平滑（保持像素风格）
         this.ctx.imageSmoothingEnabled = false;
@@ -586,6 +582,18 @@ const WorldSystem = {
         this.gameLoop();
         
         console.log('[WorldSystem] Initialized');
+    },
+    
+    resizeCanvas() {
+        const container = this.canvas.parentElement;
+        if (container) {
+            const rect = container.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                console.log(`[WorldSystem] Canvas resized to ${this.canvas.width}x${this.canvas.height}`);
+            }
+        }
     },
     
     loadMap(mapId) {
@@ -1229,6 +1237,17 @@ const WorldSystem = {
         const map = WORLD_MAPS[WorldState.currentMap];
         const camera = WorldState.camera;
         
+        // 检查地图数据
+        if (!map || !map.tiles || map.tiles.length === 0) {
+            console.error('[WorldSystem] Map data not available');
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '16px monospace';
+            ctx.fillText('地图加载失败', 50, 50);
+            return;
+        }
+        
         // 清空画布
         ctx.fillStyle = map.background || '#000000';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -1240,8 +1259,10 @@ const WorldSystem = {
                 const mapY = camera.y + y;
                 
                 if (mapX >= 0 && mapX < map.width && mapY >= 0 && mapY < map.height) {
-                    const tileId = map.tiles[mapY][mapX];
-                    this.drawTile(ctx, tileId, x * WORLD_CONFIG.TILE_SIZE, y * WORLD_CONFIG.TILE_SIZE);
+                    const tileId = map.tiles[mapY]?.[mapX];
+                    if (tileId !== undefined) {
+                        this.drawTile(ctx, tileId, x * WORLD_CONFIG.TILE_SIZE, y * WORLD_CONFIG.TILE_SIZE);
+                    }
                 }
             }
         }
