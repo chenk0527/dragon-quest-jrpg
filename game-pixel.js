@@ -1304,6 +1304,12 @@ function showScene(sceneName) {
     // 播放菜单音效
     SoundEffects.playMenuMove();
     
+    // 特殊的冒险进入效果
+    if (sceneName === 'world') {
+        enterWorldWithEffect();
+        return;
+    }
+    
     document.querySelectorAll('.scene').forEach(scene => scene.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -1330,14 +1336,6 @@ function showScene(sceneName) {
 
     if (sceneName === 'party') renderParty();
     if (sceneName === 'map') renderMap();
-    if (sceneName === 'world') {
-        // 初始化世界探索系统
-        setTimeout(() => {
-            if (typeof WorldSystem !== 'undefined' && WorldSystem.init) {
-                WorldSystem.init();
-            }
-        }, 100);
-    }
     
     // 切换BGM
     if (sceneName === 'battle') {
@@ -1349,6 +1347,87 @@ function showScene(sceneName) {
     } else {
         BGM.play('village');
     }
+}
+
+// 进入冒险世界的特效
+function enterWorldWithEffect() {
+    const overlay = document.getElementById('transitionOverlay');
+    const worldScene = document.getElementById('worldScene');
+    
+    // 淡出其他场景
+    document.querySelectorAll('.scene').forEach(scene => scene.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    
+    // 高亮冒险按钮
+    const navBtns = document.querySelectorAll('.nav-btn');
+    if (navBtns[2]) navBtns[2].classList.add('active');
+    
+    // 播放进入音效
+    if (AudioSystem) AudioSystem.playSFX('enter_world');
+    
+    // 显示过渡动画
+    if (overlay) {
+        overlay.style.background = 'radial-gradient(circle, transparent 0%, #000 100%)';
+        overlay.classList.add('active');
+    }
+    
+    // 显示消息
+    showEnteringMessage();
+    
+    setTimeout(() => {
+        // 激活世界场景
+        if (worldScene) worldScene.classList.add('active');
+        
+        // 初始化世界系统
+        setTimeout(() => {
+            if (typeof WorldSystem !== 'undefined' && WorldSystem.init) {
+                WorldSystem.init();
+            }
+        }, 100);
+        
+        // 移除遮罩
+        setTimeout(() => {
+            if (overlay) overlay.classList.remove('active');
+        }, 500);
+        
+    }, 300);
+    
+    // 播放BGM
+    BGM.play('village');
+}
+
+// 显示进入冒险的消息彩蛋
+function showEnteringMessage() {
+    const messages = [
+        '🎮 冒险开始！',
+        '⚔️ 勇者出征！',
+        '🗺️ 探索未知的世界...',
+        '🌟 命运之门已开启！',
+        '🐉 传说即将诞生！'
+    ];
+    const msg = messages[Math.floor(Math.random() * messages.length)];
+    
+    // 创建临时消息元素
+    const msgEl = document.createElement('div');
+    msgEl.className = 'enter-world-message';
+    msgEl.textContent = msg;
+    msgEl.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+        color: #ffd700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        z-index: 10000;
+        pointer-events: none;
+        animation: enterWorldPulse 1s ease-out forwards;
+    `;
+    document.body.appendChild(msgEl);
+    
+    setTimeout(() => {
+        msgEl.remove();
+    }, 1000);
 }
 
 // ==================== 地图功能 ====================

@@ -1634,6 +1634,25 @@
         .transition-overlay.active {
             opacity: 1;
         }
+        /* 进入冒险的动画 */
+        @keyframes enterWorldPulse {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .enter-world-message {
+            font-family: 'Press Start 2P', monospace;
+        }
     </style>
 </head>
 <body>

@@ -1252,9 +1252,13 @@ const WorldSystem = {
         ctx.fillStyle = map.background || '#000000';
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // 计算可视范围（基于 canvas 大小）
+        const tilesX = Math.ceil(this.canvas.width / WORLD_CONFIG.TILE_SIZE) + 1;
+        const tilesY = Math.ceil(this.canvas.height / WORLD_CONFIG.TILE_SIZE) + 1;
+        
         // 绘制地图
-        for (let y = 0; y < WORLD_CONFIG.VIEW_HEIGHT; y++) {
-            for (let x = 0; x < WORLD_CONFIG.VIEW_WIDTH; x++) {
+        for (let y = 0; y < tilesY; y++) {
+            for (let x = 0; x < tilesX; x++) {
                 const mapX = camera.x + x;
                 const mapY = camera.y + y;
                 
@@ -1285,9 +1289,9 @@ const WorldSystem = {
             }
         });
         
-        // 绘制玩家
-        const playerScreenX = (WorldState.player.x - camera.x) * WORLD_CONFIG.TILE_SIZE;
-        const playerScreenY = (WorldState.player.y - camera.y) * WORLD_CONFIG.TILE_SIZE;
+        // 绘制玩家（始终在屏幕中央）
+        const playerScreenX = Math.floor(this.canvas.width / 2 / WORLD_CONFIG.TILE_SIZE) * WORLD_CONFIG.TILE_SIZE - WORLD_CONFIG.TILE_SIZE / 2;
+        const playerScreenY = Math.floor(this.canvas.height / 2 / WORLD_CONFIG.TILE_SIZE) * WORLD_CONFIG.TILE_SIZE - WORLD_CONFIG.TILE_SIZE / 2;
         this.drawPlayer(ctx, playerScreenX, playerScreenY);
         
         // 绘制消息
