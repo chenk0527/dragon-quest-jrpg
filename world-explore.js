@@ -53,14 +53,32 @@
                 // 边界墙
                 if (x === 0 || x === MAP_WIDTH - 1 || y === 0 || y === MAP_HEIGHT - 1) {
                     mapData[y][x] = TILES.WALL;
-                } else if (x > 5 && x < 10 && y > 5 && y < 10) {
-                    mapData[y][x] = Math.random() < 0.7 ? TILES.TREE : TILES.GRASS;
-                } else if (x > 15 && x < 20 && y > 12 && y < 17) {
-                    mapData[y][x] = TILES.WATER;
-                } else if (Math.random() < 0.08) {
-                    mapData[y][x] = TILES.TREE;
                 } else {
-                    mapData[y][x] = TILES.GRASS;
+                    mapData[y][x] = TILES.GRASS; // 先全部设为草地
+                }
+            }
+        }
+        
+        // 在远离玩家的位置添加一些树
+        for (let i = 0; i < 15; i++) {
+            let tx, ty;
+            let attempts = 0;
+            do {
+                tx = Math.floor(Math.random() * (MAP_WIDTH - 4)) + 2;
+                ty = Math.floor(Math.random() * (MAP_HEIGHT - 4)) + 2;
+                attempts++;
+            } while ((Math.abs(tx - player.x) < 4 && Math.abs(ty - player.y) < 4) && attempts < 50);
+            
+            if (attempts < 50) {
+                mapData[ty][tx] = TILES.TREE;
+            }
+        }
+        
+        // 添加小池塘（远离玩家）
+        for (let y = 15; y < 18; y++) {
+            for (let x = 18; x < 22; x++) {
+                if (y < MAP_HEIGHT - 1 && x < MAP_WIDTH - 1) {
+                    mapData[y][x] = TILES.WATER;
                 }
             }
         }
