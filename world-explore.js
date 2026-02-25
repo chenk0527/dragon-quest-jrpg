@@ -1,798 +1,348 @@
 /**
- * Dragon Quest JRPG - 地图探索系统 V2
- * 更健壮的实现，带详细调试
+ * Dragon Quest JRPG - 世界探索系统 (重构版)
+ * 最简实现，确保可靠运行
  */
 
-(function() {
-    'use strict';
+// 全局变量
+let W = {
+    canvas: null,
+    ctx: null,
+    player: { x: 12, y: 10, dir: 'down' },
+    camera: { x: 0, y: 0 },
+    map: [],
+    monsters: [],
+    npcs: [],
+    initialized: false,
+    TILE: 32,
+    W: 25,
+    H: 20
+};
 
-    console.log('[World] Script loaded');
+// 图块类型
+const T = { GRASS: 0, WALL: 1, TREE: 2, WATER: 3, CHEST: 4, MONSTER: 5 };
 
-    // 配置
-    const TILE_SIZE = 32;
-    const MAP_WIDTH = 25;
-    const MAP_HEIGHT = 20;
+// 初始化
+function initWorld() {
+    console.log('[W] Init called');
+    if (W.initialized) return true;
     
-    // 图块类型
-    const TILES = {
-        GRASS: 0,
-        WALL: 1,
-        TREE: 2,
-        WATER: 3,
-        CHEST: 4,
-        NPC: 5,
-        MONSTER: 6
-    };
-
-    // 游戏状态
-    let canvas = null;
-    let ctx = null;
-    let player = { x: 12, y: 10, dir: 'down' };
-    let camera = { x: 0, y: 0 };
-    let isInitialized = false;
-    let isRunning = false;
-    let konamiCode = [];
-    let moveEffect = null; // 移动效果
+    W.canvas = document.getElementById('worldCanvas');
+    if (!W.canvas) {
+        console.error('[W] Canvas not found');
+        return false;
+    }
     
-    // 地图数据
-    let mapData = [];
-    let monsters = [];
-    let npcs = [];
-    let chests = [];
+    W.ctx = W.canvas.getContext('2d');
+    
+    // 设置画布大小
+    const container = W.canvas.parentElement;
+    if (container) {
+        W.canvas.width = container.clientWidth || window.innerWidth;
+        W.canvas.height = container.clientHeight || (window.innerHeight - 100);
+    }
     
     // 生成地图
-    function generateMap() {
-        console.log('[World] Generating map...');
-        mapData = [];
-        monsters = [];
-        npcs = [];
-        chests = [];
-        
-        for (let y = 0; y < MAP_HEIGHT; y++) {
-            mapData[y] = [];
-            for (let x = 0; x < MAP_WIDTH; x++) {
-                // 边界墙
-                if (x === 0 || x === MAP_WIDTH - 1 || y === 0 || y === MAP_HEIGHT - 1) {
-                    mapData[y][x] = TILES.WALL;
-                } else {
-                    mapData[y][x] = TILES.GRASS; // 先全部设为草地
-                }
-            }
-        }
-        
-        // 在远离玩家的位置添加一些树
-        for (let i = 0; i < 15; i++) {
-            let tx, ty;
-            let attempts = 0;
-            do {
-                tx = Math.floor(Math.random() * (MAP_WIDTH - 4)) + 2;
-                ty = Math.floor(Math.random() * (MAP_HEIGHT - 4)) + 2;
-                attempts++;
-            } while ((Math.abs(tx - player.x) < 4 && Math.abs(ty - player.y) < 4) && attempts < 50);
-            
-            if (attempts < 50) {
-                mapData[ty][tx] = TILES.TREE;
-            }
-        }
-        
-        // 添加小池塘（远离玩家）
-        for (let y = 15; y < 18; y++) {
-            for (let x = 18; x < 22; x++) {
-                if (y < MAP_HEIGHT - 1 && x < MAP_WIDTH - 1) {
-                    mapData[y][x] = TILES.WATER;
-                }
-            }
-        }
-        
-        // 确保玩家起始位置是草地
-        mapData[player.y][player.x] = TILES.GRASS;
-        
-        // 添加NPC
-        npcs.push({ x: 5, y: 5, name: '村长', color: '#daa520', dialog: '欢迎来到新手村！' });
-        npcs.push({ x: 18, y: 8, name: '商人', color: '#ff69b4', dialog: '需要买点什么吗？' });
-        
-        // 添加怪物
-        for (let i = 0; i < 5; i++) {
-            let mx, my;
-            let attempts = 0;
-            do {
-                mx = Math.floor(Math.random() * (MAP_WIDTH - 2)) + 1;
-                my = Math.floor(Math.random() * (MAP_HEIGHT - 2)) + 1;
-                attempts++;
-            } while ((mapData[my][mx] !== TILES.GRASS || (Math.abs(mx - player.x) < 3 && Math.abs(my - player.y) < 3)) && attempts < 100);
-            
-            if (attempts < 100) {
-                monsters.push({
-                    x: mx,
-                    y: my,
-                    type: Math.random() < 0.5 ? 'slime' : 'goblin',
-                    color: Math.random() < 0.5 ? '#00ff00' : '#228b22',
-                    moveTimer: 0
-                });
-                mapData[my][mx] = TILES.MONSTER;
-            }
-        }
-        
-        // 添加宝箱
-        for (let i = 0; i < 3; i++) {
-            let cx, cy;
-            let attempts = 0;
-            do {
-                cx = Math.floor(Math.random() * (MAP_WIDTH - 2)) + 1;
-                cy = Math.floor(Math.random() * (MAP_HEIGHT - 2)) + 1;
-                attempts++;
-            } while (mapData[cy][cx] !== TILES.GRASS && attempts < 100);
-            
-            if (attempts < 100) {
-                chests.push({ x: cx, y: cy, opened: false });
-                mapData[cy][cx] = TILES.CHEST;
-            }
-        }
-        
-        console.log('[World] Map generated:', MAP_WIDTH, 'x', MAP_HEIGHT);
-    }
+    genMap();
+    
+    // 绑定事件
+    bindKeys();
+    bindTouch();
+    bindButtons();
+    
+    W.initialized = true;
+    loop();
+    console.log('[W] Initialized');
+    return true;
+}
 
-    // 初始化
-    function init() {
-        console.log('[World] Init called, isInitialized:', isInitialized);
-        
-        if (isInitialized) {
-            console.log('[World] Already initialized');
-            return true;
-        }
-        
-        canvas = document.getElementById('worldCanvas');
-        console.log('[World] Canvas element:', canvas);
-        
-        if (!canvas) {
-            console.error('[World] Canvas not found!');
-            return false;
-        }
-
-        ctx = canvas.getContext('2d');
-        console.log('[World] Context:', ctx);
-        
-        // 生成地图
-        generateMap();
-        
-        // 设置画布大小
-        resizeCanvas();
-        
-        // 绑定事件
-        bindEvents();
-        
-        isInitialized = true;
-        isRunning = true;
-        
-        // 开始游戏循环
-        console.log('[World] Starting game loop');
-        requestAnimationFrame(gameLoop);
-        
-        console.log('[World] Initialized successfully');
-        return true;
-    }
-
-    function resizeCanvas() {
-        if (!canvas) return;
-        
-        const container = canvas.parentElement;
-        console.log('[World] Container:', container);
-        
-        if (container) {
-            const rect = container.getBoundingClientRect();
-            console.log('[World] Container rect:', rect.width, 'x', rect.height);
-            
-            if (rect.width > 0 && rect.height > 0) {
-                canvas.width = rect.width;
-                canvas.height = rect.height;
-                console.log('[World] Canvas resized to:', canvas.width, 'x', canvas.height);
+// 生成地图
+function genMap() {
+    W.map = [];
+    W.monsters = [];
+    W.npcs = [];
+    
+    for (let y = 0; y < W.H; y++) {
+        W.map[y] = [];
+        for (let x = 0; x < W.W; x++) {
+            // 边界
+            if (x === 0 || x === W.W-1 || y === 0 || y === W.H-1) {
+                W.map[y][x] = T.WALL;
             } else {
-                // 如果容器还没渲染，使用窗口大小
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 100; // 减去头部
-                console.log('[World] Canvas resized to window:', canvas.width, 'x', canvas.height);
+                W.map[y][x] = T.GRASS;
             }
         }
     }
-
-    function bindEvents() {
-        console.log('[World] Binding events...');
-        
-        // 键盘事件 - 使用 window 确保全局捕获
-        window.addEventListener('keydown', onKeyDown, true);
-        window.addEventListener('keyup', onKeyUp, true);
-        
-        // 触摸事件
-        if (canvas) {
-            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-            canvas.addEventListener('touchend', onTouchEnd, { passive: false });
-            canvas.addEventListener('click', onClick);
-        }
-        
-        // 虚拟按键事件
-        bindVirtualButtons();
-        
-        // 窗口大小变化
-        window.addEventListener('resize', resizeCanvas);
-        
-        console.log('[World] Events bound');
-    }
-
-    // 绑定虚拟按键
-    function bindVirtualButtons() {
-        console.log('[World] Binding virtual buttons...');
-        
-        // 等待 DOM 更新
-        setTimeout(() => {
-            // 方向键
-            const dpadButtons = document.querySelectorAll('.dpad-btn');
-            console.log('[World] Found D-PAD buttons:', dpadButtons.length);
-            
-            dpadButtons.forEach(btn => {
-                console.log('[World] Binding button:', btn.dataset.key);
-                
-                // 触摸事件
-                btn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const key = btn.dataset.key;
-                    console.log('[World] Virtual D-PAD touched:', key);
-                    
-                    switch(key) {
-                        case 'up': movePlayer('ArrowUp'); break;
-                        case 'down': movePlayer('ArrowDown'); break;
-                        case 'left': movePlayer('ArrowLeft'); break;
-                        case 'right': movePlayer('ArrowRight'); break;
-                    }
-                    btn.style.background = 'rgba(255, 255, 255, 0.6)';
-                }, { passive: false });
-                
-                btn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    console.log('[World] Virtual D-PAD released');
-                    btn.style.background = '';
-                }, { passive: false });
-                
-                // 鼠标事件（桌面测试）
-                btn.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    const key = btn.dataset.key;
-                    console.log('[World] Virtual D-PAD clicked:', key);
-                    
-                    switch(key) {
-                        case 'up': movePlayer('ArrowUp'); break;
-                        case 'down': movePlayer('ArrowDown'); break;
-                        case 'left': movePlayer('ArrowLeft'); break;
-                        case 'right': movePlayer('ArrowRight'); break;
-                    }
-                    btn.style.background = 'rgba(255, 255, 255, 0.6)';
-                });
-                
-                btn.addEventListener('mouseup', (e) => {
-                    e.preventDefault();
-                    btn.style.background = '';
-                });
-                
-                btn.addEventListener('mouseleave', (e) => {
-                    btn.style.background = '';
-                });
-            });
-            
-            // AB 键
-            const actionButtons = document.querySelectorAll('.action-btn');
-            console.log('[World] Found action buttons:', actionButtons.length);
-            
-            actionButtons.forEach(btn => {
-                console.log('[World] Binding action button:', btn.dataset.key);
-                
-                btn.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const key = btn.dataset.key;
-                    console.log('[World] Action button touched:', key);
-                    
-                    if (key === 'A') {
-                        handleActionButton();
-                    } else if (key === 'B') {
-                        handleBButton();
-                    }
-                    btn.style.transform = 'scale(0.95)';
-                }, { passive: false });
-                
-                btn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    btn.style.transform = '';
-                }, { passive: false });
-                
-                btn.addEventListener('mousedown', (e) => {
-                    e.preventDefault();
-                    const key = btn.dataset.key;
-                    console.log('[World] Action button clicked:', key);
-                    
-                    if (key === 'A') {
-                        handleActionButton();
-                    } else if (key === 'B') {
-                        handleBButton();
-                    }
-                    btn.style.transform = 'scale(0.95)';
-                });
-                
-                btn.addEventListener('mouseup', (e) => {
-                    e.preventDefault();
-                    btn.style.transform = '';
-                });
-            });
-            
-            console.log('[World] Virtual buttons bound successfully');
-        }, 100);
-    }
-
-    // A 键功能（交互/确认）
-    function handleActionButton() {
-        console.log('[World] A button - Action!');
-        
-        // 检查玩家面前的物体
-        let checkX = player.x;
-        let checkY = player.y;
-        
-        switch(player.dir) {
-            case 'up': checkY--; break;
-            case 'down': checkY++; break;
-            case 'left': checkX--; break;
-            case 'right': checkX++; break;
-        }
-        
-        // 检查NPC
-        const npc = npcs.find(n => n.x === checkX && n.y === checkY);
-        if (npc) {
-            alert(`${npc.name}: ${npc.dialog}`);
-            return;
-        }
-        
-        // 检查是否可以触发彩蛋
-        checkEasterEggs();
-    }
-
-    // B 键功能（菜单/取消）
-    function handleBButton() {
-        console.log('[World] B button - Menu!');
-        if (typeof showScene === 'function') {
-            showScene('party');
+    
+    // 随机树
+    for (let i = 0; i < 10; i++) {
+        let x = Math.floor(Math.random() * (W.W - 4)) + 2;
+        let y = Math.floor(Math.random() * (W.H - 4)) + 2;
+        if (Math.abs(x - W.player.x) > 3 || Math.abs(y - W.player.y) > 3) {
+            W.map[y][x] = T.TREE;
         }
     }
-
-    // 检查彩蛋
-    function checkEasterEggs() {
-        // 检查 Konami 代码: 上上下下左右左右BA
-        const konamiSequence = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'B', 'A'];
-        
-        // 记录按键序列
-        konamiCode.push(player.dir);
-        if (konamiCode.length > 10) {
-            konamiCode.shift();
-        }
-        
-        // 检查是否匹配
-        if (konamiCode.length >= 10) {
-            let match = true;
-            for (let i = 0; i < 10; i++) {
-                if (konamiCode[konamiCode.length - 10 + i] !== konamiSequence[i]) {
-                    match = false;
-                    break;
-                }
-            }
-            
-            if (match) {
-                alert('🎮 Konami 代码激活！\n获得传说装备！');
-                konamiCode = []; // 重置
-                // 这里可以添加奖励
-                return;
-            }
-        }
-        
-        // 特定位置彩蛋
-        if (player.x === 3 && player.y === 3) {
-            alert('🎉 彩蛋发现！隐藏宝箱！\n获得 100 金币！');
+    
+    // 池塘
+    for (let y = 15; y < 18; y++) {
+        for (let x = 18; x < 22; x++) {
+            W.map[y][x] = T.WATER;
         }
     }
-
-    // 键盘控制
-    function onKeyDown(e) {
-        console.log('[World] Key pressed:', e.key, 'Code:', e.code);
-        
-        const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 
-                          'w', 'a', 's', 'd', 'W', 'A', 'S', 'D'];
-        
-        if (validKeys.includes(e.key)) {
-            e.preventDefault();
-            e.stopPropagation();
-            movePlayer(e.key);
+    
+    // NPC
+    W.npcs.push({ x: 5, y: 5, name: '村长', color: '#daa520' });
+    W.npcs.push({ x: 20, y: 8, name: '商人', color: '#ff69b4' });
+    
+    // 怪物
+    for (let i = 0; i < 4; i++) {
+        let x = Math.floor(Math.random() * (W.W - 4)) + 2;
+        let y = Math.floor(Math.random() * (W.H - 4)) + 2;
+        if (W.map[y][x] === T.GRASS && Math.abs(x - W.player.x) + Math.abs(y - W.player.y) > 4) {
+            W.monsters.push({ x, y, type: 'slime', color: '#0f0' });
+            W.map[y][x] = T.MONSTER;
         }
     }
-
-    function onKeyUp(e) {
-        // 可以添加连续移动的支持
-    }
-
-    function movePlayer(key) {
-        console.log('[World] Moving player:', key);
-        
-        let newX = player.x;
-        let newY = player.y;
-        let newDir = player.dir;
-
-        switch(key) {
-            case 'ArrowUp': case 'w': case 'W':
-                newY--;
-                newDir = 'up';
-                break;
-            case 'ArrowDown': case 's': case 'S':
-                newY++;
-                newDir = 'down';
-                break;
-            case 'ArrowLeft': case 'a': case 'A':
-                newX--;
-                newDir = 'left';
-                break;
-            case 'ArrowRight': case 'd': case 'D':
-                newX++;
-                newDir = 'right';
-                break;
-        }
-
-        console.log('[World] New position:', newX, newY, 'Dir:', newDir);
-
-        // 检查边界和障碍物
-        if (newX >= 0 && newX < MAP_WIDTH && newY >= 0 && newY < MAP_HEIGHT) {
-            const tile = mapData[newY][newX];
-            console.log('[World] Tile at new position:', tile);
-
-            if (tile === TILES.GRASS) {
-                player.x = newX;
-                player.y = newY;
-                player.dir = newDir;
-                // 记录方向用于 Konami 代码
-                konamiCode.push(newDir);
-                if (konamiCode.length > 10) konamiCode.shift();
-                // 添加移动效果
-                moveEffect = { x: newX, y: newY, time: Date.now() };
-                console.log('[World] Player moved to:', player.x, player.y, 'Konami:', konamiCode);
-            } else if (tile === TILES.CHEST) {
-                const chest = chests.find(c => c.x === newX && c.y === newY);
-                if (chest && !chest.opened) {
-                    chest.opened = true;
-                    mapData[newY][newX] = TILES.GRASS;
-                    alert('💎 获得：金币 x 50！');
-                }
-                player.x = newX;
-                player.y = newY;
-                player.dir = newDir;
-            } else if (tile === TILES.MONSTER) {
-                const monster = monsters.find(m => m.x === newX && m.y === newY);
-                if (monster) {
-                    console.log('[World] Encountered monster:', monster.type);
-                    
-                    // 触发战斗系统
-                    if (typeof startBattle === 'function') {
-                        // 保存玩家位置，战斗后恢复
-                        const savedX = player.x;
-                        const savedY = player.y;
-                        
-                        // 移除怪物
-                        monsters = monsters.filter(m => m !== monster);
-                        mapData[newY][newX] = TILES.GRASS;
-                        
-                        // 进入战斗
-                        player.x = newX;
-                        player.y = newY;
-                        player.dir = newDir;
-                        
-                        // 延迟进入战斗，让玩家先看到移动
-                        setTimeout(() => {
-                            startBattle('forest'); // 使用森林区域战斗
-                        }, 100);
-                    } else {
-                        // 备用：简单提示
-                        alert('👹 遭遇 ' + (monster.type === 'slime' ? '史莱姆' : '哥布林') + '！');
-                        monsters = monsters.filter(m => m !== monster);
-                        mapData[newY][newX] = TILES.GRASS;
-                        player.x = newX;
-                        player.y = newY;
-                        player.dir = newDir;
-                    }
-                }
-                return; // 不要继续执行后面的代码
-            } else if (tile === TILES.WALL || tile === TILES.TREE || tile === TILES.WATER) {
-                player.dir = newDir;
-                console.log('[World] Blocked by:', tile);
-            }
-        } else {
-            console.log('[World] Out of bounds');
+    
+    // 宝箱
+    for (let i = 0; i < 3; i++) {
+        let x = Math.floor(Math.random() * (W.W - 4)) + 2;
+        let y = Math.floor(Math.random() * (W.H - 4)) + 2;
+        if (W.map[y][x] === T.GRASS) {
+            W.map[y][x] = T.CHEST;
         }
     }
+}
 
-    // 触摸控制
-    function onTouchStart(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        canvas.dataset.touchStartX = touch.clientX;
-        canvas.dataset.touchStartY = touch.clientY;
-        canvas.dataset.touchStartTime = Date.now();
-    }
+// 键盘事件
+function bindKeys() {
+    window.addEventListener('keydown', (e) => {
+        console.log('[W] Key:', e.key);
+        switch(e.key) {
+            case 'ArrowUp': case 'w': case 'W': move(0, -1); break;
+            case 'ArrowDown': case 's': case 'S': move(0, 1); break;
+            case 'ArrowLeft': case 'a': case 'A': move(-1, 0); break;
+            case 'ArrowRight': case 'd': case 'D': move(1, 0); break;
+        }
+    });
+}
 
-    function onTouchMove(e) {
-        e.preventDefault();
-    }
-
-    function onTouchEnd(e) {
-        e.preventDefault();
-        const touch = e.changedTouches[0];
-        const startX = parseFloat(canvas.dataset.touchStartX);
-        const startY = parseFloat(canvas.dataset.touchStartY);
-        
-        const dx = touch.clientX - startX;
-        const dy = touch.clientY - startY;
-        
-        console.log('[World] Touch swipe:', dx, dy);
-
+// 触摸事件
+function bindTouch() {
+    let sx, sy;
+    W.canvas.addEventListener('touchstart', (e) => {
+        sx = e.touches[0].clientX;
+        sy = e.touches[0].clientY;
+    });
+    W.canvas.addEventListener('touchend', (e) => {
+        let dx = e.changedTouches[0].clientX - sx;
+        let dy = e.changedTouches[0].clientY - sy;
         if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
             if (Math.abs(dx) > Math.abs(dy)) {
-                movePlayer(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
+                move(dx > 0 ? 1 : -1, 0);
             } else {
-                movePlayer(dy > 0 ? 'ArrowDown' : 'ArrowUp');
+                move(0, dy > 0 ? 1 : -1);
             }
         }
-    }
+    });
+}
 
-    // 鼠标点击移动
-    function onClick(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clickX = e.clientX - rect.left;
-        const clickY = e.clientY - rect.top;
-        
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        
-        const dx = clickX - centerX;
-        const dy = clickY - centerY;
-        
-        console.log('[World] Click at:', clickX, clickY, 'dx:', dx, 'dy:', dy);
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-            movePlayer(dx > 0 ? 'ArrowRight' : 'ArrowLeft');
-        } else {
-            movePlayer(dy > 0 ? 'ArrowDown' : 'ArrowUp');
-        }
-    }
-
-    // 更新怪物
-    function updateMonsters() {
-        monsters.forEach(monster => {
-            monster.moveTimer = (monster.moveTimer || 0) + 1;
-            if (monster.moveTimer > 60) {
-                monster.moveTimer = 0;
-                
-                const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
-                const dir = dirs[Math.floor(Math.random() * dirs.length)];
-                
-                const newX = monster.x + dir.x;
-                const newY = monster.y + dir.y;
-                
-                if (newX >= 1 && newX < MAP_WIDTH - 1 && newY >= 1 && newY < MAP_HEIGHT - 1) {
-                    if (mapData[newY][newX] === TILES.GRASS) {
-                        mapData[monster.y][monster.x] = TILES.GRASS;
-                        monster.x = newX;
-                        monster.y = newY;
-                        mapData[newY][newX] = TILES.MONSTER;
-                    }
-                }
-            }
-        });
-    }
-
-    // 游戏循环
-    function gameLoop() {
-        if (!isRunning) return;
-        
-        updateMonsters();
-        render();
-        requestAnimationFrame(gameLoop);
-    }
-
-    // 渲染
-    function render() {
-        if (!ctx || !canvas) return;
-        
-        // 更新相机位置
-        camera.x = player.x - Math.floor(canvas.width / TILE_SIZE / 2);
-        camera.y = player.y - Math.floor(canvas.height / TILE_SIZE / 2);
-        camera.x = Math.max(0, Math.min(camera.x, MAP_WIDTH - Math.floor(canvas.width / TILE_SIZE)));
-        camera.y = Math.max(0, Math.min(camera.y, MAP_HEIGHT - Math.floor(canvas.height / TILE_SIZE)));
-
-        // 清空画布
-        ctx.fillStyle = '#1a3a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // 计算可视范围
-        const tilesX = Math.ceil(canvas.width / TILE_SIZE) + 1;
-        const tilesY = Math.ceil(canvas.height / TILE_SIZE) + 1;
-
-        // 绘制地图
-        for (let y = 0; y < tilesY; y++) {
-            for (let x = 0; x < tilesX; x++) {
-                const mapX = camera.x + x;
-                const mapY = camera.y + y;
-                
-                if (mapX >= 0 && mapX < MAP_WIDTH && mapY >= 0 && mapY < MAP_HEIGHT) {
-                    const tile = mapData[mapY][mapX];
-                    const screenX = x * TILE_SIZE;
-                    const screenY = y * TILE_SIZE;
-                    
-                    switch(tile) {
-                        case TILES.GRASS:
-                            ctx.fillStyle = (mapX + mapY) % 2 === 0 ? '#4a7c4e' : '#3d6b40';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            break;
-                        case TILES.WALL:
-                            ctx.fillStyle = '#696969';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            ctx.strokeStyle = '#4a4a4a';
-                            ctx.strokeRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            break;
-                        case TILES.TREE:
-                            ctx.fillStyle = '#2d5a30';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            ctx.fillStyle = '#228b22';
-                            ctx.fillRect(screenX + 4, screenY + 4, 24, 24);
-                            ctx.fillStyle = '#006400';
-                            ctx.fillRect(screenX + 8, screenY + 2, 16, 8);
-                            break;
-                        case TILES.WATER:
-                            ctx.fillStyle = '#4169e1';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            ctx.fillStyle = '#87ceeb';
-                            ctx.fillRect(screenX + 4, screenY + 4, 8, 8);
-                            break;
-                        case TILES.CHEST:
-                            ctx.fillStyle = '#4a7c4e';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            ctx.fillStyle = '#daa520';
-                            ctx.fillRect(screenX + 6, screenY + 8, 20, 16);
-                            ctx.fillStyle = '#ffd700';
-                            ctx.fillRect(screenX + 8, screenY + 6, 16, 6);
-                            break;
-                        case TILES.MONSTER:
-                            ctx.fillStyle = '#4a7c4e';
-                            ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                            break;
-                    }
-                }
-            }
-        }
-
-        // 绘制NPC
-        npcs.forEach(npc => {
-            if (npc.x >= camera.x && npc.x < camera.x + tilesX &&
-                npc.y >= camera.y && npc.y < camera.y + tilesY) {
-                const screenX = (npc.x - camera.x) * TILE_SIZE;
-                const screenY = (npc.y - camera.y) * TILE_SIZE;
-                
-                ctx.fillStyle = npc.color;
-                ctx.fillRect(screenX + 8, screenY + 12, 16, 16);
-                ctx.fillStyle = '#ffdbac';
-                ctx.fillRect(screenX + 10, screenY + 4, 12, 12);
-                ctx.fillStyle = '#fff';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(npc.name, screenX + 16, screenY);
-            }
-        });
-
-        // 绘制怪物
-        monsters.forEach(monster => {
-            if (monster.x >= camera.x && monster.x < camera.x + tilesX &&
-                monster.y >= camera.y && monster.y < camera.y + tilesY) {
-                const screenX = (monster.x - camera.x) * TILE_SIZE;
-                const screenY = (monster.y - camera.y) * TILE_SIZE;
-                
-                ctx.fillStyle = monster.color;
-                ctx.beginPath();
-                ctx.ellipse(screenX + 16, screenY + 20, 12, 10, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(screenX + 12, screenY + 16, 4, 4);
-                ctx.fillRect(screenX + 20, screenY + 16, 4, 4);
-                ctx.fillStyle = '#000';
-                ctx.fillRect(screenX + 13, screenY + 17, 2, 2);
-                ctx.fillRect(screenX + 21, screenY + 17, 2, 2);
-            }
-        });
-
-        // 绘制玩家（屏幕中央）
-        const centerX = Math.floor(canvas.width / 2 / TILE_SIZE) * TILE_SIZE + (canvas.width / 2 % TILE_SIZE) - TILE_SIZE / 2;
-        const centerY = Math.floor(canvas.height / 2 / TILE_SIZE) * TILE_SIZE + (canvas.height / 2 % TILE_SIZE) - TILE_SIZE / 2;
-        
-        // 绘制玩家阴影
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(centerX + 10, centerY + 28, 12, 4);
-        
-        // 绘制玩家身体
-        ctx.fillStyle = '#4169e1';
-        ctx.fillRect(centerX + 8, centerY + 12, 16, 16);
-        
-        // 绘制玩家头
-        ctx.fillStyle = '#ffdbac';
-        ctx.fillRect(centerX + 10, centerY + 4, 12, 12);
-        
-        // 绘制头发
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(centerX + 10, centerY + 2, 12, 4);
-        
-        // 绘制眼睛（根据方向）
-        ctx.fillStyle = '#000';
-        switch(player.dir) {
-            case 'down':
-                ctx.fillRect(centerX + 12, centerY + 10, 2, 2);
-                ctx.fillRect(centerX + 18, centerY + 10, 2, 2);
-                break;
-            case 'up':
-                // 向上时不画眼睛（看后脑勺）
-                break;
-            case 'left':
-                ctx.fillRect(centerX + 12, centerY + 8, 2, 2);
-                break;
-            case 'right':
-                ctx.fillRect(centerX + 20, centerY + 8, 2, 2);
-                break;
-        }
-        
-        // 绘制移动效果（脚印）
-        if (moveEffect && Date.now() - moveEffect.time < 300) {
-            const alpha = 1 - (Date.now() - moveEffect.time) / 300;
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
-            ctx.fillRect(centerX + 12, centerY + 26, 8, 4);
-        }
-        
-        // 绘制调试信息
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(10, 10, 220, 75);
-        ctx.fillStyle = '#0f0';
-        ctx.font = '12px monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Player: ${player.x}, ${player.y}`, 20, 30);
-        ctx.fillText(`Camera: ${camera.x}, ${camera.y}`, 20, 45);
-        ctx.fillText(`Dir: ${player.dir}`, 20, 60);
-        ctx.fillText(`Map: ${MAP_WIDTH}x${MAP_HEIGHT}`, 20, 75);
-        
-        // 绘制操作提示
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(10, canvas.height - 70, 220, 60);
-        ctx.fillStyle = '#fff';
-        ctx.fillText('WASD/方向键移动', 20, canvas.height - 50);
-        ctx.fillText('点击/滑动也可移动', 20, canvas.height - 35);
-        ctx.fillText('按A键与NPC对话', 20, canvas.height - 20);
-    }
-
-    // 暴露给全局
-    window.WorldSystem = {
-        init: init,
-        handleAction: handleActionButton,
-        toggleMenu: function() { 
-            console.log('[World] Toggle menu');
-            if (typeof showScene === 'function') showScene('party'); 
-        },
-        // 标记是否从世界探索进入战斗
-        fromWorldExploration: true,
-        // 返回世界探索
-        returnToWorld: function() {
-            console.log('[World] Returning to world exploration');
-            if (typeof showScene === 'function') {
-                showScene('world');
-            }
-        }
+// 按钮事件
+function bindButtons() {
+    // 方向键
+    const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
+    document.querySelectorAll('.dpad-btn').forEach(btn => {
+        btn.onclick = () => {
+            const d = dirs[btn.dataset.key];
+            if (d) move(d[0], d[1]);
+        };
+    });
+    
+    // AB键
+    document.querySelector('.a-btn').onclick = () => action();
+    document.querySelector('.b-btn').onclick = () => {
+        if (typeof showScene === 'function') showScene('party');
     };
+}
 
-    console.log('[World] Module loaded, WorldSystem:', window.WorldSystem);
+// 移动
+function move(dx, dy) {
+    let nx = W.player.x + dx;
+    let ny = W.player.y + dy;
+    
+    // 方向
+    if (dx > 0) W.player.dir = 'right';
+    else if (dx < 0) W.player.dir = 'left';
+    else if (dy > 0) W.player.dir = 'down';
+    else W.player.dir = 'up';
+    
+    // 边界检查
+    if (nx < 0 || nx >= W.W || ny < 0 || ny >= W.H) return;
+    
+    let tile = W.map[ny][nx];
+    console.log('[W] Move to:', nx, ny, 'Tile:', tile);
+    
+    if (tile === T.GRASS) {
+        W.player.x = nx;
+        W.player.y = ny;
+    } else if (tile === T.CHEST) {
+        W.player.x = nx;
+        W.player.y = ny;
+        W.map[ny][nx] = T.GRASS;
+        alert('💰 获得 50 金币！');
+    } else if (tile === T.MONSTER) {
+        let m = W.monsters.find(m => m.x === nx && m.y === ny);
+        if (m) {
+            if (typeof startBattle === 'function') {
+                W.map[ny][nx] = T.GRASS;
+                W.monsters = W.monsters.filter(x => x !== m);
+                setTimeout(() => startBattle('forest'), 100);
+            } else {
+                alert('👹 遭遇 ' + m.type + '！');
+                W.map[ny][nx] = T.GRASS;
+                W.monsters = W.monsters.filter(x => x !== m);
+            }
+        }
+        W.player.x = nx;
+        W.player.y = ny;
+    }
+}
 
-})();
+// 动作键
+function action() {
+    let ax = W.player.x, ay = W.player.y;
+    switch(W.player.dir) {
+        case 'up': ay--; break;
+        case 'down': ay++; break;
+        case 'left': ax--; break;
+        case 'right': ax++; break;
+    }
+    
+    let npc = W.npcs.find(n => n.x === ax && n.y === ay);
+    if (npc) {
+        alert(npc.name + ': 你好，勇者！');
+    }
+}
+
+// 游戏循环
+function loop() {
+    updateCamera();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// 更新相机
+function updateCamera() {
+    W.camera.x = W.player.x - Math.floor(W.canvas.width / W.TILE / 2);
+    W.camera.y = W.player.y - Math.floor(W.canvas.height / W.TILE / 2);
+    W.camera.x = Math.max(0, Math.min(W.camera.x, W.W - Math.floor(W.canvas.width / W.TILE)));
+    W.camera.y = Math.max(0, Math.min(W.camera.y, W.H - Math.floor(W.canvas.height / W.TILE)));
+}
+
+// 绘制
+function draw() {
+    let ctx = W.ctx;
+    let cw = W.canvas.width;
+    let ch = W.canvas.height;
+    
+    // 清空
+    ctx.fillStyle = '#1a3a1a';
+    ctx.fillRect(0, 0, cw, ch);
+    
+    let tw = Math.ceil(cw / W.TILE) + 1;
+    let th = Math.ceil(ch / W.TILE) + 1;
+    
+    // 绘制地图
+    for (let y = 0; y < th; y++) {
+        for (let x = 0; x < tw; x++) {
+            let mx = W.camera.x + x;
+            let my = W.camera.y + y;
+            if (mx < 0 || mx >= W.W || my < 0 || my >= W.H) continue;
+            
+            let tile = W.map[my][mx];
+            let sx = x * W.TILE;
+            let sy = y * W.TILE;
+            
+            switch(tile) {
+                case T.GRASS:
+                    ctx.fillStyle = (mx + my) % 2 ? '#4a7c4e' : '#3d6b40';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    break;
+                case T.WALL:
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    break;
+                case T.TREE:
+                    ctx.fillStyle = '#2d5a30';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    ctx.fillStyle = '#228b22';
+                    ctx.fillRect(sx+4, sy+4, 24, 24);
+                    break;
+                case T.WATER:
+                    ctx.fillStyle = '#4169e1';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    break;
+                case T.CHEST:
+                    ctx.fillStyle = '#4a7c4e';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillRect(sx+8, sy+8, 16, 16);
+                    break;
+                case T.MONSTER:
+                    ctx.fillStyle = '#4a7c4e';
+                    ctx.fillRect(sx, sy, W.TILE, W.TILE);
+                    break;
+            }
+        }
+    }
+    
+    // 绘制NPC
+    W.npcs.forEach(n => {
+        if (n.x >= W.camera.x && n.x < W.camera.x + tw && n.y >= W.camera.y && n.y < W.camera.y + th) {
+            let sx = (n.x - W.camera.x) * W.TILE;
+            let sy = (n.y - W.camera.y) * W.TILE;
+            ctx.fillStyle = n.color;
+            ctx.fillRect(sx+8, sy+12, 16, 16);
+            ctx.fillStyle = '#ffdbac';
+            ctx.fillRect(sx+10, sy+4, 12, 12);
+        }
+    });
+    
+    // 绘制怪物
+    W.monsters.forEach(m => {
+        if (m.x >= W.camera.x && m.x < W.camera.x + tw && m.y >= W.camera.y && m.y < W.camera.y + th) {
+            let sx = (m.x - W.camera.x) * W.TILE;
+            let sy = (m.y - W.camera.y) * W.TILE;
+            ctx.fillStyle = m.color;
+            ctx.beginPath();
+            ctx.arc(sx+16, sy+20, 10, 0, Math.PI*2);
+            ctx.fill();
+        }
+    });
+    
+    // 绘制玩家（屏幕中央）
+    let px = Math.floor(cw / 2 / W.TILE) * W.TILE + (cw / 2 % W.TILE) - W.TILE/2;
+    let py = Math.floor(ch / 2 / W.TILE) * W.TILE + (ch / 2 % W.TILE) - W.TILE/2;
+    
+    ctx.fillStyle = '#00f';
+    ctx.fillRect(px+8, py+12, 16, 16);
+    ctx.fillStyle = '#fdb';
+    ctx.fillRect(px+10, py+4, 12, 12);
+    
+    // 调试信息
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(5, 5, 200, 50);
+    ctx.fillStyle = '#0f0';
+    ctx.font = '14px monospace';
+    ctx.fillText('Pos: ' + W.player.x + ',' + W.player.y, 10, 25);
+    ctx.fillText('Cam: ' + W.camera.x + ',' + W.camera.y, 10, 45);
+}
+
+// 暴露
+window.WorldSystem = {
+    init: initWorld,
+    handleAction: action,
+    toggleMenu: () => { if (typeof showScene === 'function') showScene('party'); },
+    fromWorldExploration: true
+};
+
+console.log('[W] Module loaded');
