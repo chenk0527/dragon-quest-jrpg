@@ -1520,6 +1520,105 @@
             height: 100%;
             display: block;
             background: #1a3a1a;
+            touch-action: none; /* 防止默认触摸行为 */
+        }
+
+        /* 虚拟按键 */
+        .virtual-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .dpad {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            pointer-events: auto;
+        }
+
+        .dpad-btn {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .dpad-btn:active {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(0.95);
+        }
+
+        .dpad-up { top: 0; left: 50px; }
+        .dpad-down { bottom: 0; left: 50px; }
+        .dpad-left { top: 50px; left: 0; }
+        .dpad-right { top: 50px; right: 0; }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .action-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 215, 0, 0.3);
+        }
+
+        .action-btn.a-btn {
+            border-color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+        }
+
+        .action-btn.b-btn {
+            border-color: #44ff44;
+            background: rgba(68, 255, 68, 0.2);
+        }
+
+        .action-text {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        @media (min-width: 769px) {
+            .virtual-controls {
+                display: none;
+            }
         }
 
         /* 场景过渡 */
@@ -1698,6 +1797,24 @@
             </div>
             <div class="world-content">
                 <canvas id="worldCanvas"></canvas>
+                
+                <!-- 虚拟按键 -->
+                <div class="virtual-controls">
+                    <div class="dpad">
+                        <div class="dpad-btn dpad-up" data-key="up">▲</div>
+                        <div class="dpad-btn dpad-down" data-key="down">▼</div>
+                        <div class="dpad-btn dpad-left" data-key="left">◀</div>
+                        <div class="dpad-btn dpad-right" data-key="right">▶</div>
+                    </div>
+                    <div class="action-buttons">
+                        <div class="action-btn a-btn" data-key="A">
+                            <span class="action-text">A</span>
+                        </div>
+                        <div class="action-btn b-btn" data-key="B">
+                            <span class="action-text">B</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         

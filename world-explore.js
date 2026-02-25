@@ -31,6 +31,7 @@
     let camera = { x: 0, y: 0 };
     let isInitialized = false;
     let isRunning = false;
+    let konamiCode = [];
     
     // 地图数据
     let mapData = [];
@@ -190,10 +191,161 @@
             canvas.addEventListener('click', onClick);
         }
         
+        // 虚拟按键事件
+        bindVirtualButtons();
+        
         // 窗口大小变化
         window.addEventListener('resize', resizeCanvas);
         
         console.log('[World] Events bound');
+    }
+
+    // 绑定虚拟按键
+    function bindVirtualButtons() {
+        console.log('[World] Binding virtual buttons...');
+        
+        // 方向键
+        const dpadButtons = document.querySelectorAll('.dpad-btn');
+        dpadButtons.forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const key = btn.dataset.key;
+                console.log('[World] Virtual D-PAD pressed:', key);
+                
+                switch(key) {
+                    case 'up': movePlayer('ArrowUp'); break;
+                    case 'down': movePlayer('ArrowDown'); break;
+                    case 'left': movePlayer('ArrowLeft'); break;
+                    case 'right': movePlayer('ArrowRight'); break;
+                }
+                btn.style.background = 'rgba(255, 255, 255, 0.4)';
+            }, { passive: false });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btn.style.background = '';
+            });
+            
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const key = btn.dataset.key;
+                console.log('[World] Virtual D-PAD clicked:', key);
+                
+                switch(key) {
+                    case 'up': movePlayer('ArrowUp'); break;
+                    case 'down': movePlayer('ArrowDown'); break;
+                    case 'left': movePlayer('ArrowLeft'); break;
+                    case 'right': movePlayer('ArrowRight'); break;
+                }
+            });
+        });
+        
+        // AB 键
+        const actionButtons = document.querySelectorAll('.action-btn');
+        actionButtons.forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const key = btn.dataset.key;
+                console.log('[World] Action button pressed:', key);
+                
+                if (key === 'A') {
+                    handleActionButton();
+                } else if (key === 'B') {
+                    handleBButton();
+                }
+                btn.style.transform = 'scale(0.95)';
+            }, { passive: false });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btn.style.transform = '';
+            });
+            
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const key = btn.dataset.key;
+                console.log('[World] Action button clicked:', key);
+                
+                if (key === 'A') {
+                    handleActionButton();
+                } else if (key === 'B') {
+                    handleBButton();
+                }
+            });
+        });
+        
+        console.log('[World] Virtual buttons bound');
+    }
+
+    // A 键功能（交互/确认）
+    function handleActionButton() {
+        console.log('[World] A button - Action!');
+        
+        // 检查玩家面前的物体
+        let checkX = player.x;
+        let checkY = player.y;
+        
+        switch(player.dir) {
+            case 'up': checkY--; break;
+            case 'down': checkY++; break;
+            case 'left': checkX--; break;
+            case 'right': checkX++; break;
+        }
+        
+        // 检查NPC
+        const npc = npcs.find(n => n.x === checkX && n.y === checkY);
+        if (npc) {
+            alert(`${npc.name}: ${npc.dialog}`);
+            return;
+        }
+        
+        // 检查是否可以触发彩蛋
+        checkEasterEggs();
+    }
+
+    // B 键功能（菜单/取消）
+    function handleBButton() {
+        console.log('[World] B button - Menu!');
+        if (typeof showScene === 'function') {
+            showScene('party');
+        }
+    }
+
+    // 检查彩蛋
+    function checkEasterEggs() {
+        // 检查 Konami 代码: 上上下下左右左右BA
+        const konamiSequence = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'B', 'A'];
+        
+        // 记录按键序列
+        konamiCode.push(player.dir);
+        if (konamiCode.length > 10) {
+            konamiCode.shift();
+        }
+        
+        // 检查是否匹配
+        if (konamiCode.length >= 10) {
+            let match = true;
+            for (let i = 0; i < 10; i++) {
+                if (konamiCode[konamiCode.length - 10 + i] !== konamiSequence[i]) {
+                    match = false;
+                    break;
+                }
+            }
+            
+            if (match) {
+                alert('🎮 Konami 代码激活！\n获得传说装备！');
+                konamiCode = []; // 重置
+                // 这里可以添加奖励
+                return;
+            }
+        }
+        
+        // 特定位置彩蛋
+        if (player.x === 3 && player.y === 3) {
+            alert('🎉 彩蛋发现！隐藏宝箱！\n获得 100 金币！');
+        }
     }
 
     // 键盘控制
@@ -251,7 +403,10 @@
                 player.x = newX;
                 player.y = newY;
                 player.dir = newDir;
-                console.log('[World] Player moved to:', player.x, player.y);
+                // 记录方向用于 Konami 代码
+                konamiCode.push(newDir);
+                if (konamiCode.length > 10) konamiCode.shift();
+                console.log('[World] Player moved to:', player.x, player.y, 'Konami:', konamiCode);
             } else if (tile === TILES.CHEST) {
                 const chest = chests.find(c => c.x === newX && c.y === newY);
                 if (chest && !chest.opened) {
