@@ -552,11 +552,25 @@ const WorldSystem = {
             return;
         }
         
+        // 停止之前的游戏循环
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+        
         this.ctx = this.canvas.getContext('2d');
         
-        // 设置画布大小
-        this.canvas.width = WORLD_CONFIG.VIEW_WIDTH * WORLD_CONFIG.TILE_SIZE;
-        this.canvas.height = WORLD_CONFIG.VIEW_HEIGHT * WORLD_CONFIG.TILE_SIZE;
+        // 获取容器大小并设置画布
+        const container = this.canvas.parentElement;
+        if (container) {
+            const rect = container.getBoundingClientRect();
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height;
+        } else {
+            // 设置默认大小
+            this.canvas.width = WORLD_CONFIG.VIEW_WIDTH * WORLD_CONFIG.TILE_SIZE;
+            this.canvas.height = WORLD_CONFIG.VIEW_HEIGHT * WORLD_CONFIG.TILE_SIZE;
+        }
         
         // 禁用图像平滑（保持像素风格）
         this.ctx.imageSmoothingEnabled = false;
