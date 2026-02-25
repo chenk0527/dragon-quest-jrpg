@@ -1533,7 +1533,7 @@
             justify-content: space-between;
             padding: 0 20px;
             pointer-events: none;
-            z-index: 100;
+            z-index: 1000;
         }
 
         .dpad {
@@ -1541,14 +1541,15 @@
             width: 150px;
             height: 150px;
             pointer-events: auto;
+            z-index: 1001;
         }
 
         .dpad-btn {
             position: absolute;
             width: 50px;
             height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 3px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.8);
             border-radius: 10px;
             display: flex;
             align-items: center;
@@ -1559,10 +1560,11 @@
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
+            z-index: 1002;
         }
 
         .dpad-btn:active {
-            background: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.6);
             transform: scale(0.95);
         }
 
@@ -1576,6 +1578,7 @@
             flex-direction: column;
             gap: 15px;
             pointer-events: auto;
+            z-index: 1001;
         }
 
         .action-btn {
@@ -1592,6 +1595,7 @@
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
+            z-index: 1002;
         }
 
         .action-btn:active {
@@ -1601,12 +1605,12 @@
 
         .action-btn.a-btn {
             border-color: #ff4444;
-            background: rgba(255, 68, 68, 0.2);
+            background: rgba(255, 68, 68, 0.3);
         }
 
         .action-btn.b-btn {
             border-color: #44ff44;
-            background: rgba(68, 255, 68, 0.2);
+            background: rgba(68, 255, 68, 0.3);
         }
 
         .action-text {

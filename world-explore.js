@@ -204,79 +204,109 @@
     function bindVirtualButtons() {
         console.log('[World] Binding virtual buttons...');
         
-        // 方向键
-        const dpadButtons = document.querySelectorAll('.dpad-btn');
-        dpadButtons.forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const key = btn.dataset.key;
-                console.log('[World] Virtual D-PAD pressed:', key);
-                
-                switch(key) {
-                    case 'up': movePlayer('ArrowUp'); break;
-                    case 'down': movePlayer('ArrowDown'); break;
-                    case 'left': movePlayer('ArrowLeft'); break;
-                    case 'right': movePlayer('ArrowRight'); break;
-                }
-                btn.style.background = 'rgba(255, 255, 255, 0.4)';
-            }, { passive: false });
+        // 等待 DOM 更新
+        setTimeout(() => {
+            // 方向键
+            const dpadButtons = document.querySelectorAll('.dpad-btn');
+            console.log('[World] Found D-PAD buttons:', dpadButtons.length);
             
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                btn.style.background = '';
+            dpadButtons.forEach(btn => {
+                console.log('[World] Binding button:', btn.dataset.key);
+                
+                // 触摸事件
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const key = btn.dataset.key;
+                    console.log('[World] Virtual D-PAD touched:', key);
+                    
+                    switch(key) {
+                        case 'up': movePlayer('ArrowUp'); break;
+                        case 'down': movePlayer('ArrowDown'); break;
+                        case 'left': movePlayer('ArrowLeft'); break;
+                        case 'right': movePlayer('ArrowRight'); break;
+                    }
+                    btn.style.background = 'rgba(255, 255, 255, 0.6)';
+                }, { passive: false });
+                
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    console.log('[World] Virtual D-PAD released');
+                    btn.style.background = '';
+                }, { passive: false });
+                
+                // 鼠标事件（桌面测试）
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const key = btn.dataset.key;
+                    console.log('[World] Virtual D-PAD clicked:', key);
+                    
+                    switch(key) {
+                        case 'up': movePlayer('ArrowUp'); break;
+                        case 'down': movePlayer('ArrowDown'); break;
+                        case 'left': movePlayer('ArrowLeft'); break;
+                        case 'right': movePlayer('ArrowRight'); break;
+                    }
+                    btn.style.background = 'rgba(255, 255, 255, 0.6)';
+                });
+                
+                btn.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    btn.style.background = '';
+                });
+                
+                btn.addEventListener('mouseleave', (e) => {
+                    btn.style.background = '';
+                });
             });
             
-            btn.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                const key = btn.dataset.key;
-                console.log('[World] Virtual D-PAD clicked:', key);
-                
-                switch(key) {
-                    case 'up': movePlayer('ArrowUp'); break;
-                    case 'down': movePlayer('ArrowDown'); break;
-                    case 'left': movePlayer('ArrowLeft'); break;
-                    case 'right': movePlayer('ArrowRight'); break;
-                }
-            });
-        });
-        
-        // AB 键
-        const actionButtons = document.querySelectorAll('.action-btn');
-        actionButtons.forEach(btn => {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const key = btn.dataset.key;
-                console.log('[World] Action button pressed:', key);
-                
-                if (key === 'A') {
-                    handleActionButton();
-                } else if (key === 'B') {
-                    handleBButton();
-                }
-                btn.style.transform = 'scale(0.95)';
-            }, { passive: false });
+            // AB 键
+            const actionButtons = document.querySelectorAll('.action-btn');
+            console.log('[World] Found action buttons:', actionButtons.length);
             
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                btn.style.transform = '';
+            actionButtons.forEach(btn => {
+                console.log('[World] Binding action button:', btn.dataset.key);
+                
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const key = btn.dataset.key;
+                    console.log('[World] Action button touched:', key);
+                    
+                    if (key === 'A') {
+                        handleActionButton();
+                    } else if (key === 'B') {
+                        handleBButton();
+                    }
+                    btn.style.transform = 'scale(0.95)';
+                }, { passive: false });
+                
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    btn.style.transform = '';
+                }, { passive: false });
+                
+                btn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    const key = btn.dataset.key;
+                    console.log('[World] Action button clicked:', key);
+                    
+                    if (key === 'A') {
+                        handleActionButton();
+                    } else if (key === 'B') {
+                        handleBButton();
+                    }
+                    btn.style.transform = 'scale(0.95)';
+                });
+                
+                btn.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    btn.style.transform = '';
+                });
             });
             
-            btn.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                const key = btn.dataset.key;
-                console.log('[World] Action button clicked:', key);
-                
-                if (key === 'A') {
-                    handleActionButton();
-                } else if (key === 'B') {
-                    handleBButton();
-                }
-            });
-        });
-        
-        console.log('[World] Virtual buttons bound');
+            console.log('[World] Virtual buttons bound successfully');
+        }, 100);
     }
 
     // A 键功能（交互/确认）
