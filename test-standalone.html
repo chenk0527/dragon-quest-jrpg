@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勇者斗恶龙 JRPG - 测试版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: monospace;
+            background: #1a1a2e;
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+        .game { max-width: 480px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
+        .header { 
+            height: 50px; 
+            background: linear-gradient(180deg, #2c5aa0 0%, #4a90e2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+        }
+        .scene { display: none; flex: 1; flex-direction: column; }
+        .scene.active { display: flex; }
+        .menu { padding: 20px; text-align: center; }
+        .btn { 
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            background: #4a90e2;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .world { position: relative; flex: 1; background: #1a3a1a; }
+        canvas { display: block; width: 100%; height: 100%; }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+        }
+        .dpad { position: relative; width: 150px; height: 150px; pointer-events: auto; }
+        .dpad-btn {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.3);
+            border: 2px solid #fff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .dpad-btn:active { background: rgba(255,255,255,0.6); }
+        .dpad-up { top: 0; left: 50px; }
+        .dpad-down { bottom: 0; left: 50px; }
+        .dpad-left { top: 50px; left: 0; }
+        .dpad-right { top: 50px; right: 0; }
+        .ab { display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .ab-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+        }
+        .ab-btn:active { transform: scale(0.95); }
+        .a { border-color: #ff4444; background: rgba(255,68,68,0.3); }
+        .b { border-color: #44ff44; background: rgba(68,255,68,0.3); }
+    </style>
+</head>
+<body>
+    <div class="game">
+        <div class="header">
+            <span>⚔️ DQ JRPG</span>
+            <span>💰 <span id="gold">500</span></span>
+        </div>
+        
+        <!-- 主菜单 -->
+        <div class="scene active" id="menuScene">
+            <div class="menu">
+                <h1 style="margin: 50px 0; color: #ffd700;">勇者斗恶龙</h1>
+                <button class="btn" onclick="startGame()">▶ 开始游戏</button>
+            </div>
+        </div>
+        
+        <!-- 世界探索 -->
+        <div class="scene" id="worldScene">
+            <div style="height: 40px; background: #2c5aa0; display: flex; align-items: center; padding: 0 15px;">
+                <button onclick="showMenu()" style="background: none; border: none; color: #fff; font-size: 14px;">◀ 返回</button>
+                <span style="flex: 1; text-align: center; color: #ffd700;">新手村</span>
+                <span style="width: 50px;"></span>
+            </div>
+            <div class="world">
+                <canvas id="gameCanvas"></canvas>
+                <div class="controls">
+                    <div class="dpad">
+                        <div class="dpad-btn dpad-up" onclick="move(0,-1)">▲</div>
+                        <div class="dpad-btn dpad-down" onclick="move(0,1)">▼</div>
+                        <div class="dpad-btn dpad-left" onclick="move(-1,0)">◀</div>
+                        <div class="dpad-btn dpad-right" onclick="move(1,0)">▶</div>
+                    </div>
+                    <div class="ab">
+                        <div class="ab-btn a" onclick="action()">A</div>
+                        <div class="ab-btn b" onclick="showMenu()">B</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        let canvas, ctx;
+        let player = { x: 12, y: 10 };
+        let camera = { x: 0, y: 0 };
+        let map = [];
+        let TILE = 32, MW = 25, MH = 20;
+        
+        const T = { GRASS: 0, WALL: 1, TREE: 2, WATER: 3, CHEST: 4, MONSTER: 5 };
+        
+        function startGame() {
+            document.getElementById('menuScene').classList.remove('active');
+            document.getElementById('worldScene').classList.add('active');
+            initWorld();
+        }
+        
+        function showMenu() {
+            document.getElementById('worldScene').classList.remove('active');
+            document.getElementById('menuScene').classList.add('active');
+        }
+        
+        function initWorld() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // 设置画布大小
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // 生成地图
+            genMap();
+            
+            // 键盘控制
+            window.addEventListener('keydown', (e) => {
+                console.log('Key:', e.key);
+                if (e.key === 'ArrowUp' || e.key === 'w') move(0, -1);
+                if (e.key === 'ArrowDown' || e.key === 's') move(0, 1);
+                if (e.key === 'ArrowLeft' || e.key === 'a') move(-1, 0);
+                if (e.key === 'ArrowRight' || e.key === 'd') move(1, 0);
+            });
+            
+            // 触摸滑动
+            let sx, sy;
+            canvas.addEventListener('touchstart', (e) => {
+                sx = e.touches[0].clientX;
+                sy = e.touches[0].clientY;
+            });
+            canvas.addEventListener('touchend', (e) => {
+                let dx = e.changedTouches[0].clientX - sx;
+                let dy = e.changedTouches[0].clientY - sy;
+                if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        move(dx > 0 ? 1 : -1, 0);
+                    } else {
+                        move(0, dy > 0 ? 1 : -1);
+                    }
+                }
+            });
+            
+            loop();
+        }
+        
+        function genMap() {
+            map = [];
+            for (let y = 0; y < MH; y++) {
+                map[y] = [];
+                for (let x = 0; x < MW; x++) {
+                    if (x === 0 || x === MW-1 || y === 0 || y === MH-1) {
+                        map[y][x] = T.WALL;
+                    } else {
+                        map[y][x] = T.GRASS;
+                    }
+                }
+            }
+            // 随机树
+            for (let i = 0; i < 8; i++) {
+                let x = Math.floor(Math.random() * (MW-4)) + 2;
+                let y = Math.floor(Math.random() * (MH-4)) + 2;
+                if (Math.abs(x-player.x) + Math.abs(y-player.y) > 3) {
+                    map[y][x] = T.TREE;
+                }
+            }
+            // 宝箱
+            for (let i = 0; i < 2; i++) {
+                let x = Math.floor(Math.random() * (MW-4)) + 2;
+                let y = Math.floor(Math.random() * (MH-4)) + 2;
+                if (map[y][x] === T.GRASS) map[y][x] = T.CHEST;
+            }
+        }
+        
+        function move(dx, dy) {
+            let nx = player.x + dx;
+            let ny = player.y + dy;
+            
+            if (nx < 0 || nx >= MW || ny < 0 || ny >= MH) return;
+            
+            let tile = map[ny][nx];
+            console.log('Move:', nx, ny, 'Tile:', tile);
+            
+            if (tile === T.GRASS || tile === T.CHEST) {
+                player.x = nx;
+                player.y = ny;
+                if (tile === T.CHEST) {
+                    map[ny][nx] = T.GRASS;
+                    alert('💰 获得 50 金币！');
+                }
+            } else if (tile === T.TREE) {
+                alert('🌲 被树挡住了！');
+            }
+        }
+        
+        function action() {
+            alert('A键功能：与NPC对话或调查');
+        }
+        
+        function loop() {
+            // 更新相机
+            camera.x = player.x - Math.floor(canvas.width / TILE / 2);
+            camera.y = player.y - Math.floor(canvas.height / TILE / 2);
+            camera.x = Math.max(0, Math.min(camera.x, MW - Math.floor(canvas.width / TILE)));
+            camera.y = Math.max(0, Math.min(camera.y, MH - Math.floor(canvas.height / TILE)));
+            
+            // 清空
+            ctx.fillStyle = '#1a3a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制地图
+            let tw = Math.ceil(canvas.width / TILE) + 1;
+            let th = Math.ceil(canvas.height / TILE) + 1;
+            
+            for (let y = 0; y < th; y++) {
+                for (let x = 0; x < tw; x++) {
+                    let mx = camera.x + x;
+                    let my = camera.y + y;
+                    if (mx < 0 || mx >= MW || my < 0 || my >= MH) continue;
+                    
+                    let tile = map[my][mx];
+                    let sx = x * TILE;
+                    let sy = y * TILE;
+                    
+                    switch(tile) {
+                        case T.GRASS:
+                            ctx.fillStyle = (mx+my)%2 ? '#4a7c4e' : '#3d6b40';
+                            ctx.fillRect(sx, sy, TILE, TILE);
+                            break;
+                        case T.WALL:
+                            ctx.fillStyle = '#666';
+                            ctx.fillRect(sx, sy, TILE, TILE);
+                            break;
+                        case T.TREE:
+                            ctx.fillStyle = '#2d5a30';
+                            ctx.fillRect(sx, sy, TILE, TILE);
+                            ctx.fillStyle = '#228b22';
+                            ctx.fillRect(sx+4, sy+4, 24, 24);
+                            break;
+                        case T.CHEST:
+                            ctx.fillStyle = '#4a7c4e';
+                            ctx.fillRect(sx, sy, TILE, TILE);
+                            ctx.fillStyle = '#ffd700';
+                            ctx.fillRect(sx+8, sy+8, 16, 16);
+                            break;
+                    }
+                }
+            }
+            
+            // 绘制玩家（屏幕中央）
+            let px = Math.floor(canvas.width / 2 / TILE) * TILE + (canvas.width / 2 % TILE) - TILE/2;
+            let py = Math.floor(canvas.height / 2 / TILE) * TILE + (canvas.height / 2 % TILE) - TILE/2;
+            
+            ctx.fillStyle = '#00f';
+            ctx.fillRect(px+8, py+12, 16, 16);
+            ctx.fillStyle = '#fdb';
+            ctx.fillRect(px+10, py+4, 12, 12);
+            
+            // 调试信息
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(5, 5, 150, 40);
+            ctx.fillStyle = '#0f0';
+            ctx.font = '14px monospace';
+            ctx.fillText('Pos: ' + player.x + ',' + player.y, 10, 25);
+            ctx.fillText('Cam: ' + camera.x + ',' + camera.y, 10, 40);
+            
+            requestAnimationFrame(loop);
+        }
+    </script>
+</body>
+</html>

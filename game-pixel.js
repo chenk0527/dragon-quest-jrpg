@@ -1089,6 +1089,8 @@ function victory() {
                     // 检查是否从世界探索进入的战斗
                     if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
                         showScene('world');
+                        // 重新初始化世界系统
+                        if (WorldSystem.init) WorldSystem.init();
                     } else {
                         showScene('map');
                     }
@@ -1126,6 +1128,8 @@ function victory() {
         // 检查是否从世界探索进入的战斗
         if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
             showScene('world');
+            // 重新初始化世界系统
+            if (WorldSystem.init) WorldSystem.init();
         } else {
             showScene('map');
         }
@@ -1156,6 +1160,8 @@ function defeat() {
         // 检查是否从世界探索进入的战斗
         if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
             showScene('world');
+            // 重新初始化世界系统
+            if (WorldSystem.init) WorldSystem.init();
             showToast('队伍被击败了，但在附近恢复了...', 'error');
         } else {
             showScene('party');
@@ -1319,6 +1325,20 @@ function executeSkill(charId, skillId) {
 function showScene(sceneName) {
     // 播放菜单音效
     SoundEffects.playMenuMove();
+    
+    // 设置世界探索标志
+    if (sceneName === 'world') {
+        if (window.WorldSystem) {
+            window.WorldSystem.fromWorldExploration = true;
+            console.log('[Game] World exploration mode enabled');
+        }
+    } else if (sceneName !== 'battle') {
+        // 离开世界探索场景时（除了进入战斗）清除标志
+        if (window.WorldSystem) {
+            window.WorldSystem.fromWorldExploration = false;
+            console.log('[Game] World exploration mode disabled');
+        }
+    }
     
     // 特殊的冒险进入效果
     if (sceneName === 'world') {
@@ -1544,6 +1564,13 @@ function init() {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', init);
+
+// ==================== 暴露全局函数供世界探索系统使用 ====================
+window.startBattle = startBattle;
+window.startBossBattle = startBossBattle;
+window.showScene = showScene;
+window.showToast = showToast;
+window.gameState = gameState;
 
 // ==================== 音量控制 ====================
 

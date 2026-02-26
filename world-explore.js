@@ -13,6 +13,7 @@ let W = {
     monsters: [],
     npcs: [],
     initialized: false,
+    loopStarted: false,
     TILE: 32,
     W: 25,
     H: 20
@@ -24,7 +25,10 @@ const T = { GRASS: 0, WALL: 1, TREE: 2, WATER: 3, CHEST: 4, MONSTER: 5 };
 // 初始化
 function initWorld() {
     console.log('[W] Init called');
-    if (W.initialized) return true;
+    if (W.initialized) {
+        console.log('[W] Already initialized, reinitializing...');
+        W.initialized = false;
+    }
     
     W.canvas = document.getElementById('worldCanvas');
     if (!W.canvas) {
@@ -33,6 +37,10 @@ function initWorld() {
     }
     
     W.ctx = W.canvas.getContext('2d');
+    if (!W.ctx) {
+        console.error('[W] Could not get 2D context');
+        return false;
+    }
     
     // 设置画布大小
     const container = W.canvas.parentElement;
@@ -41,8 +49,32 @@ function initWorld() {
         W.canvas.height = container.clientHeight || (window.innerHeight - 100);
     }
     
+    console.log('[W] Canvas size:', W.canvas.width, 'x', W.canvas.height);
+    
+    // 重置玩家位置到地图中心偏上的安全位置
+    W.player.x = 12;
+    W.player.y = 10;
+    W.player.dir = 'down';
+    
     // 生成地图
     genMap();
+    
+    // 确保玩家位置是草地
+    if (W.map[W.player.y] && W.map[W.player.y][W.player.x] !== undefined) {
+        W.map[W.player.y][W.player.x] = T.GRASS;
+    }
+    
+    // 确保玩家周围是草地（创建3x3的安全区域）
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            let nx = W.player.x + dx;
+            let ny = W.player.y + dy;
+            if (nx >= 0 && nx < W.W && ny >= 0 && ny < W.H) {
+                W.map[ny][nx] = T.GRASS;
+            }
+        }
+    }
+    console.log('[W] Cleared 3x3 area around player');
     
     // 绑定事件
     bindKeys();
@@ -50,8 +82,24 @@ function initWorld() {
     bindButtons();
     
     W.initialized = true;
-    loop();
-    console.log('[W] Initialized');
+    
+    // 开始游戏循环（如果还没有开始）
+    if (!W.loopStarted) {
+        W.loopStarted = true;
+        loop();
+    }
+    
+    console.log('[W] Initialized successfully');
+    console.log('[W] Player at:', W.player.x, W.player.y);
+    console.log('[W] Map size:', W.W, 'x', W.H);
+    
+    // 显示操作提示
+    setTimeout(() => {
+        if (typeof showToast === 'function') {
+            showToast('🎮 使用方向键或WASD移动，点击A键调查，B键返回', 'info');
+        }
+    }, 500);
+    
     return true;
 }
 
@@ -73,41 +121,61 @@ function genMap() {
         }
     }
     
-    // 随机树
-    for (let i = 0; i < 10; i++) {
+    // 随机树 - 确保不阻挡玩家起始位置(12,10)
+    for (let i = 0; i < 8; i++) {
         let x = Math.floor(Math.random() * (W.W - 4)) + 2;
         let y = Math.floor(Math.random() * (W.H - 4)) + 2;
-        if (Math.abs(x - W.player.x) > 3 || Math.abs(y - W.player.y) > 3) {
+        // 确保树木远离玩家起始位置
+        let distFromPlayer = Math.abs(x - 12) + Math.abs(y - 10);
+        if (distFromPlayer > 4 && W.map[y][x] === T.GRASS) {
             W.map[y][x] = T.TREE;
         }
     }
     
-    // 池塘
+    // 池塘 - 确保远离玩家起始位置(12,10)
     for (let y = 15; y < 18; y++) {
         for (let x = 18; x < 22; x++) {
-            W.map[y][x] = T.WATER;
+            if (W.map[y] && W.map[y][x] !== undefined) {
+                W.map[y][x] = T.WATER;
+            }
         }
     }
     
-    // NPC
+    // NPC - 确保不阻挡玩家起始位置
     W.npcs.push({ x: 5, y: 5, name: '村长', color: '#daa520' });
     W.npcs.push({ x: 20, y: 8, name: '商人', color: '#ff69b4' });
     
-    // 怪物
-    for (let i = 0; i < 4; i++) {
+    // 确保NPC位置是草地
+    W.npcs.forEach(npc => {
+        if (W.map[npc.y] && W.map[npc.y][npc.x] !== undefined) {
+            W.map[npc.y][npc.x] = T.GRASS;
+        }
+    });
+    
+    // 怪物 - 确保生成更多且位置远离玩家
+    let monsterCount = 0;
+    let attempts = 0;
+    while (monsterCount < 6 && attempts < 50) {
         let x = Math.floor(Math.random() * (W.W - 4)) + 2;
         let y = Math.floor(Math.random() * (W.H - 4)) + 2;
-        if (W.map[y][x] === T.GRASS && Math.abs(x - W.player.x) + Math.abs(y - W.player.y) > 4) {
-            W.monsters.push({ x, y, type: 'slime', color: '#0f0' });
+        // 确保远离玩家起始位置(12,10)
+        let distFromPlayer = Math.abs(x - 12) + Math.abs(y - 10);
+        if (W.map[y][x] === T.GRASS && distFromPlayer > 3) {
+            W.monsters.push({ x, y, type: 'slime', color: '#0f0', name: '史莱姆' });
             W.map[y][x] = T.MONSTER;
+            monsterCount++;
+            console.log('[W] Spawned monster at:', x, y);
         }
+        attempts++;
     }
+    console.log('[W] Total monsters spawned:', monsterCount);
     
-    // 宝箱
+    // 宝箱 - 确保不生成在玩家起始位置附近
     for (let i = 0; i < 3; i++) {
         let x = Math.floor(Math.random() * (W.W - 4)) + 2;
         let y = Math.floor(Math.random() * (W.H - 4)) + 2;
-        if (W.map[y][x] === T.GRASS) {
+        let distFromPlayer = Math.abs(x - 12) + Math.abs(y - 10);
+        if (W.map[y][x] === T.GRASS && distFromPlayer > 2) {
             W.map[y][x] = T.CHEST;
         }
     }
@@ -116,56 +184,148 @@ function genMap() {
 // 键盘事件
 function bindKeys() {
     window.addEventListener('keydown', (e) => {
-        console.log('[W] Key:', e.key);
+        console.log('[W] Key pressed:', e.key, 'KeyCode:', e.keyCode);
+        // 防止方向键滚动页面
+        if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+            e.preventDefault();
+        }
         switch(e.key) {
-            case 'ArrowUp': case 'w': case 'W': move(0, -1); break;
-            case 'ArrowDown': case 's': case 'S': move(0, 1); break;
-            case 'ArrowLeft': case 'a': case 'A': move(-1, 0); break;
-            case 'ArrowRight': case 'd': case 'D': move(1, 0); break;
+            case 'ArrowUp': 
+            case 'w': 
+            case 'W': 
+                console.log('[W] Moving UP');
+                move(0, -1); 
+                break;
+            case 'ArrowDown': 
+            case 's': 
+            case 'S': 
+                console.log('[W] Moving DOWN');
+                move(0, 1); 
+                break;
+            case 'ArrowLeft': 
+            case 'a': 
+            case 'A': 
+                console.log('[W] Moving LEFT');
+                move(-1, 0); 
+                break;
+            case 'ArrowRight': 
+            case 'd': 
+            case 'D': 
+                console.log('[W] Moving RIGHT');
+                move(1, 0); 
+                break;
         }
     });
+    console.log('[W] Keyboard events bound');
 }
 
 // 触摸事件
 function bindTouch() {
     let sx, sy;
     W.canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
         sx = e.touches[0].clientX;
         sy = e.touches[0].clientY;
-    });
+        console.log('[W] Touch start:', sx, sy);
+    }, { passive: false });
+    
     W.canvas.addEventListener('touchend', (e) => {
-        let dx = e.changedTouches[0].clientX - sx;
-        let dy = e.changedTouches[0].clientY - sy;
+        e.preventDefault();
+        const dx = e.changedTouches[0].clientX - sx;
+        const dy = e.changedTouches[0].clientY - sy;
+        console.log('[W] Touch end, delta:', dx, dy);
+        
         if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
             if (Math.abs(dx) > Math.abs(dy)) {
+                console.log('[W] Swipe horizontal:', dx > 0 ? 'RIGHT' : 'LEFT');
                 move(dx > 0 ? 1 : -1, 0);
             } else {
+                console.log('[W] Swipe vertical:', dy > 0 ? 'DOWN' : 'UP');
                 move(0, dy > 0 ? 1 : -1);
             }
         }
-    });
+    }, { passive: false });
+    
+    console.log('[W] Touch events bound');
 }
 
 // 按钮事件
 function bindButtons() {
-    // 方向键
+    console.log('[W] Binding buttons...');
+    
+    // 方向键 - 使用 onclick 并确保正确绑定
     const dirs = { up: [0,-1], down: [0,1], left: [-1,0], right: [1,0] };
-    document.querySelectorAll('.dpad-btn').forEach(btn => {
-        btn.onclick = () => {
-            const d = dirs[btn.dataset.key];
-            if (d) move(d[0], d[1]);
-        };
+    
+    const dpadBtns = document.querySelectorAll('.dpad-btn');
+    console.log('[W] Found dpad buttons:', dpadBtns.length);
+    
+    dpadBtns.forEach(btn => {
+        const key = btn.dataset.key;
+        const d = dirs[key];
+        
+        console.log('[W] Processing button:', key, 'direction:', d);
+        
+        if (d) {
+            // 移除旧的事件监听器（如果有）
+            btn.onclick = null;
+            
+            // 添加新的事件处理
+            btn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[W] D-pad clicked:', key, 'direction:', d);
+                move(d[0], d[1]);
+            };
+            
+            // 同时添加触摸事件支持
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[W] D-pad touch:', key);
+                move(d[0], d[1]);
+            }, { passive: false });
+            
+            console.log('[W] Bound', key, 'button');
+        } else {
+            console.warn('[W] Unknown button key:', key);
+        }
     });
     
     // AB键
-    document.querySelector('.a-btn').onclick = () => action();
-    document.querySelector('.b-btn').onclick = () => {
-        if (typeof showScene === 'function') showScene('party');
-    };
+    const aBtn = document.querySelector('.a-btn');
+    const bBtn = document.querySelector('.b-btn');
+    
+    if (aBtn) {
+        aBtn.onclick = (e) => {
+            e.preventDefault();
+            console.log('[W] A button clicked');
+            action();
+        };
+        aBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            action();
+        }, { passive: false });
+    }
+    
+    if (bBtn) {
+        bBtn.onclick = (e) => {
+            e.preventDefault();
+            console.log('[W] B button clicked');
+            if (typeof showScene === 'function') showScene('party');
+        };
+        bBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (typeof showScene === 'function') showScene('party');
+        }, { passive: false });
+    }
+    
+    console.log('[W] All buttons bound');
 }
 
 // 移动
 function move(dx, dy) {
+    console.log('[W] move() called with:', dx, dy);
+    
     let nx = W.player.x + dx;
     let ny = W.player.y + dy;
     
@@ -176,34 +336,70 @@ function move(dx, dy) {
     else W.player.dir = 'up';
     
     // 边界检查
-    if (nx < 0 || nx >= W.W || ny < 0 || ny >= W.H) return;
+    if (nx < 0 || nx >= W.W || ny < 0 || ny >= W.H) {
+        console.log('[W] Out of bounds');
+        return;
+    }
     
     let tile = W.map[ny][nx];
-    console.log('[W] Move to:', nx, ny, 'Tile:', tile);
+    console.log('[W] Move to:', nx, ny, 'Tile:', tile, 'T.MONSTER=', T.MONSTER);
     
     if (tile === T.GRASS) {
         W.player.x = nx;
         W.player.y = ny;
+        console.log('[W] Moved to grass, new pos:', W.player.x, W.player.y);
+        // 强制更新相机和重绘
+        updateCamera();
     } else if (tile === T.CHEST) {
         W.player.x = nx;
         W.player.y = ny;
         W.map[ny][nx] = T.GRASS;
+        console.log('[W] Opened chest');
         alert('💰 获得 50 金币！');
     } else if (tile === T.MONSTER) {
+        console.log('[W] Encountered monster!');
         let m = W.monsters.find(m => m.x === nx && m.y === ny);
         if (m) {
-            if (typeof startBattle === 'function') {
-                W.map[ny][nx] = T.GRASS;
-                W.monsters = W.monsters.filter(x => x !== m);
-                setTimeout(() => startBattle('forest'), 100);
-            } else {
-                alert('👹 遭遇 ' + m.type + '！');
-                W.map[ny][nx] = T.GRASS;
-                W.monsters = W.monsters.filter(x => x !== m);
+            console.log('[W] Monster found:', m.type);
+            console.log('[W] startBattle function exists?', typeof startBattle === 'function');
+            console.log('[W] window.startBattle exists?', typeof window.startBattle === 'function');
+            
+            // 移除怪物
+            W.map[ny][nx] = T.GRASS;
+            W.monsters = W.monsters.filter(x => x !== m);
+            
+            // 移动玩家到怪物位置
+            W.player.x = nx;
+            W.player.y = ny;
+            
+            // 触发战斗 - 尝试多种方式
+            console.log('[W] Setting fromWorldExploration flag');
+            if (window.WorldSystem) {
+                window.WorldSystem.fromWorldExploration = true;
+                console.log('[W] Flag set via WorldSystem');
             }
+            
+            // 延迟调用战斗，确保标志已设置
+            setTimeout(() => {
+                console.log('[W] Attempting to start battle...');
+                if (typeof window.startBattle === 'function') {
+                    console.log('[W] Starting battle via window.startBattle()');
+                    window.startBattle('forest');
+                } else if (typeof startBattle === 'function') {
+                    console.log('[W] Starting battle via startBattle()');
+                    startBattle('forest');
+                } else {
+                    console.error('[W] startBattle not found!');
+                    alert('👹 遭遇 ' + m.type + '！(战斗系统未加载)');
+                    // 恢复怪物，因为战斗没有开始
+                    W.map[ny][nx] = T.MONSTER;
+                    W.player.x = nx - dx;
+                    W.player.y = ny - dy;
+                }
+            }, 50);
         }
-        W.player.x = nx;
-        W.player.y = ny;
+    } else if (tile === T.WALL || tile === T.TREE || tile === T.WATER) {
+        console.log('[W] Blocked by obstacle');
     }
 }
 
@@ -342,7 +538,14 @@ window.WorldSystem = {
     init: initWorld,
     handleAction: action,
     toggleMenu: () => { if (typeof showScene === 'function') showScene('party'); },
-    fromWorldExploration: true
+    fromWorldExploration: false,
+    reset: () => {
+        W.initialized = false;
+        W.player.x = 12;
+        W.player.y = 10;
+        W.player.dir = 'down';
+        genMap();
+    }
 };
 
 console.log('[W] Module loaded');
