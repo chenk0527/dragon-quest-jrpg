@@ -2872,19 +2872,51 @@ function showEnemyDetail(enemyId) {
     const data = gameState.bestiary[enemyId];
 
     if (!enemy || !data?.seen) {
-        alert('尚未解锁该怪物信息');
+        showToast('尚未解锁该怪物信息', 'warning');
         return;
     }
 
-    alert(`${enemy.icon} ${enemy.name}
-等级：${enemy.level}
-生命：${enemy.hp}
-攻击：${enemy.str}
-防御：${enemy.def}
+    // 移除已存在的模态框
+    const existing = document.getElementById('enemyDetailModal');
+    if (existing) existing.remove();
 
-${enemy.desc}
+    const modalHTML = `
+        <div id="enemyDetailModal" class="enemy-detail-overlay">
+            <div class="enemy-detail-modal">
+                <div class="enemy-detail-header">
+                    <div class="enemy-detail-icon">${getMonsterImage(enemy, 48)}</div>
+                    <div class="enemy-detail-title">
+                        <h3>${enemy.name}</h3>
+                        <div class="enemy-level">Lv.${enemy.level}</div>
+                    </div>
+                </div>
+                <div class="enemy-detail-stats">
+                    <div class="enemy-stat-item">
+                        <div><div class="stat-label">❤️ 生命</div><div class="stat-value">${enemy.hp}</div></div>
+                    </div>
+                    <div class="enemy-stat-item">
+                        <div><div class="stat-label">⚔️ 攻击</div><div class="stat-value">${enemy.str}</div></div>
+                    </div>
+                    <div class="enemy-stat-item">
+                        <div><div class="stat-label">🛡️ 防御</div><div class="stat-value">${enemy.def}</div></div>
+                    </div>
+                    <div class="enemy-stat-item">
+                        <div><div class="stat-label">💨 速度</div><div class="stat-value">${enemy.spd || '?'}</div></div>
+                    </div>
+                </div>
+                <div class="enemy-detail-desc">${enemy.desc}</div>
+                <div class="enemy-detail-kills">🏆 已击败：${data.killed} 次</div>
+                <button class="enemy-detail-close" onclick="document.getElementById('enemyDetailModal').remove()">关 闭</button>
+            </div>
+        </div>
+    `;
 
-已击败：${data.killed}次`);
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // 点击遮罩层关闭
+    document.getElementById('enemyDetailModal').addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+    });
 }
 
 // ==================== 时装装备 ====================
@@ -3038,12 +3070,12 @@ function showStory(storyId) {
 
 function createDialogBox() {
     const dialogHTML = `
-        <div id="storyDialog" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;box-sizing:border-box;">
-            <div style="font-size:80px;text-align:center;margin-bottom:20px;" id="dialogBg">✨</div>
-            <div style="background:linear-gradient(135deg,#2c3e50 0%,#34495e 100%);border-radius:20px;padding:30px;border:3px solid #f39c12;box-shadow:0 10px 40px rgba(0,0,0,0.5);">
-                <div style="color:#f39c12;font-size:14px;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;" id="dialogSpeaker">Narrator</div>
-                <div style="color:white;font-size:18px;line-height:1.6;" id="dialogText">...</div>
-                <div style="text-align:center;margin-top:20px;color:#95a5a6;font-size:12px;">点击继续 ▼</div>
+        <div id="storyDialog" class="story-dialog-overlay">
+            <div class="story-dialog-bg" id="dialogBg">✨</div>
+            <div class="story-dialog-box">
+                <div class="story-dialog-speaker" id="dialogSpeaker">Narrator</div>
+                <div class="story-dialog-text" id="dialogText">...</div>
+                <div class="story-dialog-hint">点击继续 ▼</div>
             </div>
         </div>
     `;
