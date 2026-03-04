@@ -118,8 +118,10 @@ body {
 .main-content {
     flex: 1;
     padding: 10px;
+    padding-bottom: 70px; /* 给固定导航栏留空间 */
     overflow-y: auto;
     position: relative;
+    -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
 }
 
 .scene {
@@ -884,8 +886,13 @@ body {
     padding: 8px 4px;
     background: var(--dq-bg-dark);
     border-top: 4px solid var(--dq-blue);
-    position: sticky;
+    position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 480px;
+    margin: 0 auto;
+    z-index: 100;
 }
 
 .nav-btn {
@@ -1249,26 +1256,8 @@ body {
     font-size: 7px;
 }
 
-/* ============== 剧情对话系统 ================= */
-.story-dialog-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.85);
-    z-index: 10000;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    padding-bottom: 20px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.story-dialog-overlay.active {
-    opacity: 1;
-}
+/* ============== 剧情对话系统（旧版，由后面的样式覆盖） ================= */
+/* .story-dialog-overlay 主样式在文件后面定义 */
 
 .story-dialog-panel {
     width: 95%;
@@ -1662,6 +1651,7 @@ body {
     height: 100%;
     background: rgba(0, 0, 0, 0.9);
     z-index: 2000;
+    opacity: 1 !important;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;

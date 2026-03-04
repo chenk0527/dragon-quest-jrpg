@@ -1861,9 +1861,11 @@ function startNewGameConfirmed() {
     gameState.inventory.push(createConsumable('smallPotion'));
 
     saveGame();
-    showScene('party');
     showToast('🎮 新游戏开始！', 'success');
-    showStory('prologue');
+    // 先播放序章剧情，结束后再切到队伍页面
+    showStory('prologue', () => {
+        showScene('party');
+    });
 }
 
 // 继续游戏
@@ -2161,8 +2163,7 @@ function enterZone(zoneId) {
         };
 
         if (bossStories[zoneId] && STORY[bossStories[zoneId]]) {
-            showStory(bossStories[zoneId]);
-            setTimeout(() => startBossBattle(zoneId), 2000);
+            showStory(bossStories[zoneId], () => startBossBattle(zoneId));
         } else {
             startBossBattle(zoneId);
         }
@@ -3298,12 +3299,18 @@ const STORY = {
 let currentDialog = null;
 let dialogIndex = 0;
 
-function showStory(storyId) {
+let dialogCallback = null;
+
+function showStory(storyId, onComplete) {
     const story = STORY[storyId];
-    if (!story) return;
+    if (!story) {
+        if (onComplete) onComplete();
+        return;
+    }
 
     currentDialog = story;
     dialogIndex = 0;
+    dialogCallback = onComplete || null;
 
     createDialogBox();
     showDialogScene();
@@ -3362,6 +3369,12 @@ function closeDialog() {
     if (dialog) {
         dialog.remove();
         currentDialog = null;
+    }
+    // 执行回调（比如剧情结束后切换场景）
+    if (dialogCallback) {
+        const cb = dialogCallback;
+        dialogCallback = null;
+        cb();
     }
 }
 
