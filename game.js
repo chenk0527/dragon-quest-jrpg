@@ -2746,7 +2746,7 @@ function showVictoryScreen(xp, gold) {
                 <div class="victory-stat">✨ 经验值: ${xp}</div>
                 <div class="victory-stat">💰 金币: ${gold}</div>
             </div>
-            <button class="btn btn-primary" onclick="this.closest('.victory-overlay').remove(); showScene('map');">继续</button>
+            <button class="btn btn-primary" onclick="this.closest('.victory-overlay').remove(); returnFromBattle();">继续</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -2784,8 +2784,18 @@ function continueAfterDefeat() {
     gameState.currentMap = 'village';
     gameState.gold = Math.floor(gameState.gold * 0.9);
 
-    showScene('map');
+    returnFromBattle();
     updateUI();
+}
+
+// 战斗结束后返回：如果从冒险系统来的回到冒险，否则回地图
+function returnFromBattle() {
+    if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
+        window.WorldSystem.fromWorldExploration = false;
+        showScene('world');
+    } else {
+        showScene('map');
+    }
 }
 
 // 保存游戏
@@ -3457,6 +3467,7 @@ window.showItemMenu = showItemMenu;
 window.closeItemMenu = closeItemMenu;
 window.useItem = useItem;
 window.showConfirmModal = showConfirmModal;
+window.returnFromBattle = returnFromBattle;
 
 // 启动
 window.onload = init;
