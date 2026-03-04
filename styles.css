@@ -1,3 +1,13 @@
+/* ============== iPhone 安全区域 ============== */
+@supports (padding: env(safe-area-inset-bottom)) {
+    .nav-bar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .header {
+        padding-top: env(safe-area-inset-top);
+    }
+}
+
 /* ============== 基础变量 ============== */
 :root {
     --dq-bg: #1a1a2e;
