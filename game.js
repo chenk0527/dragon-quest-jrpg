@@ -2878,6 +2878,11 @@ function showScene(sceneId) {
     if (sceneId === 'map') renderMap();
     if (sceneId === 'bestiary') renderBestiary();
     if (sceneId === 'cosmetics') renderCosmetics();
+    if (sceneId === 'world' && window.WorldSystem) {
+        // 冒险场景需要隐藏导航栏，初始化Canvas
+        if (navBar) navBar.style.display = 'none';
+        window.WorldSystem.init();
+    }
 }
 
 // ==================== 渲染地图 ====================
