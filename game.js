@@ -1731,6 +1731,8 @@ const MAP_ZONES = {
 };
 
 // ==================== 游戏状态 ====================
+var isGameStarted = false;
+
 let gameState = {
     party: [],
     inventory: [],
@@ -1861,6 +1863,7 @@ function startNewGameConfirmed() {
     gameState.inventory.push(createConsumable('smallPotion'));
 
     saveGame();
+    isGameStarted = true;
     showToast('🎮 新游戏开始！', 'success');
     // 先播放序章剧情，结束后再切到队伍页面
     showStory('prologue', () => {
@@ -1871,6 +1874,7 @@ function startNewGameConfirmed() {
 // 继续游戏
 function continueGame() {
     if (loadGame()) {
+        isGameStarted = true;
         showScene('party');
         showToast('📂 游戏已加载', 'success');
     } else {
@@ -2814,6 +2818,36 @@ function autoSave() {
     saveGame();
 }
 
+// ==================== 渲染菜单 ====================
+function renderMenu() {
+    const menuEl = document.querySelector('#sceneMenu .main-menu');
+    if (!menuEl) return;
+
+    if (!isGameStarted) {
+        const hasSave = !!localStorage.getItem('dragonQuestSave');
+        menuEl.innerHTML = `
+            <div class="game-title">
+                <h2>DRAGON QUEST</h2>
+                <p>勇者斗恶龙 RPG</p>
+            </div>
+            <div class="menu-buttons">
+                <button class="btn btn-primary" onclick="startNewGame()">▶ 开始新游戏</button>
+                ${hasSave ? '<button class="btn btn-secondary" onclick="continueGame()">📂 继续游戏</button>' : ''}
+            </div>`;
+    } else {
+        menuEl.innerHTML = `
+            <div class="game-title">
+                <h2>DRAGON QUEST</h2>
+                <p>勇者斗恶龙 RPG</p>
+            </div>
+            <div class="menu-buttons">
+                <button class="btn btn-primary" onclick="saveGame(); showToast('💾 已保存', 'success');">💾 保存游戏</button>
+                <button class="btn btn-secondary" onclick="if(loadGame()){showToast('📂 已加载','success');showScene('party');}else{showToast('❌ 没有存档','error');}">📂 选择存档</button>
+                <button class="btn btn-secondary" onclick="isGameStarted=false;showScene('menu');">🏠 回到主菜单</button>
+            </div>`;
+    }
+}
+
 // ==================== 渲染场景 ====================
 function showScene(sceneId) {
     document.querySelectorAll('.scene').forEach(scene => scene.classList.remove('active'));
@@ -2832,13 +2866,14 @@ function showScene(sceneId) {
 
     // 更新导航
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    const navMap = { menu: 0, party: 1, map: 2, bestiary: 3, cosmetics: 4 };
+    const navMap = { menu: 0, party: 1, world: 2, map: 2, bestiary: 3, cosmetics: 4 };
     const navIndex = navMap[sceneId];
     if (navIndex !== undefined) {
         document.querySelectorAll('.nav-btn')[navIndex]?.classList.add('active');
     }
 
     // 渲染对应内容
+    if (sceneId === 'menu') renderMenu();
     if (sceneId === 'party') renderParty();
     if (sceneId === 'map') renderMap();
     if (sceneId === 'bestiary') renderBestiary();
@@ -3382,6 +3417,8 @@ function closeDialog() {
 window.startNewGame = startNewGame;
 window.continueGame = continueGame;
 window.showScene = showScene;
+window.saveGame = saveGame;
+window.loadGame = loadGame;
 window.battleAction = battleAction;
 window.selectTarget = selectTarget;
 window.enterZone = enterZone;
