@@ -449,6 +449,19 @@ function drawNPC(ctx, sx, sy, npc) {
     ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(sx-4,sy-4,W.TILE+8,12);
     ctx.fillStyle='#FFD700'; ctx.font='9px monospace'; ctx.textAlign='center';
     ctx.fillText(npc.name,sx+W.TILE/2,sy+5); ctx.textAlign='left';
+    // 任务标记
+    if(typeof getNpcQuestStatus==='function') {
+        const qs = getNpcQuestStatus(npc.name, W.currentMap);
+        if(qs==='complete') {
+            const bob=Math.sin(W.time*0.08)*3;
+            ctx.fillStyle='#FFD700'; ctx.font='bold 14px monospace'; ctx.textAlign='center';
+            ctx.fillText('?',sx+W.TILE/2,sy-6+bob); ctx.textAlign='left';
+        } else if(qs==='available') {
+            const bob=Math.sin(W.time*0.08)*3;
+            ctx.fillStyle='#FFD700'; ctx.font='bold 14px monospace'; ctx.textAlign='center';
+            ctx.fillText('!',sx+W.TILE/2,sy-6+bob); ctx.textAlign='left';
+        }
+    }
 }
 
 function drawPlayer(ctx, sx, sy) {
@@ -625,6 +638,7 @@ function move(dx, dy) {
         let ch=W.chests.find(c=>c.x===nx&&c.y===ny);
         if(ch) { ch.opened=true; if(typeof gameState!=='undefined') gameState.gold+=ch.gold;
             showWorldDialog('💰 发现宝箱！','获得了 '+ch.gold+' 金币！');
+            if(typeof updateQuestProgress==='function') updateQuestProgress('collect', W.currentMap);
         }
     } else if(tile===T.MONSTER||tile===T.BOSS) {
         let mon=W.monsters.find(m=>m.x===nx&&m.y===ny);
@@ -646,7 +660,7 @@ function move(dx, dy) {
 function changeMap(targetMapId, spawnX, spawnY) {
     W.transitioning = true;
     W.areaNameAlpha = 0;
-    
+
     // 短暂黑屏过渡
     setTimeout(() => {
         loadMap(targetMapId);
@@ -655,6 +669,10 @@ function changeMap(targetMapId, spawnX, spawnY) {
         W.stepCount = 0;
         showAreaName();
         W.transitioning = false;
+        // 更新任务探索进度
+        if(typeof updateQuestProgress==='function') {
+            updateQuestProgress('explore', targetMapId);
+        }
     }, 200);
 }
 
@@ -677,6 +695,26 @@ function action() {
     
     let npc=W.npcs.find(n=>n.x===ax&&n.y===ay);
     if(npc) {
+        // 先检查任务交互
+        if(typeof getQuestsByNpc==='function') {
+            const { available, completable } = getQuestsByNpc(npc.name, W.currentMap);
+            // 优先提交已完成任务
+            if(completable.length>0) {
+                const q=completable[0];
+                showQuestDialog(q.dialog_end, ()=>{
+                    if(typeof completeQuest==='function') completeQuest(q.id);
+                });
+                return;
+            }
+            // 其次接取新任务
+            if(available.length>0) {
+                const q=available[0];
+                showQuestDialog(q.dialog_start, ()=>{
+                    if(typeof acceptQuest==='function') acceptQuest(q.id);
+                });
+                return;
+            }
+        }
         switch(npc.type) {
             case 'shop': showShopMenu(); break;
             case 'inn': showInnMenu(npc); break;
@@ -890,6 +928,35 @@ function drawHUD(ctx, cw, ch, mapDef) {
         ctx.fillText(mapDef.level,cw/2,ch/2+20);
         ctx.textAlign='left';
         ctx.globalAlpha=1;
+    }
+}
+
+// ======== 任务对话 ========
+function showQuestDialog(dialogText, onComplete) {
+    W.dialogActive = true;
+    const old = document.getElementById('worldDialog'); if(old) old.remove();
+    // 解析 "NPC名: 对话内容" 格式
+    let title='📜 任务', text=dialogText;
+    const colonIdx = dialogText.indexOf(': ');
+    if(colonIdx>0) {
+        title='📜 '+dialogText.substring(0,colonIdx);
+        text=dialogText.substring(colonIdx+2);
+    }
+    const html = `<div id="worldDialog" style="position:absolute;bottom:80px;left:10px;right:10px;
+        background:linear-gradient(135deg,#2a1a4a,#3a2a5a);border:3px solid #FFD700;border-radius:8px;
+        padding:15px;z-index:100;font-family:'Press Start 2P',monospace;animation:dialogSlideUp 0.2s ease-out;">
+        <div style="color:#FFD700;font-size:11px;margin-bottom:8px;">${title}</div>
+        <div style="color:#fff;font-size:10px;line-height:1.6;">${text}</div>
+        <div style="color:#888;font-size:8px;text-align:center;margin-top:10px;">点击继续 ▼</div></div>`;
+    const container = W.canvas.parentElement;
+    if(container) {
+        container.style.position='relative';
+        container.insertAdjacentHTML('beforeend',html);
+        document.getElementById('worldDialog').addEventListener('click', ()=>{
+            W.dialogActive = false;
+            const d = document.getElementById('worldDialog'); if(d) d.remove();
+            if(onComplete) onComplete();
+        });
     }
 }
 

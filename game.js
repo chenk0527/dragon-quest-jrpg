@@ -1814,6 +1814,35 @@ const MAP_ZONES = {
     demonCastle: { id: 'demonCastle', name: '魔王城', icon: '🏯', type: 'boss', level: 99, desc: '最终决战之地' }
 };
 
+// ==================== 任务系统 ====================
+const QUESTS = {
+    main1: { name:'村外除害', chapter:1, desc:'清除草原上的5只怪物',
+        type:'kill', target:'plains', count:5, reward:{xp:200,gold:300},
+        dialog_start:'村长: 勇者！草原上出现了怪物，请消灭5只！',
+        dialog_end:'村长: 太好了！你果然是传说中的勇者！这是酬谢。',
+        npc:'村长', npcMap:'village' },
+    main2: { name:'森林探秘', chapter:2, desc:'进入迷雾森林寻找迷雾之源', unlockAfter:'main1',
+        type:'explore', target:'forest', reward:{xp:500,gold:500},
+        dialog_start:'村长: 森林中弥漫着神秘的迷雾，请去调查原因。',
+        dialog_end:'村长: 原来迷雾是树精们制造的...你击退了它们！',
+        npc:'村长', npcMap:'village' },
+    main3: { name:'洞穴危机', chapter:3, desc:'击败暗影洞穴中的骷髅王', unlockAfter:'main2',
+        type:'boss', target:'cave', bossType:'skeletonKing', reward:{xp:1000,gold:1000,item:'legendary'},
+        dialog_start:'村长: 洞穴深处传来可怕的声音...骷髅王正在集结亡灵大军！',
+        dialog_end:'村长: 你击败了骷髅王！你是真正的英雄！',
+        npc:'村长', npcMap:'village' },
+    side1: { name:'商人的烦恼', desc:'为商人收集3个宝箱中的货物',
+        type:'collect', target:'plains', count:3, reward:{xp:100,gold:200},
+        dialog_start:'商人: 我的货物散落在草原各处，能帮我找回3个吗？',
+        dialog_end:'商人: 太感谢了！这些是你应得的报酬。',
+        npc:'商人', npcMap:'village' },
+    side2: { name:'少女的请求', desc:'在森林中找到少女丢失的项链',
+        type:'explore', target:'forest', reward:{xp:150,gold:150},
+        dialog_start:'少女: 我最心爱的项链掉在森林里了...能帮我找回来吗？',
+        dialog_end:'少女: 找到了！太谢谢你了！',
+        npc:'少女', npcMap:'village' }
+};
+
 // ==================== 游戏状态 ====================
 var isGameStarted = false;
 
@@ -1832,6 +1861,8 @@ let gameState = {
     newGamePlus: 0,
     achievements: [],
     bestiary: {},
+    quests: { active: [], completed: [] },
+    questProgress: {},
     cosmetics: {
         hair: ['warriorDefault'],
         face: ['none'],
@@ -2778,6 +2809,18 @@ function victory() {
 
     addBattleLog(`🏆 战斗胜利！获得 ${totalXp} 经验和 ${totalGold} 金币！`, 'reward');
 
+    // 更新任务进度 - 击杀类
+    if (battleState.zone && battleState.zone.id) {
+        const killCount = battleState.enemies.filter(e => e.currentHp <= 0).length;
+        for (let i = 0; i < killCount; i++) {
+            updateQuestProgress('kill', battleState.zone.id);
+        }
+        // BOSS击败
+        if (battleState.isBossBattle) {
+            updateQuestProgress('boss', battleState.zone.id);
+        }
+    }
+
     AudioSystem.playVictory();
 
     // 生成战利品
@@ -2993,7 +3036,7 @@ function showScene(sceneId) {
 
     // 更新导航
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    const navMap = { menu: 0, party: 1, world: 2, map: 2, bestiary: 3, cosmetics: 4 };
+    const navMap = { menu: 0, party: 1, world: 2, map: 2, quests: 3, bestiary: 4, cosmetics: 5 };
     const navIndex = navMap[sceneId];
     if (navIndex !== undefined) {
         document.querySelectorAll('.nav-btn')[navIndex]?.classList.add('active');
@@ -3003,6 +3046,7 @@ function showScene(sceneId) {
     if (sceneId === 'menu') renderMenu();
     if (sceneId === 'party') renderParty();
     if (sceneId === 'map') renderMap();
+    if (sceneId === 'quests') renderQuests();
     if (sceneId === 'bestiary') renderBestiary();
     if (sceneId === 'cosmetics') renderCosmetics();
     if (sceneId === 'world' && window.WorldSystem) {
@@ -3705,6 +3749,262 @@ function renderLootList(lootItems) {
     }).join('');
 }
 
+// ==================== 任务系统函数 ====================
+
+function getAvailableQuests() {
+    return Object.entries(QUESTS).filter(([id, q]) => {
+        if (gameState.quests.active.includes(id)) return false;
+        if (gameState.quests.completed.includes(id)) return false;
+        if (q.unlockAfter && !gameState.quests.completed.includes(q.unlockAfter)) return false;
+        return true;
+    }).map(([id, q]) => ({ id, ...q }));
+}
+
+function getQuestsByNpc(npcName, mapId) {
+    const available = [];
+    const completable = [];
+    Object.entries(QUESTS).forEach(([id, q]) => {
+        if (q.npc !== npcName || q.npcMap !== mapId) return;
+        if (gameState.quests.active.includes(id) && checkQuestComplete(id)) {
+            completable.push({ id, ...q });
+        } else if (!gameState.quests.active.includes(id) && !gameState.quests.completed.includes(id)) {
+            if (!q.unlockAfter || gameState.quests.completed.includes(q.unlockAfter)) {
+                available.push({ id, ...q });
+            }
+        }
+    });
+    return { available, completable };
+}
+
+function getNpcQuestStatus(npcName, mapId) {
+    const { available, completable } = getQuestsByNpc(npcName, mapId);
+    if (completable.length > 0) return 'complete'; // 黄色 ?
+    if (available.length > 0) return 'available';   // 黄色 !
+    return 'none';
+}
+
+function acceptQuest(questId) {
+    const quest = QUESTS[questId];
+    if (!quest) return false;
+    if (gameState.quests.active.includes(questId)) return false;
+    if (gameState.quests.completed.includes(questId)) return false;
+
+    gameState.quests.active.push(questId);
+    gameState.questProgress[questId] = { kills: 0, collected: 0, explored: false, bossDefeated: false };
+
+    showToast('📜 接取任务: ' + quest.name, 'success');
+    saveGame();
+    return true;
+}
+
+function updateQuestProgress(type, target, extra) {
+    let questUpdated = false;
+    gameState.quests.active.forEach(questId => {
+        const quest = QUESTS[questId];
+        if (!quest) return;
+        const prog = gameState.questProgress[questId];
+        if (!prog) return;
+
+        if (type === 'kill' && quest.type === 'kill' && quest.target === target) {
+            prog.kills = (prog.kills || 0) + 1;
+            questUpdated = true;
+            if (prog.kills >= quest.count) {
+                showToast('✅ 任务完成: ' + quest.name, 'success');
+            } else {
+                showToast('⚔️ ' + quest.name + ': ' + prog.kills + '/' + quest.count, 'info');
+            }
+        }
+        if (type === 'collect' && quest.type === 'collect' && quest.target === target) {
+            prog.collected = (prog.collected || 0) + 1;
+            questUpdated = true;
+            if (prog.collected >= quest.count) {
+                showToast('✅ 任务完成: ' + quest.name, 'success');
+            } else {
+                showToast('📦 ' + quest.name + ': ' + prog.collected + '/' + quest.count, 'info');
+            }
+        }
+        if (type === 'explore' && quest.type === 'explore' && quest.target === target) {
+            if (!prog.explored) {
+                prog.explored = true;
+                questUpdated = true;
+                showToast('✅ 任务完成: ' + quest.name, 'success');
+            }
+        }
+        if (type === 'boss' && quest.type === 'boss' && quest.target === target) {
+            if (!prog.bossDefeated) {
+                prog.bossDefeated = true;
+                questUpdated = true;
+                showToast('✅ 任务完成: ' + quest.name, 'success');
+            }
+        }
+    });
+    if (questUpdated) saveGame();
+}
+
+function checkQuestComplete(questId) {
+    const quest = QUESTS[questId];
+    if (!quest) return false;
+    const prog = gameState.questProgress[questId];
+    if (!prog) return false;
+
+    switch (quest.type) {
+        case 'kill': return (prog.kills || 0) >= quest.count;
+        case 'collect': return (prog.collected || 0) >= quest.count;
+        case 'explore': return !!prog.explored;
+        case 'boss': return !!prog.bossDefeated;
+        default: return false;
+    }
+}
+
+function completeQuest(questId) {
+    const quest = QUESTS[questId];
+    if (!quest || !checkQuestComplete(questId)) return false;
+
+    // 从活跃列表移除，加入已完成列表
+    gameState.quests.active = gameState.quests.active.filter(id => id !== questId);
+    gameState.quests.completed.push(questId);
+    delete gameState.questProgress[questId];
+
+    // 发放奖励
+    const reward = quest.reward;
+    if (reward.xp) {
+        const aliveChars = gameState.party.filter(c => c.currentHp > 0);
+        const xpPerChar = Math.floor(reward.xp / Math.max(1, aliveChars.length));
+        aliveChars.forEach(char => gainXp(char, xpPerChar));
+    }
+    if (reward.gold) gameState.gold += reward.gold;
+    if (reward.item === 'legendary') {
+        const slots = ['weapon','armor','helmet','boots'];
+        const slot = slots[Math.floor(Math.random()*slots.length)];
+        const heroLevel = gameState.party[0] ? gameState.party[0].level : 1;
+        const equip = typeof generateEquipment==='function' ? generateEquipment(slot, heroLevel, 'legendary') : null;
+        if (equip) gameState.inventory.push(equip);
+    }
+
+    showQuestReward(quest, reward);
+    saveGame();
+    return true;
+}
+
+function showQuestReward(quest, reward) {
+    const overlay = document.createElement('div');
+    overlay.className = 'quest-reward-overlay';
+    let rewardHtml = '';
+    if (reward.xp) rewardHtml += `<div class="quest-reward-item">✨ 经验值: +${reward.xp}</div>`;
+    if (reward.gold) rewardHtml += `<div class="quest-reward-item">💰 金币: +${reward.gold}</div>`;
+    if (reward.item === 'legendary') rewardHtml += `<div class="quest-reward-item">🗡️ 获得传说装备！</div>`;
+
+    overlay.innerHTML = `
+        <div class="quest-reward-content">
+            <div class="quest-reward-title">📜 任务完成！</div>
+            <div class="quest-reward-name">${quest.name}</div>
+            <div class="quest-reward-list">${rewardHtml}</div>
+            <button class="btn btn-primary" onclick="this.closest('.quest-reward-overlay').remove();">确认</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+    if (typeof AudioSystem !== 'undefined' && AudioSystem.playVictory) AudioSystem.playVictory();
+}
+
+function getQuestProgressText(questId) {
+    const quest = QUESTS[questId];
+    if (!quest) return '';
+    const prog = gameState.questProgress[questId];
+    if (!prog) return '';
+
+    switch (quest.type) {
+        case 'kill': return `${prog.kills || 0}/${quest.count} 只`;
+        case 'collect': return `${prog.collected || 0}/${quest.count} 个`;
+        case 'explore': return prog.explored ? '已探索' : '未探索';
+        case 'boss': return prog.bossDefeated ? '已击败' : '未击败';
+        default: return '';
+    }
+}
+
+function getQuestProgressPercent(questId) {
+    const quest = QUESTS[questId];
+    if (!quest) return 0;
+    const prog = gameState.questProgress[questId];
+    if (!prog) return 0;
+
+    switch (quest.type) {
+        case 'kill': return Math.min(100, ((prog.kills || 0) / quest.count) * 100);
+        case 'collect': return Math.min(100, ((prog.collected || 0) / quest.count) * 100);
+        case 'explore': return prog.explored ? 100 : 0;
+        case 'boss': return prog.bossDefeated ? 100 : 0;
+        default: return 0;
+    }
+}
+
+function renderQuests() {
+    const container = document.getElementById('questContainer');
+    if (!container) return;
+
+    const available = getAvailableQuests();
+    const active = gameState.quests.active.map(id => ({ id, ...QUESTS[id] })).filter(q => q.name);
+    const completed = gameState.quests.completed.map(id => ({ id, ...QUESTS[id] })).filter(q => q.name);
+
+    let html = '';
+
+    // 可接取任务
+    if (available.length > 0) {
+        html += `<div class="quest-section"><div class="quest-section-title">❗ 可接取任务</div>`;
+        available.forEach(q => {
+            html += `<div class="quest-card quest-available" onclick="acceptQuest('${q.id}'); renderQuests();">
+                <div class="quest-header">
+                    <span class="quest-name">${q.chapter ? '📕 第' + q.chapter + '章: ' : '📗 支线: '}${q.name}</span>
+                    <span class="quest-accept-btn">接取</span>
+                </div>
+                <div class="quest-desc">${q.desc}</div>
+                <div class="quest-reward-preview">奖励: ${q.reward.xp}经验 ${q.reward.gold}金币${q.reward.item === 'legendary' ? ' + 传说装备' : ''}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // 进行中任务
+    if (active.length > 0) {
+        html += `<div class="quest-section"><div class="quest-section-title">📋 进行中</div>`;
+        active.forEach(q => {
+            const pct = getQuestProgressPercent(q.id);
+            const progText = getQuestProgressText(q.id);
+            const isComplete = checkQuestComplete(q.id);
+            html += `<div class="quest-card quest-active ${isComplete ? 'quest-completable' : ''}">
+                <div class="quest-header">
+                    <span class="quest-name">${q.chapter ? '📕 ' : '📗 '}${q.name}</span>
+                    <span class="quest-progress-text">${progText}</span>
+                </div>
+                <div class="quest-desc">${q.desc}</div>
+                <div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+                ${isComplete ? `<div class="quest-hint">💡 回去找 ${q.npc} 交付任务</div>` : ''}
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // 已完成任务
+    if (completed.length > 0) {
+        html += `<div class="quest-section"><div class="quest-section-title">✅ 已完成</div>`;
+        completed.forEach(q => {
+            html += `<div class="quest-card quest-completed">
+                <div class="quest-header">
+                    <span class="quest-name">${q.chapter ? '📕 ' : '📗 '}${q.name}</span>
+                    <span class="quest-done-badge">✔</span>
+                </div>
+                <div class="quest-desc">${q.desc}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (!html) {
+        html = `<div class="quest-empty">暂无可用任务，继续冒险吧！</div>`;
+    }
+
+    container.innerHTML = html;
+}
+
 // ==================== 导出 ====================
 window.startNewGame = startNewGame;
 window.continueGame = continueGame;
@@ -3748,6 +4048,15 @@ window.returnFromBattle = returnFromBattle;
 window.startBattle = startBattle;
 window.toggleAutoBattle = toggleAutoBattle;
 window.setBattleSpeed = setBattleSpeed;
+window.QUESTS = QUESTS;
+window.acceptQuest = acceptQuest;
+window.updateQuestProgress = updateQuestProgress;
+window.checkQuestComplete = checkQuestComplete;
+window.completeQuest = completeQuest;
+window.renderQuests = renderQuests;
+window.getQuestsByNpc = getQuestsByNpc;
+window.getNpcQuestStatus = getNpcQuestStatus;
+window.getAvailableQuests = getAvailableQuests;
 
 // 启动
 window.onload = init;

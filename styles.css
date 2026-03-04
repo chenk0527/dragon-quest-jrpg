@@ -904,10 +904,11 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     cursor: pointer;
     transition: all 0.2s;
-    padding: 6px 8px;
+    padding: 5px 4px;
+    min-width: 0;
 }
 
 .nav-btn.active {
@@ -2271,3 +2272,90 @@ body {
 
 .victory-loot-list::-webkit-scrollbar { width: 4px; }
 .victory-loot-list::-webkit-scrollbar-thumb { background: var(--dq-blue); }
+
+/* ==================== 任务系统 ==================== */
+.quest-section { margin-bottom: 16px; }
+.quest-section-title {
+    font-size: 11px; color: var(--dq-gold); margin-bottom: 8px;
+    padding-bottom: 4px; border-bottom: 1px solid rgba(255,215,0,0.3);
+}
+.quest-card {
+    background: rgba(0,0,0,0.4); border: 2px solid var(--dq-gray);
+    border-radius: 6px; padding: 10px; margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+.quest-card.quest-available {
+    border-color: var(--dq-gold); cursor: pointer;
+}
+.quest-card.quest-available:hover { border-color: #fff; }
+.quest-card.quest-active { border-color: var(--dq-blue); }
+.quest-card.quest-completable { border-color: var(--dq-green); }
+.quest-card.quest-completed {
+    border-color: var(--dq-gray); opacity: 0.6;
+}
+.quest-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+}
+.quest-name { font-size: 10px; color: #fff; }
+.quest-accept-btn {
+    font-size: 9px; color: var(--dq-gold); background: rgba(255,215,0,0.15);
+    padding: 2px 8px; border-radius: 3px; border: 1px solid var(--dq-gold);
+}
+.quest-desc { font-size: 9px; color: #aaa; margin-bottom: 6px; line-height: 1.4; }
+.quest-reward-preview { font-size: 8px; color: var(--dq-gold); }
+.quest-progress-text { font-size: 9px; color: var(--dq-green); }
+.quest-progress-bar {
+    height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;
+    overflow: hidden; margin-top: 4px;
+}
+.quest-progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--dq-blue), var(--dq-green));
+    border-radius: 3px; transition: width 0.3s;
+}
+.quest-hint {
+    font-size: 8px; color: var(--dq-green); margin-top: 6px;
+    animation: questHintPulse 1.5s ease-in-out infinite;
+}
+@keyframes questHintPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.quest-done-badge { color: var(--dq-green); font-size: 12px; }
+.quest-empty {
+    text-align: center; color: #888; font-size: 10px; padding: 40px 20px;
+}
+
+/* 任务完成奖励弹窗 */
+.quest-reward-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000; opacity: 0; transition: opacity 0.3s;
+}
+.quest-reward-overlay.active { opacity: 1; }
+.quest-reward-content {
+    background: linear-gradient(135deg, #1a2a4a, #2a3a6a);
+    border: 3px solid var(--dq-gold); border-radius: 12px;
+    padding: 24px; text-align: center; min-width: 260px;
+    animation: questRewardPop 0.4s ease-out;
+}
+@keyframes questRewardPop {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.quest-reward-title {
+    font-size: 16px; color: var(--dq-gold); margin-bottom: 8px;
+}
+.quest-reward-name {
+    font-size: 12px; color: #fff; margin-bottom: 12px;
+}
+.quest-reward-list { margin-bottom: 16px; }
+.quest-reward-item {
+    font-size: 10px; color: var(--dq-green); padding: 4px 0;
+    animation: questRewardSlide 0.3s ease-out backwards;
+}
+.quest-reward-item:nth-child(1) { animation-delay: 0.2s; }
+.quest-reward-item:nth-child(2) { animation-delay: 0.4s; }
+.quest-reward-item:nth-child(3) { animation-delay: 0.6s; }
+@keyframes questRewardSlide {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
