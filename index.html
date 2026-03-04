@@ -16,8 +16,8 @@
     
     <!-- 音量控制 -->
     <div class="audio-controls">
-        <button class="audio-btn" id="muteBtn" onclick="toggleMute()">🔊</button>
-        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50" onchange="setVolume(this.value/100)">
+        <button class="audio-btn" id="muteBtn" onclick="AudioControl.toggleMute()">🔊</button>
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50" onchange="AudioControl.setVolume(this.value/100)">
     </div>
     
     <div class="game-container">

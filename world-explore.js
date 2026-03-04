@@ -640,6 +640,7 @@ function move(dx, dy) {
         let ch=W.chests.find(c=>c.x===nx&&c.y===ny);
         if(ch) { ch.opened=true; if(typeof gameState!=='undefined') gameState.gold+=ch.gold;
             showWorldDialog('💰 发现宝箱！','获得了 '+ch.gold+' 金币！');
+            if(typeof SoundEffects!=='undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
             if(typeof updateQuestProgress==='function') updateQuestProgress('collect', W.currentMap);
         }
     } else if(tile===T.MONSTER||tile===T.BOSS) {
@@ -649,9 +650,10 @@ function move(dx, dy) {
             W.monsters=W.monsters.filter(m2=>m2!==mon);
             W.player.x=nx; W.player.y=ny;
             if(window.WorldSystem) window.WorldSystem.fromWorldExploration=true;
-            const zone = mon.isBoss ? 'demonCastle' : W.currentMap;
+            const zone = W.currentMap;
+            const battleFn = mon.isBoss ? (window.startBossBattle || window.startBattle) : window.startBattle;
             setTimeout(()=>{
-                if(typeof window.startBattle==='function') window.startBattle(zone);
+                if(typeof battleFn==='function') battleFn(zone);
                 else if(typeof startBattle==='function') startBattle(zone);
                 else showWorldDialog('⚔️ 遭遇 '+mon.name,'战斗系统加载中...');
             },100);
@@ -663,6 +665,8 @@ function changeMap(targetMapId, spawnX, spawnY) {
     W.transitioning = true;
     W.areaNameAlpha = 0;
 
+    // 区域切换音效
+    if(typeof SoundEffects!=='undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
     // 短暂黑屏过渡
     setTimeout(() => {
         loadMap(targetMapId);
@@ -732,10 +736,10 @@ function showShopMenu() {
     const old = document.getElementById('worldMenu'); if(old) old.remove();
     const gold = (typeof gameState!=='undefined') ? gameState.gold : 0;
     const items = [
-        { name:'🧪 小治疗药水', price:50, type:'smallPotion' },
-        { name:'🧪 中治疗药水', price:150, type:'mediumPotion' },
-        { name:'💊 解毒药', price:80, type:'antidote' },
-        { name:'✨ 复活药水', price:500, type:'revivePotion' }
+        { name:'🧪 小治疗药水', price:30, type:'smallPotion' },
+        { name:'🧪 中治疗药水', price:100, type:'mediumPotion' },
+        { name:'💊 以太(MP)', price:80, type:'ether' },
+        { name:'✨ 万灵药', price:1000, type:'elixir' }
     ];
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
@@ -761,6 +765,7 @@ window.buyItem = function(type, price) {
     if(gameState.gold < price) { if(typeof showToast==='function') showToast('💰 金币不足！','error'); return; }
     gameState.gold -= price;
     if(typeof createConsumable==='function') gameState.inventory.push(createConsumable(type));
+    if(typeof SoundEffects!=='undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
     if(typeof showToast==='function') showToast('✅ 购买成功！','success');
     // 刷新商店金币显示
     closeNPCMenu(); showShopMenu();
@@ -894,10 +899,11 @@ function drawHUD(ctx, cw, ch, mapDef) {
     ctx.fillStyle='#aaa'; ctx.font='10px monospace';
     ctx.fillText(mapDef.level,16,38);
     
-    // HP/MP条（右上）
+    // HP/MP条（右上） - 缓存stats每30帧更新一次
     if(typeof gameState!=='undefined'&&gameState.party&&gameState.party[0]) {
         const hero=gameState.party[0];
-        const stats=(typeof calculateStats==='function')?calculateStats(hero):{hp:100,mp:25};
+        if(!W._statsCache||W.time%30===0) W._statsCache=(typeof calculateStats==='function')?calculateStats(hero):{hp:100,mp:25};
+        const stats=W._statsCache;
         const hpPct=hero.currentHp/stats.hp, mpPct=(hero.currentMp||0)/(stats.mp||1);
         const bx=cw-130, by=8, bw=120, bh=12;
         

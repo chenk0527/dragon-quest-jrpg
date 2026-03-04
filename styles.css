@@ -2493,3 +2493,273 @@ body {
 .stat-icon { font-size: 20px; margin-bottom: 4px; }
 .stat-label { font-size: 8px; color: #aaa; margin-bottom: 2px; }
 .stat-value { font-size: 12px; color: var(--dq-gold); font-weight: bold; }
+
+/* ============== 胜利/失败覆盖层 ============== */
+.victory-overlay,
+.defeat-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    font-family: 'Press Start 2P', monospace;
+}
+.victory-overlay.active,
+.defeat-overlay.active {
+    opacity: 1;
+}
+.victory-content,
+.defeat-content {
+    background: linear-gradient(135deg, #1a2a4a 0%, #2a3a6a 100%);
+    border: 3px solid var(--dq-gold);
+    border-radius: 12px;
+    padding: 28px 24px;
+    text-align: center;
+    min-width: 280px;
+    max-width: 360px;
+    animation: questRewardPop 0.4s ease-out;
+}
+.defeat-content {
+    border-color: var(--dq-red);
+    background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
+}
+.victory-title {
+    font-size: 18px;
+    color: var(--dq-gold);
+    margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+.defeat-title {
+    font-size: 18px;
+    color: var(--dq-red);
+    margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+}
+.victory-stats {
+    margin-bottom: 12px;
+}
+.victory-stat {
+    font-size: 10px;
+    color: var(--dq-white);
+    padding: 6px 0;
+}
+.defeat-message {
+    font-size: 10px;
+    color: #ccc;
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+/* ============== 角色解锁信息 ============== */
+.party-unlock-info {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.party-unlock-info h3 {
+    font-size: 11px;
+    color: var(--dq-gold);
+    margin-bottom: 10px;
+}
+.unlock-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.unlock-item {
+    font-size: 9px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: var(--dq-gray);
+    text-align: center;
+}
+.unlock-item small {
+    font-size: 7px;
+    color: #666;
+}
+.unlock-item.unlocked {
+    border-color: var(--dq-green);
+    color: var(--dq-green);
+}
+.unlock-item.locked {
+    opacity: 0.6;
+}
+
+/* ============== 地图节点 ============== */
+.map-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    padding: 8px;
+}
+.map-node {
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--dq-blue);
+    border-radius: 8px;
+    padding: 10px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+    font-family: 'Press Start 2P', monospace;
+}
+.map-node:hover:not(.locked) {
+    transform: scale(1.05);
+    border-color: var(--dq-gold);
+}
+.map-node.locked {
+    border-color: var(--dq-gray);
+    opacity: 0.5;
+    cursor: default;
+}
+.map-node.current {
+    border-color: var(--dq-gold);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+.map-node.cleared {
+    border-color: var(--dq-green);
+}
+.map-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+.map-name {
+    font-size: 8px;
+    color: var(--dq-white);
+    margin-bottom: 2px;
+}
+.map-level {
+    font-size: 7px;
+    color: var(--dq-gray);
+}
+
+/* ============== 角色卡片 ============== */
+.character-card {
+    background: linear-gradient(135deg, rgba(26, 42, 74, 0.8), rgba(42, 58, 106, 0.6));
+    border: 2px solid var(--dq-blue);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.character-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+.character-avatar {
+    flex-shrink: 0;
+}
+.character-info {
+    flex: 1;
+}
+.character-info h3 {
+    font-size: 11px;
+    color: var(--dq-gold);
+    margin-bottom: 4px;
+}
+.character-info .char-class {
+    font-size: 8px;
+    color: var(--dq-blue-light);
+}
+.character-info .char-level {
+    font-size: 8px;
+    color: var(--dq-gray);
+}
+
+/* ============== 移动端适配增强 ============== */
+@media (max-width: 420px) {
+    .game-container {
+        font-size: 9px;
+    }
+    .panel-title {
+        font-size: 11px;
+    }
+    .btn {
+        min-height: 44px;
+        font-size: 9px;
+        padding: 10px 14px;
+    }
+    .battle-btn {
+        min-height: 44px;
+        font-size: 9px;
+    }
+    .nav-btn {
+        min-height: 44px;
+        font-size: 7px;
+    }
+    .nav-icon {
+        font-size: 18px;
+    }
+    .map-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+    .map-node {
+        padding: 8px 4px;
+    }
+    .map-icon {
+        font-size: 20px;
+    }
+    .map-name {
+        font-size: 7px;
+    }
+    .achievement-toast {
+        max-width: calc(100vw - 40px);
+        right: -100vw;
+    }
+    .achievement-toast.show {
+        right: 10px;
+    }
+    .quest-reward-content {
+        min-width: 240px;
+        max-width: calc(100vw - 40px);
+    }
+    .confirm-modal-panel {
+        min-width: 260px;
+        max-width: calc(100vw - 40px);
+    }
+    .item-menu-panel {
+        min-width: 260px;
+        max-width: calc(100vw - 40px);
+    }
+    .enemy-detail-modal {
+        max-width: calc(100vw - 40px);
+    }
+    .victory-content,
+    .defeat-content {
+        min-width: 260px;
+        max-width: calc(100vw - 40px);
+    }
+    .unlock-list {
+        grid-template-columns: 1fr;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+    }
+    .dpad {
+        width: 130px;
+        height: 130px;
+    }
+    .dpad-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 20px;
+    }
+    .dpad-up { top: 0; left: 43px; }
+    .dpad-down { bottom: 0; left: 43px; }
+    .dpad-left { top: 43px; left: 0; }
+    .dpad-right { top: 43px; right: 0; }
+    .action-btn {
+        width: 52px;
+        height: 52px;
+    }
+}

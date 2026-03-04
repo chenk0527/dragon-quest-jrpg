@@ -1069,6 +1069,8 @@ const CHARACTER_UNLOCKS = {
 
 // ==================== 区域背景 ====================
 const ZONE_BACKGROUNDS = {
+    village: { color: 'linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%)', particles: 'leaf' },
+    plains: { color: 'linear-gradient(180deg, #2a3a1a 0%, #1a2a0d 100%)', particles: 'leaf' },
     forest: { color: 'linear-gradient(180deg, #1a3a1a 0%, #0d1f0d 100%)', particles: 'leaf' },
     cave: { color: 'linear-gradient(180deg, #2a2a3a 0%, #1a1a2a 100%)', particles: 'dust' },
     mine: { color: 'linear-gradient(180deg, #3a2a1a 0%, #1f150d 100%)', particles: 'spark' },
@@ -1142,6 +1144,7 @@ const ParticleSystem = {
                 break;
         }
 
+        if (this.particles.length >= 100) this.particles.shift();
         this.particles.push(particle);
         if (!this.animationId) this.animate();
     },
@@ -1170,6 +1173,8 @@ const ParticleSystem = {
             }
             return false;
         });
+
+        this.ctx.globalAlpha = 1;
 
         if (this.particles.length > 0) {
             this.animationId = requestAnimationFrame(() => this.animate());
@@ -1483,6 +1488,41 @@ const AudioSystem = {
             osc.start(this.ctx.currentTime + i * 0.3);
             osc.stop(this.ctx.currentTime + i * 0.3 + 0.4);
         });
+    },
+
+    playChestOpen() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const notes = [440, 554.37, 659.25];
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = 'triangle';
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, this.ctx.currentTime + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.25, this.ctx.currentTime + i * 0.1 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.2);
+            osc.start(this.ctx.currentTime + i * 0.1);
+            osc.stop(this.ctx.currentTime + i * 0.1 + 0.2);
+        });
+    },
+
+    playPurchase() {
+        if (!this.canPlay()) return;
+        if (!this.ctx) this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.15);
     }
 };
 
@@ -2528,7 +2568,7 @@ function startBossBattle(zoneId) {
 
 // 应用战斗背景
 function applyBattleBackground(zoneId) {
-    const battleField = document.getElementById('battleField');
+    const battleField = document.querySelector('.battle-field');
     const bg = ZONE_BACKGROUNDS[zoneId];
 
     if (battleField && bg) {
@@ -4079,7 +4119,7 @@ function completeQuest(questId) {
     }
     if (reward.gold) gameState.gold += reward.gold;
     if (reward.item === 'legendary') {
-        const slots = ['weapon','armor','helmet','boots'];
+        const slots = ['weapon','armor','helmet','shield','accessory'];
         const slot = slots[Math.floor(Math.random()*slots.length)];
         const heroLevel = gameState.party[0] ? gameState.party[0].level : 1;
         const equip = typeof generateEquipment==='function' ? generateEquipment(slot, heroLevel, 'legendary') : null;
@@ -4111,7 +4151,7 @@ function showQuestReward(quest, reward) {
     `;
     document.body.appendChild(overlay);
     setTimeout(() => overlay.classList.add('active'), 10);
-    if (typeof AudioSystem !== 'undefined' && AudioSystem.playVictory) AudioSystem.playVictory();
+    if (SoundEnabled && typeof AudioSystem !== 'undefined' && AudioSystem.playVictory) AudioSystem.playVictory();
 }
 
 function getQuestProgressText(questId) {
@@ -4305,6 +4345,7 @@ function checkAchievement(type, value) {
 }
 
 function showAchievementToast(ach) {
+    if (SoundEnabled) AudioSystem.playLevelUp();
     const toast = document.createElement('div');
     toast.className = 'achievement-toast';
     toast.innerHTML = `<div class="achievement-toast-icon">${ach.icon}</div><div><div class="achievement-toast-title">成就解锁！</div><div class="achievement-toast-name">${ach.name}</div><div class="achievement-toast-desc">${ach.desc}</div></div>`;
@@ -4625,6 +4666,7 @@ window.useItem = useItem;
 window.showConfirmModal = showConfirmModal;
 window.returnFromBattle = returnFromBattle;
 window.startBattle = startBattle;
+window.startBossBattle = startBossBattle;
 window.toggleAutoBattle = toggleAutoBattle;
 window.setBattleSpeed = setBattleSpeed;
 window.QUESTS = QUESTS;
