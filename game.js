@@ -1491,7 +1491,8 @@ const BESTIARY = {
 
 // 按区域分组的怪物
 const ZONE_ENEMIES = {
-    forest: ['slimeGreen', 'slimeBlue', 'bugBee', 'bugAnt', 'beastWolf', 'plantMushroom', 'humanBandit', 'slimeRed', 'bugBeetle'],
+    plains: ['slimeGreen', 'slimeBlue', 'bugBee', 'bugAnt', 'plantMushroom', 'batCave'],
+    forest: ['slimeRed', 'bugBeetle', 'beastWolf', 'plantMushroom', 'humanBandit', 'bugBee', 'bugAnt', 'slimeBlue'],
     cave: ['slimeRed', 'bugBeetle', 'undeadSkeleton', 'undeadZombie', 'beastBoar', 'batCave', 'spiderGiant', 'golemStone'],
     mine: ['elementalEarth', 'mechRobot', 'undeadGhost', 'beastBear', 'mythGolem', 'dwarfMiner', 'elementalFire', 'dragonWhelp'],
     crypt: ['undeadVampire', 'undeadGhost', 'undeadSkeleton', 'demonImp', 'humanNinja', 'lichApprentice', 'shadowBeast', 'boneDragon'],
@@ -1712,7 +1713,8 @@ const AFFIX_POOL = {
 // ==================== 地图区域 ====================
 const MAP_ZONES = {
     village: { id: 'village', name: '新手村', icon: '🏘️', type: 'safe', level: 0, desc: '冒险开始的地方' },
-    forest: { id: 'forest', name: '迷雾森林', icon: '🌲', type: 'combat', level: 1, desc: '史莱姆和野兽出没', unlocks: ['cave', 'mine'] },
+    plains: { id: 'plains', name: '风吹草原', icon: '🌾', type: 'combat', level: 1, desc: '史莱姆和蘑菇怪出没', unlocks: ['forest'] },
+    forest: { id: 'forest', name: '迷雾森林', icon: '🌲', type: 'combat', level: 5, desc: '灰狼和树精出没', unlocks: ['cave', 'mine'] },
     cave: { id: 'cave', name: '阴暗洞穴', icon: '🕳️', type: 'combat', level: 8, desc: '不死生物的巢穴', unlocks: ['crypt'] },
     mine: { id: 'mine', name: '废弃矿坑', icon: '⛏️', type: 'combat', level: 12, desc: '哥布林和土元素', unlocks: ['desert'] },
     crypt: { id: 'crypt', name: '古代墓地', icon: '⚰️', type: 'combat', level: 16, desc: '吸血鬼和巫妖', unlocks: ['swamp', 'darkForest'] },
@@ -2181,7 +2183,7 @@ function enterZone(zoneId) {
 // 开始战斗
 function startBattle(zoneId) {
     const zone = MAP_ZONES[zoneId];
-    if (!zone) return;
+    if (!zone) { console.warn('startBattle: unknown zone', zoneId); return; }
 
     // Apply battle background
     applyBattleBackground(zoneId);
@@ -3468,6 +3470,7 @@ window.closeItemMenu = closeItemMenu;
 window.useItem = useItem;
 window.showConfirmModal = showConfirmModal;
 window.returnFromBattle = returnFromBattle;
+window.startBattle = startBattle;
 
 // 启动
 window.onload = init;

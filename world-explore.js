@@ -489,33 +489,35 @@ function initWorld(targetMap) {
     if (!W.canvas) return false;
     W.ctx = W.canvas.getContext('2d');
     if (!W.ctx) return false;
-    
+
     const container = W.canvas.parentElement;
     if (container) {
         W.canvas.width = container.clientWidth || window.innerWidth;
         W.canvas.height = container.clientHeight || (window.innerHeight - 100);
     }
-    
+
+    // 仅在切换区域或首次加载时生成地图，战斗返回时保留状态
+    const needNewMap = targetMap ? (targetMap !== W.currentMap) : !W.map || W.map.length === 0;
     if (targetMap) W.currentMap = targetMap;
-    loadMap(W.currentMap);
-    
+    if (needNewMap) {
+        loadMap(W.currentMap);
+    }
+
     W.dialogActive = false;
     W.menuActive = false;
-    W.time = 0;
-    W.stepCount = 0;
-    
+
     if (!W.initialized) {
         bindKeys();
         bindTouch();
+        bindButtons();
     }
-    bindButtons();
     W.initialized = true;
-    
+
     if (!W.loopStarted) { W.loopStarted = true; loop(); }
-    
+
     // 显示区域名称
     showAreaName();
-    
+
     return true;
 }
 
@@ -559,9 +561,9 @@ function bindKeys() {
 
 function bindTouch() {
     let sx,sy;
-    W.canvas.addEventListener('touchstart',(e)=>{e.preventDefault();sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:false});
+    W.canvas.addEventListener('touchstart',(e)=>{if(e.cancelable)e.preventDefault();sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:false});
     W.canvas.addEventListener('touchend',(e)=>{
-        e.preventDefault();
+        if(e.cancelable)e.preventDefault();
         if(W.dialogActive||W.menuActive) return;
         const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
         if(Math.abs(dx)>30||Math.abs(dy)>30) {
@@ -576,17 +578,17 @@ function bindButtons() {
         const d=dirs[btn.dataset.key];
         if(d) {
             btn.onclick=(e)=>{e.preventDefault();if(!W.dialogActive&&!W.menuActive)move(d[0],d[1]);};
-            btn.addEventListener('touchstart',(e)=>{e.preventDefault();if(!W.dialogActive&&!W.menuActive)move(d[0],d[1]);},{passive:false});
+            btn.addEventListener('touchstart',(e)=>{if(e.cancelable)e.preventDefault();if(!W.dialogActive&&!W.menuActive)move(d[0],d[1]);},{passive:false});
         }
     });
     const aBtn=document.querySelector('.a-btn'),bBtn=document.querySelector('.b-btn');
     if(aBtn) {
         aBtn.onclick=(e)=>{e.preventDefault();action();};
-        aBtn.addEventListener('touchstart',(e)=>{e.preventDefault();action();},{passive:false});
+        aBtn.addEventListener('touchstart',(e)=>{if(e.cancelable)e.preventDefault();action();},{passive:false});
     }
     if(bBtn) {
         bBtn.onclick=(e)=>{e.preventDefault();if(typeof showScene==='function')showScene('party');};
-        bBtn.addEventListener('touchstart',(e)=>{e.preventDefault();if(typeof showScene==='function')showScene('party');},{passive:false});
+        bBtn.addEventListener('touchstart',(e)=>{if(e.cancelable)e.preventDefault();if(typeof showScene==='function')showScene('party');},{passive:false});
     }
 }
 
@@ -678,7 +680,7 @@ function action() {
         switch(npc.type) {
             case 'shop': showShopMenu(); break;
             case 'inn': showInnMenu(npc); break;
-            case 'smith': if(typeof showEnhanceInterface==='function') showEnhanceInterface(); break;
+            case 'smith': showWorldDialog('💬 铁匠', '想强化装备？去队伍界面选择角色和装备槽位吧！'); break;
             default: showWorldDialog('💬 '+npc.name, npc.dialog); break;
         }
     }
@@ -897,5 +899,5 @@ window.WorldSystem = {
     handleAction: action,
     toggleMenu: ()=>{ if(typeof showScene==='function') showScene('party'); },
     fromWorldExploration: false,
-    reset: ()=>{ W.initialized=false; W.currentMap='village'; loadMap('village'); W.player.x=20; W.player.y=15; }
+    reset: ()=>{ W.initialized=false; W.loopStarted=false; W.currentMap='village'; W.map=[]; W.player.x=20; W.player.y=15; W.stepCount=0; }
 };
