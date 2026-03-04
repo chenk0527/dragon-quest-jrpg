@@ -868,7 +868,12 @@ const AssetLoader = {
         const loadingScreen = document.getElementById('loadingScreen');
         if (loadingScreen) {
             loadingScreen.style.opacity = '0';
-            setTimeout(() => loadingScreen.classList.remove('active'), 500);
+            loadingScreen.style.pointerEvents = 'none';
+            setTimeout(() => {
+                loadingScreen.classList.remove('active');
+                loadingScreen.style.opacity = '';
+                loadingScreen.style.pointerEvents = '';
+            }, 500);
         }
     }
 };
@@ -3173,24 +3178,34 @@ function unlockCosmetic(cosmeticId, slot) {
 async function init() {
     console.log('[DragonQuest] Initializing v' + CONFIG.VERSION);
 
-    // Load sound setting
-    loadSoundSetting();
+    try {
+        // Load sound setting
+        loadSoundSetting();
 
-    // Initialize particle system
-    ParticleSystem.init();
+        // Initialize particle system
+        if (ParticleSystem && ParticleSystem.init) ParticleSystem.init();
 
-    // Show loading screen
-    AssetLoader.showLoadingScreen();
+        // Show loading screen
+        AssetLoader.showLoadingScreen();
 
-    // Preload assets
-    await AssetLoader.preloadAssets();
+        // Preload assets with timeout (don't block forever on slow networks)
+        const preloadTimeout = new Promise(resolve => setTimeout(resolve, 8000));
+        await Promise.race([AssetLoader.preloadAssets(), preloadTimeout]);
 
-    // Hide loading screen
-    AssetLoader.hideLoadingScreen();
+        // Hide loading screen
+        AssetLoader.hideLoadingScreen();
+    } catch (e) {
+        console.error('[DragonQuest] Init error (non-fatal):', e);
+        // Still hide loading screen on error
+        AssetLoader.hideLoadingScreen();
+    }
 
     // Load game
     loadGame();
     updateUI();
+
+    // Always ensure menu scene is visible on startup
+    showScene('menu');
 
     // Setup auto-save
     setInterval(autoSave, CONFIG.AUTO_SAVE_INTERVAL);
