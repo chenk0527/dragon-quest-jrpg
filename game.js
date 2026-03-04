@@ -24,6 +24,70 @@ const CONFIG = {
     BASE_FLEE_CHANCE: 0.5
 };
 
+const ELEMENT_SYSTEM = {
+    elements: {
+        fire: { icon: '🔥', name: '火', strong: 'ice', weak: 'thunder' },
+        ice: { icon: '❄️', name: '冰', strong: 'thunder', weak: 'fire' },
+        thunder: { icon: '⚡', name: '雷', strong: 'fire', weak: 'ice' },
+        holy: { icon: '☀️', name: '光', strong: 'dark', weak: 'dark' },
+        dark: { icon: '🌙', name: '暗', strong: 'holy', weak: 'holy' }
+    },
+    getMultiplier(attackElement, defenseElement) {
+        if (!attackElement || !defenseElement) return 1.0;
+        const atk = this.elements[attackElement];
+        if (!atk) return 1.0;
+        if (atk.strong === defenseElement) return 1.5;
+        if (atk.weak === defenseElement) return 0.7;
+        return 1.0;
+    }
+};
+
+const STATUS_EFFECTS = {
+    poison: { icon: '☠️', name: '中毒', type: 'debuff', tickDamage: 0.05, duration: 3 },
+    burn: { icon: '🔥', name: '烧伤', type: 'debuff', tickDamage: 0.08, duration: 3 },
+    freeze: { icon: '❄️', name: '冰冻', type: 'debuff', skipTurn: true, duration: 1 },
+    paralyze: { icon: '⚡', name: '麻痹', type: 'debuff', skipChance: 0.5, duration: 2 },
+    atkUp: { icon: '⚔️', name: '攻击提升', type: 'buff', stat: 'str', multiplier: 1.3, duration: 3 },
+    atkDown: { icon: '⚔️', name: '攻击降低', type: 'debuff', stat: 'str', multiplier: 0.7, duration: 3 },
+    defUp: { icon: '🛡️', name: '防御提升', type: 'buff', stat: 'def', multiplier: 1.3, duration: 3 },
+    defDown: { icon: '🛡️', name: '防御降低', type: 'debuff', stat: 'def', multiplier: 0.7, duration: 3 }
+};
+
+function applyStatusEffect(target, effectId, source) {
+    if (!target.statusEffects) target.statusEffects = [];
+    const effect = STATUS_EFFECTS[effectId];
+    if (!effect) return;
+    const existing = target.statusEffects.find(e => e.id === effectId);
+    if (existing) {
+        existing.duration = effect.duration; // refresh
+        return;
+    }
+    target.statusEffects.push({ id: effectId, ...effect, duration: effect.duration });
+    const targetName = target.name || '目标';
+    addBattleLog(`${effect.icon} ${targetName} 陷入了${effect.name}状态！`, 'damage');
+}
+
+function processStatusEffects(entity) {
+    if (!entity.statusEffects || entity.statusEffects.length === 0) return false;
+    let skipTurn = false;
+    entity.statusEffects = entity.statusEffects.filter(effect => {
+        if (effect.tickDamage && entity.currentHp > 0) {
+            const maxHp = entity.maxHp || (typeof calculateStats === 'function' ? calculateStats(entity).hp : 100);
+            const damage = Math.floor(maxHp * effect.tickDamage);
+            entity.currentHp = Math.max(0, entity.currentHp - damage);
+            addBattleLog(`${effect.icon} ${entity.name} 受到${effect.name}伤害 ${damage}！`, 'damage');
+        }
+        if (effect.skipTurn) skipTurn = true;
+        if (effect.skipChance && Math.random() < effect.skipChance) skipTurn = true;
+        effect.duration--;
+        if (effect.duration <= 0) {
+            addBattleLog(`${entity.name} 的${effect.name}状态消失了`, 'normal');
+        }
+        return effect.duration > 0;
+    });
+    return skipTurn;
+}
+
 // 显示技能树界面
 function showSkillTree(charId) {
     const char = gameState.party.find(c => c.id === charId);
@@ -264,8 +328,21 @@ function performSkillAttack(char, skill, stats) {
     const isCritical = Math.random() < (calcCritRate(stats) + (skill.critBonus || 0));
     if (isCritical) damage *= CONFIG.CRIT_MULTIPLIER;
 
+    // Element system
+    if (skill.element && target.element) {
+        const elemMult = ELEMENT_SYSTEM.getMultiplier(skill.element, target.element);
+        damage *= elemMult;
+        if (elemMult > 1) addBattleLog(`⚡ 元素克制！伤害提升！`, 'critical');
+        else if (elemMult < 1) addBattleLog(`🛡️ 元素抗性！伤害降低...`, 'normal');
+    }
+
     damage = Math.floor(damage);
     target.currentHp = Math.max(0, target.currentHp - damage);
+
+    // Status effect from elements
+    if (skill.element === 'ice' && Math.random() < 0.2) applyStatusEffect(target, 'freeze', char);
+    if (skill.element === 'fire' && Math.random() < 0.25) applyStatusEffect(target, 'burn', char);
+    if (skill.element === 'thunder' && Math.random() < 0.15) applyStatusEffect(target, 'paralyze', char);
 
     BattleAnimations.skillAnimation(skill.name);
     setTimeout(() => {
@@ -304,6 +381,9 @@ function performAOEAttack(char, skill, stats) {
             damage = Math.max(1, stats.int * power - target.def / 3);
         } else {
             damage = Math.max(1, stats.str * power - target.def / 3);
+        }
+        if (skill.element && target.element) {
+            damage *= ELEMENT_SYSTEM.getMultiplier(skill.element, target.element);
         }
         damage = Math.floor(damage);
         target.currentHp = Math.max(0, target.currentHp - damage);
@@ -1067,6 +1147,105 @@ const CHARACTER_UNLOCKS = {
     volcano: { classId: 'rogue', name: '盗贼', desc: '火山中的刺客加入了你的队伍！' }
 };
 
+const RECRUIT_CANDIDATES = {
+    lina: {
+        name: '莉娜', classId: 'warrior', icon: '⚔️',
+        desc: '身经百战的女战士，擅长近战格斗。',
+        personality: '别废话了，让我加入你们吧！我的剑可不是摆设！',
+        hairColor: '#cc3333', color: '#8B4513'
+    },
+    alan: {
+        name: '艾伦', classId: 'mage', icon: '🔮',
+        desc: '来自魔法学院的年轻法师，精通火系魔法。',
+        personality: '你好！我正在研究古代魔法，一起冒险或许能发现更多奥秘！',
+        hairColor: '#4444aa', color: '#1a237e'
+    },
+    sakura: {
+        name: '小樱', classId: 'priest', icon: '✝️',
+        desc: '温柔的神殿牧师，守护着队友的生命。',
+        personality: '我会保护好大家的！治愈之光永远与你们同在～',
+        hairColor: '#ff69b4', color: '#e91e63'
+    },
+    ashu: {
+        name: '阿修', classId: 'rogue', icon: '🗡️',
+        desc: '行踪诡秘的盗贼，速度极快。',
+        personality: '嘿嘿，找我有什么事？如果报酬够好，我可以考虑加入。',
+        hairColor: '#333', color: '#37474f'
+    }
+};
+
+function showRecruitMenu() {
+    W.menuActive = true;
+    const old = document.getElementById('worldMenu'); if (old) old.remove();
+    const partySize = (typeof gameState !== 'undefined') ? gameState.party.length : 1;
+    const maxSize = (typeof CONFIG !== 'undefined') ? CONFIG.MAX_PARTY_SIZE : 4;
+
+    let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
+        padding:20px;z-index:200;min-width:280px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        <div style="color:#FFD700;font-size:12px;margin-bottom:12px;text-align:center;">🤝 招募队友</div>
+        <div style="color:#aaa;font-size:8px;text-align:center;margin-bottom:10px;">队伍 ${partySize}/${maxSize}</div>`;
+
+    if (partySize >= maxSize) {
+        html += `<div style="color:#ff8888;font-size:9px;text-align:center;padding:15px;">队伍已满，无法招募新队友</div>`;
+    } else {
+        Object.entries(RECRUIT_CANDIDATES).forEach(([id, candidate]) => {
+            const alreadyInParty = typeof gameState !== 'undefined' &&
+                gameState.party.some(c => c.name === candidate.name);
+            if (alreadyInParty) {
+                html += `<div style="padding:10px;margin:4px 0;background:#1a1a3a;border:2px solid #333;border-radius:4px;opacity:0.5;">
+                    <div style="color:#888;font-size:9px;">${candidate.icon} ${candidate.name} - 已在队伍中</div>
+                </div>`;
+            } else {
+                html += `<button onclick="recruitMember('${id}')" style="display:block;width:100%;padding:10px;margin:4px 0;
+                    background:#1a1a3a;border:2px solid #4a4a8a;border-radius:4px;color:#fff;font-size:9px;
+                    font-family:'Press Start 2P',monospace;cursor:pointer;text-align:left;">
+                    <div style="color:#FFD700;margin-bottom:4px;">${candidate.icon} ${candidate.name} (${CLASSES[candidate.classId]?.name || candidate.classId})</div>
+                    <div style="color:#aaa;font-size:8px;line-height:1.4;">${candidate.desc}</div>
+                    <div style="color:#88ccff;font-size:8px;margin-top:4px;font-style:italic;">"${candidate.personality}"</div>
+                </button>`;
+            }
+        });
+    }
+
+    html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
+        background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
+        font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
+
+    const container = W.canvas ? W.canvas.parentElement : document.querySelector('.world-content');
+    if (container) { container.style.position = 'relative'; container.insertAdjacentHTML('beforeend', html); }
+}
+
+window.recruitMember = function(candidateId) {
+    if (typeof gameState === 'undefined') return;
+    const candidate = RECRUIT_CANDIDATES[candidateId];
+    if (!candidate) return;
+    if (gameState.party.length >= CONFIG.MAX_PARTY_SIZE) {
+        if (typeof showToast === 'function') showToast('❌ 队伍已满！', 'error');
+        return;
+    }
+    if (gameState.party.some(c => c.name === candidate.name)) {
+        if (typeof showToast === 'function') showToast('❌ 该队友已在队伍中！', 'error');
+        return;
+    }
+
+    createCharacter(candidate.name, candidate.classId);
+    const newChar = gameState.party[gameState.party.length - 1];
+    // Set level to average party level (minimum 1)
+    const avgLevel = Math.max(1, Math.floor(gameState.party.slice(0, -1).reduce((s, c) => s + c.level, 0) / (gameState.party.length - 1)));
+    for (let i = 1; i < avgLevel; i++) gainXp(newChar, newChar.xpToNext);
+    // Give starter equipment
+    newChar.equipment.weapon = generateEquipment('weapon', avgLevel, 'magic');
+    newChar.equipment.armor = generateEquipment('armor', avgLevel, 'magic');
+
+    closeNPCMenu();
+    if (typeof showToast === 'function') showToast(`🎉 ${candidate.name} 加入了队伍！`, 'success');
+    if (typeof saveGame === 'function') saveGame();
+};
+
+window.showRecruitMenu = showRecruitMenu;
+window.RECRUIT_CANDIDATES = RECRUIT_CANDIDATES;
+
 // ==================== 区域背景 ====================
 const ZONE_BACKGROUNDS = {
     village: { color: 'linear-gradient(180deg, #2a3a2a 0%, #1a2a1a 100%)', particles: 'leaf' },
@@ -1769,6 +1948,33 @@ const BESTIARY = {
     darkPrimordial: { name: '黑暗原初', icon: '🌑', family: 'special', level: 99, hp: 12000, str: 380, def: 280, xp: 5000, gold: 5000, desc: '黑暗的起源' },
     evilIncarnate: { name: '邪恶化身', icon: '👿', family: 'demon', level: 99, hp: 15000, str: 420, def: 300, xp: 8000, gold: 8000, desc: '所有邪恶的集合' }
 };
+
+// Add elements to monsters
+function assignMonsterElements() {
+    const elementMap = {
+        // Fire monsters
+        slimeRed: 'fire', elementalFire: 'fire', dragonFire: 'fire', lavaGolem: 'fire',
+        phoenixYoung: 'fire', hellHound: 'fire', mythPhoenix: 'fire',
+        // Ice monsters
+        dragonIce: 'ice', iceElemental: 'ice', yeti: 'ice', bearPolar: 'ice', snowQueen: 'ice',
+        // Thunder monsters
+        dragonThunder: 'thunder', elementalThunder: 'thunder', stormElemental: 'thunder',
+        // Holy monsters
+        angelGuard: 'holy', angelSeraph: 'holy', pegasus: 'holy', holyKnight: 'holy',
+        divineGuardian: 'holy', celestial: 'holy',
+        // Dark monsters
+        undeadSkeleton: 'dark', undeadZombie: 'dark', undeadGhost: 'dark', undeadVampire: 'dark',
+        undeadLich: 'dark', lichApprentice: 'dark', shadowBeast: 'dark', boneDragon: 'dark',
+        spiritDark: 'dark', darknessEternal: 'dark', darkPrimordial: 'dark',
+        demonImp: 'dark', demonDog: 'dark', demonLord: 'dark', demonArch: 'dark',
+        voidSpawn: 'dark', chaosFiend: 'dark', chaosAvatar: 'dark', demonEmperor: 'dark',
+        evilIncarnate: 'dark', ghostKnight: 'dark', darkWizard: 'dark'
+    };
+    Object.entries(elementMap).forEach(([id, element]) => {
+        if (BESTIARY[id]) BESTIARY[id].element = element;
+    });
+}
+assignMonsterElements();
 
 // 按区域分组的怪物
 const ZONE_ENEMIES = {
@@ -2583,6 +2789,15 @@ function nextTurn() {
     // 更新BUFF
     updateBuffs();
 
+    // Process status effects for party
+    gameState.party.forEach(char => {
+        if (char.currentHp > 0) processStatusEffects(char);
+    });
+    // Process status effects for enemies
+    if (battleState) battleState.enemies.forEach(enemy => {
+        if (enemy.currentHp > 0) processStatusEffects(enemy);
+    });
+
     // 检查战斗结束
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
     const aliveChars = gameState.party.filter(c => c.currentHp > 0);
@@ -2601,6 +2816,14 @@ function nextTurn() {
     while (battleState.activeCharIndex < gameState.party.length) {
         const char = gameState.party[battleState.activeCharIndex];
         if (char.currentHp > 0) {
+            // Check if frozen/paralyzed
+            if (char.statusEffects && char.statusEffects.some(e => e.skipTurn || (e.skipChance && Math.random() < e.skipChance))) {
+                const skipEffect = char.statusEffects.find(e => e.skipTurn || e.skipChance);
+                addBattleLog(`${skipEffect.icon} ${char.name} 因${skipEffect.name}无法行动！`, 'damage');
+                battleState.activeCharIndex++;
+                setTimeout(() => nextTurn(), getAnimDuration(500));
+                return;
+            }
             addBattleLog(`🎯 ${char.name} 的回合`, 'normal');
             renderBattle();
             // 自动战斗触发
@@ -2924,11 +3147,12 @@ function renderBattle() {
              data-enemy-index="${index}"
              onclick="selectTarget(${index})">
             <div class="enemy-icon">${getMonsterImage(enemy, 50)}</div>
-            <div class="enemy-name">${enemy.name}</div>
+            <div class="enemy-name">${enemy.element ? ELEMENT_SYSTEM.elements[enemy.element]?.icon || '' : ''}${enemy.name}</div>
             <div class="enemy-hp-bar">
                 <div class="hp-fill" style="width: ${(enemy.currentHp / enemy.maxHp) * 100}%; background: #e74c3c;"></div>
             </div>
             <div class="enemy-hp-text">${enemy.currentHp}/${enemy.maxHp}</div>
+            ${enemy.statusEffects && enemy.statusEffects.length > 0 ? `<div class="status-effects">${enemy.statusEffects.map(e => e.icon).join('')}</div>` : ''}
         </div>
     `).join('');
 
@@ -2948,6 +3172,7 @@ function renderBattle() {
                     <div style="height: 100%; width: ${(char.currentMp / stats.mp) * 100}%; background: linear-gradient(90deg, #3498db 0%, #2980b9 100%); transition: width 0.3s ease;"></div>
                 </div>
                 <div style="font-size: 9px; color: #7f8c8d; margin-top: 2px;">${char.currentMp}/${stats.mp}</div>
+                ${char.statusEffects && char.statusEffects.length > 0 ? `<div class="status-effects" style="font-size:10px;margin-top:2px;">${char.statusEffects.map(e => e.icon).join('')}</div>` : ''}
             </div>
         `;
     }).join('');
@@ -3395,9 +3620,11 @@ function renderParty() {
                                 </div>`;
                             }
                             const enhanceText = equip.enhanceLevel > 0 ? `+${equip.enhanceLevel}` : '';
-                            return `<div class="equipment-slot rarity-${equip.rarity}" onclick="showEnhanceInterface(${char.id}, '${slot}')">
-                                <div class="slot-icon">${equip.icon}</div>
-                                <div class="slot-name">${equip.name} ${enhanceText}</div>
+                            const sellPrice = getSellPrice(equip);
+                            return `<div class="equipment-slot rarity-${equip.rarity}">
+                                <div class="slot-icon" onclick="showEnhanceInterface(${char.id}, '${slot}')">${equip.icon}</div>
+                                <div class="slot-name" onclick="showEnhanceInterface(${char.id}, '${slot}')">${equip.name} ${enhanceText}</div>
+                                <div class="slot-sell" onclick="event.stopPropagation();sellEquipment(${char.id},'${slot}')" style="font-size:7px;color:#ffd700;cursor:pointer;margin-top:2px;">💰卖${sellPrice}G</div>
                             </div>`;
                         }).join('')}
                     </div>
@@ -4694,6 +4921,55 @@ window.showTutorial = showTutorial;
 window.showStatsPage = showStatsPage;
 window._tutorialNext = () => {};
 window._tutorialPrev = () => {};
+
+// ==================== Equipment Shop by Region ====================
+const SHOP_EQUIPMENT = {
+    village: [
+        { slot: 'weapon', name: '铁剑', level: 1, rarity: 'common', price: 100 },
+        { slot: 'armor', name: '皮甲', level: 1, rarity: 'common', price: 80 },
+        { slot: 'helmet', name: '皮帽', level: 1, rarity: 'common', price: 60 },
+        { slot: 'shield', name: '木盾', level: 1, rarity: 'common', price: 70 },
+        { slot: 'accessory', name: '铜戒指', level: 1, rarity: 'common', price: 50 }
+    ],
+    plains: [
+        { slot: 'weapon', name: '钢剑', level: 5, rarity: 'magic', price: 300 },
+        { slot: 'armor', name: '锁子甲', level: 5, rarity: 'magic', price: 250 },
+        { slot: 'helmet', name: '铁盔', level: 5, rarity: 'magic', price: 180 },
+        { slot: 'shield', name: '铁盾', level: 5, rarity: 'magic', price: 200 }
+    ],
+    forest: [
+        { slot: 'weapon', name: '精灵之刃', level: 10, rarity: 'rare', price: 800 },
+        { slot: 'armor', name: '森林护甲', level: 10, rarity: 'rare', price: 700 },
+        { slot: 'accessory', name: '自然护符', level: 10, rarity: 'rare', price: 500 }
+    ]
+};
+
+function sellEquipment(charId, slot) {
+    const char = gameState.party.find(c => c.id === charId);
+    if (!char || !char.equipment[slot]) return;
+    const equip = char.equipment[slot];
+    const sellPrice = Math.floor(getSellPrice(equip));
+    gameState.gold += sellPrice;
+    char.equipment[slot] = null;
+    showToast(`💰 卖出 ${equip.name}，获得 ${sellPrice} 金币！`, 'success');
+    saveGame();
+    renderParty();
+}
+
+function getSellPrice(equip) {
+    if (!equip) return 0;
+    const rarityMult = { common: 0.3, magic: 0.4, rare: 0.5, epic: 0.6, legendary: 0.7 };
+    const base = (equip.str || 0) + (equip.def || 0) + (equip.hp || 0) + (equip.spd || 0) + (equip.int || 0);
+    return Math.max(5, Math.floor(base * 5 * (rarityMult[equip.rarity] || 0.3)));
+}
+
+window.SHOP_EQUIPMENT = SHOP_EQUIPMENT;
+window.sellEquipment = sellEquipment;
+window.getSellPrice = getSellPrice;
+window.ELEMENT_SYSTEM = ELEMENT_SYSTEM;
+window.STATUS_EFFECTS = STATUS_EFFECTS;
+window.applyStatusEffect = applyStatusEffect;
+window.processStatusEffects = processStatusEffects;
 
 // 启动
 window.onload = init;

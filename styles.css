@@ -2763,3 +2763,123 @@ body {
         height: 52px;
     }
 }
+
+/* ============== Phase 6: 状态效果 ============== */
+.status-effects {
+    display: flex;
+    gap: 1px;
+    font-size: 8px;
+    margin-top: 2px;
+    justify-content: center;
+}
+
+.status-effect-icon {
+    display: inline-block;
+    animation: statusPulse 1.5s infinite;
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ============== Phase 6: 元素图标 ============== */
+.element-icon {
+    font-size: 8px;
+    margin-right: 2px;
+}
+
+/* ============== Phase 6: 装备卖出按钮 ============== */
+.slot-sell {
+    font-size: 7px;
+    color: var(--dq-gold);
+    cursor: pointer;
+    margin-top: 2px;
+    transition: color 0.2s;
+}
+
+.slot-sell:hover {
+    color: var(--dq-red);
+}
+
+/* ============== Phase 6: 招募界面 ============== */
+.recruit-panel {
+    background: linear-gradient(135deg, #1a2a4a, #2a3a5a);
+    border: 3px solid var(--dq-gold);
+    border-radius: 10px;
+    padding: 20px;
+    min-width: 280px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.recruit-candidate {
+    background: #1a1a3a;
+    border: 2px solid #4a4a8a;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 4px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.recruit-candidate:hover {
+    border-color: var(--dq-gold);
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.recruit-candidate.recruited {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ============== Phase 6: 小地图 ============== */
+.minimap-container {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--dq-gold);
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+}
+
+.minimap-player {
+    animation: minimapBlink 0.8s infinite;
+}
+
+@keyframes minimapBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* ============== Phase 6: 商店装备对比 ============== */
+.equip-compare {
+    display: flex;
+    justify-content: space-between;
+    font-size: 7px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    margin-top: 4px;
+    border-radius: 2px;
+}
+
+.equip-compare .stat-up {
+    color: #44ff44;
+}
+
+.equip-compare .stat-down {
+    color: #ff4444;
+}
+
+.equip-compare .stat-same {
+    color: #888;
+}
+
+/* ============== Phase 6: 技能树改进 ============== */
+.skill-item.element-fire { border-left: 3px solid #ff4400; }
+.skill-item.element-ice { border-left: 3px solid #44aaff; }
+.skill-item.element-thunder { border-left: 3px solid #ffdd00; }
+.skill-item.element-holy { border-left: 3px solid #ffffaa; }
+.skill-item.element-dark { border-left: 3px solid #8844aa; }

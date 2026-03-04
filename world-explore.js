@@ -77,6 +77,8 @@ const MAPS = {
                 dialog:'勇者啊，南边的草原上出现了怪物，村民们都很害怕。请帮帮我们！向南走出村子就能到达草原。' });
             npcs.push({ x:20, y:10, name:'少女', color:'#e91e63', hairColor:'#ffcc00', type:'talk',
                 dialog:'听说东边的森林里藏着传说中的宝剑呢！不过要先穿过草原才行...加油哦！' });
+            npcs.push({ x:20, y:15, name:'冒险者公会', color:'#1565C0', hairColor:'#ffd700', type:'recruit',
+                dialog:'想找人一起冒险？看看有谁愿意加入你吧！' });
             
             // 南出口 → 草原
             for (let x = 18; x < 23; x++) {
@@ -727,6 +729,10 @@ function action() {
             case 'shop': showShopMenu(); break;
             case 'inn': showInnMenu(npc); break;
             case 'smith': showWorldDialog('💬 铁匠', '想强化装备？去队伍界面选择角色和装备槽位吧！'); break;
+            case 'recruit':
+                if (typeof showRecruitMenu === 'function') showRecruitMenu();
+                else showWorldDialog('💬 ' + npc.name, npc.dialog);
+                break;
             default: showWorldDialog('💬 '+npc.name, npc.dialog); break;
         }
     }
@@ -737,27 +743,48 @@ function showShopMenu() {
     W.menuActive = true;
     const old = document.getElementById('worldMenu'); if(old) old.remove();
     const gold = (typeof gameState!=='undefined') ? gameState.gold : 0;
-    const items = [
+    const region = W.currentMap || 'village';
+
+    const consumables = [
         { name:'🧪 小治疗药水', price:30, type:'smallPotion' },
         { name:'🧪 中治疗药水', price:100, type:'mediumPotion' },
         { name:'💊 以太(MP)', price:80, type:'ether' },
         { name:'✨ 万灵药', price:1000, type:'elixir' }
     ];
+
+    const equipments = (typeof SHOP_EQUIPMENT !== 'undefined' && SHOP_EQUIPMENT[region]) ? SHOP_EQUIPMENT[region] : [];
+
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
-        padding:20px;z-index:200;min-width:260px;font-family:'Press Start 2P',monospace;">
+        padding:20px;z-index:200;min-width:280px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
         <div style="color:#FFD700;font-size:12px;margin-bottom:12px;text-align:center;">🏪 商店</div>
-        <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>`;
-    items.forEach(item => {
-        html += `<button onclick="buyItem('${item.type}',${item.price})" style="display:block;width:100%;padding:8px;margin:4px 0;
+        <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>
+        <div style="color:#88ccff;font-size:8px;margin-bottom:6px;">📦 消耗品</div>`;
+
+    consumables.forEach(item => {
+        html += `<button onclick="buyItem('${item.type}',${item.price})" style="display:block;width:100%;padding:8px;margin:3px 0;
             background:#1a1a3a;border:2px solid #4a4a8a;border-radius:4px;color:#fff;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;text-align:left;">
             ${item.name} <span style="float:right;color:#ffd700;">${item.price}G</span></button>`;
     });
+
+    if (equipments.length > 0) {
+        html += `<div style="color:#ff88ff;font-size:8px;margin:10px 0 6px 0;">⚔️ 装备</div>`;
+        equipments.forEach((eq, idx) => {
+            const rarityColors = { common: '#aaa', magic: '#00ff00', rare: '#0088ff', epic: '#aa00ff', legendary: '#ffaa00' };
+            const color = rarityColors[eq.rarity] || '#aaa';
+            const icon = (typeof getEquipIcon === 'function') ? getEquipIcon(eq.slot, eq.rarity) : '⚔️';
+            html += `<button onclick="buyEquipment('${region}',${idx})" style="display:block;width:100%;padding:8px;margin:3px 0;
+                background:#1a1a3a;border:2px solid ${color};border-radius:4px;color:${color};font-size:9px;
+                font-family:'Press Start 2P',monospace;cursor:pointer;text-align:left;">
+                ${icon} ${eq.name} <span style="float:right;color:#ffd700;">${eq.price}G</span></button>`;
+        });
+    }
+
     html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
         background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
         font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
-    
+
     const container = W.canvas.parentElement;
     if(container) { container.style.position='relative'; container.insertAdjacentHTML('beforeend',html); }
 }
@@ -770,6 +797,30 @@ window.buyItem = function(type, price) {
     if(typeof SoundEffects!=='undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
     if(typeof showToast==='function') showToast('✅ 购买成功！','success');
     // 刷新商店金币显示
+    closeNPCMenu(); showShopMenu();
+};
+
+window.buyEquipment = function(region, idx) {
+    if (typeof gameState === 'undefined' || typeof SHOP_EQUIPMENT === 'undefined') return;
+    const items = SHOP_EQUIPMENT[region];
+    if (!items || !items[idx]) return;
+    const item = items[idx];
+    if (gameState.gold < item.price) {
+        if (typeof showToast === 'function') showToast('💰 金币不足！', 'error');
+        return;
+    }
+    gameState.gold -= item.price;
+    const equip = (typeof generateEquipment === 'function') ? generateEquipment(item.slot, item.level, item.rarity) : null;
+    if (equip) {
+        equip.name = item.name;
+        if (typeof addItemToInventory === 'function') {
+            addItemToInventory(equip);
+        } else {
+            gameState.inventory.push(equip);
+        }
+    }
+    if (typeof SoundEffects !== 'undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
+    if (typeof showToast === 'function') showToast(`✅ 购买了 ${item.name}！`, 'success');
     closeNPCMenu(); showShopMenu();
 };
 
@@ -927,7 +978,63 @@ function drawHUD(ctx, cw, ch, mapDef) {
         ctx.fillStyle='#FFD700'; ctx.font='10px monospace';
         ctx.fillText('💰 '+gameState.gold+'G',cw-94,66);
     }
-    
+
+    // Minimap (bottom-right)
+    const mmSize = 80;
+    const mmX = cw - mmSize - 10;
+    const mmY = ch - mmSize - 10;
+    const mmScale = mmSize / Math.max(W.mapW, W.mapH);
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(mmX - 2, mmY - 2, mmSize + 4, mmSize + 4);
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mmX - 2, mmY - 2, mmSize + 4, mmSize + 4);
+
+    // Draw map tiles
+    for (let y = 0; y < W.mapH; y++) {
+        for (let x = 0; x < W.mapW; x++) {
+            const tile = W.map[y][x];
+            const px = mmX + Math.floor(x * mmScale);
+            const py = mmY + Math.floor(y * mmScale);
+            const pw = Math.max(1, Math.ceil(mmScale));
+            const ph = Math.max(1, Math.ceil(mmScale));
+
+            switch(tile) {
+                case T.WALL: ctx.fillStyle = '#555'; break;
+                case T.WATER: ctx.fillStyle = '#3b6cc4'; break;
+                case T.LAVA: ctx.fillStyle = '#ff4400'; break;
+                case T.PATH: ctx.fillStyle = '#c4a060'; break;
+                case T.FLOOR: ctx.fillStyle = '#3a3a3a'; break;
+                case T.EXIT: ctx.fillStyle = '#FFD700'; break;
+                case T.TREE: ctx.fillStyle = '#1a5a1e'; break;
+                case T.CHEST:
+                    const ch2 = W.chests.find(c => c.x === x && c.y === y);
+                    ctx.fillStyle = (ch2 && !ch2.opened) ? '#DAA520' : '#3a6a3e';
+                    break;
+                case T.MONSTER: case T.BOSS: ctx.fillStyle = '#ff4444'; break;
+                case T.FENCE: ctx.fillStyle = '#8B6914'; break;
+                default: ctx.fillStyle = W.currentMap === 'cave' ? '#2a2a2a' : '#3a6a3e'; break;
+            }
+            ctx.fillRect(px, py, pw, ph);
+        }
+    }
+
+    // Draw NPCs
+    W.npcs.forEach(n => {
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(mmX + Math.floor(n.x * mmScale), mmY + Math.floor(n.y * mmScale), Math.max(2, Math.ceil(mmScale)), Math.max(2, Math.ceil(mmScale)));
+    });
+
+    // Draw player (blinking)
+    if (Math.floor(W.time / 10) % 2 === 0) {
+        ctx.fillStyle = '#ff0';
+        const playerMmX = mmX + Math.floor(W.player.x * mmScale);
+        const playerMmY = mmY + Math.floor(W.player.y * mmScale);
+        ctx.fillRect(playerMmX - 1, playerMmY - 1, Math.max(3, Math.ceil(mmScale) + 1), Math.max(3, Math.ceil(mmScale) + 1));
+    }
+
     // 区域名称大字动画
     if(W.areaNameTimer>0&&mapDef) {
         ctx.globalAlpha=W.areaNameAlpha;
