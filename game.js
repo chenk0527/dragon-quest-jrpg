@@ -29,7 +29,9 @@ function showSkillTree(charId) {
     const char = gameState.party.find(c => c.id === charId);
     if (!char) return;
 
-    const skills = SKILL_SYSTEM[char.classId] || [];
+    let skills = [...(SKILL_SYSTEM[char.classId] || [])];
+    const baseClass = CLASSES[char.classId]?.advancedOf;
+    if (baseClass) skills = [...(SKILL_SYSTEM[baseClass] || []), ...skills];
     const overlay = document.createElement('div');
     overlay.id = 'skillTreeOverlay';
     overlay.className = 'skill-tree-overlay';
@@ -96,8 +98,13 @@ function selectSkillForBattle(charId, skillId) {
 
 // 根据ID获取技能
 function getSkillById(classId, skillId) {
-    const skills = SKILL_SYSTEM[classId] || [];
-    return skills.find(s => s.id === skillId);
+    let skills = SKILL_SYSTEM[classId] || [];
+    let found = skills.find(s => s.id === skillId);
+    if (!found) {
+        const baseClass = CLASSES[classId]?.advancedOf;
+        if (baseClass) found = (SKILL_SYSTEM[baseClass] || []).find(s => s.id === skillId);
+    }
+    return found;
 }
 
 // 执行技能
@@ -271,6 +278,7 @@ function performSkillAttack(char, skill, stats) {
         if (isCritical) BattleAnimations.shakeScreen('light');
     }, getAnimDuration(400));
 
+    checkAchievement('damage', damage);
     if (isCritical) {
         addBattleLog(`💥 ${char.name} 使用 ${skill.name} 暴击 ${target.name}！造成 ${damage} 伤害！`, 'critical');
     } else {
@@ -535,6 +543,7 @@ function enhanceEquipment(charId, slot) {
         // 强化成功
         equipment.enhanceLevel = (equipment.enhanceLevel || 0) + 1;
         updateEnhancedStats(equipment);
+        checkAchievement('enhance', equipment.enhanceLevel);
         saveGame();
         return {
             success: true,
@@ -775,6 +784,156 @@ const SKILL_SYSTEM = {
         { id: 'shadowDance', name: '影舞', icon: '💃', mp: 45, type: 'attack', power: 0.8, hits: 4, desc: '连续四次攻击', level: 35 }
     ]
 };
+
+// ==================== 转职系统 ====================
+const CLASS_CHANGE_PATHS = {
+    warrior: [
+        { targetClass: 'paladin', name: '圣骑士', icon: '🛡️', desc: '守护之力，攻防兼备，可使用圣光技能' },
+        { targetClass: 'berserker', name: '狂战士', icon: '🪓', desc: '纯粹的暴力，超高攻击力，牺牲防御' }
+    ],
+    mage: [
+        { targetClass: 'archmage', name: '大魔导师', icon: '🌟', desc: '极致魔法，超强AOE和元素掌控' },
+        { targetClass: 'necromancer', name: '死灵法师', icon: '💀', desc: '暗黑魔法，吸血和诅咒能力' }
+    ],
+    priest: [
+        { targetClass: 'sage', name: '贤者', icon: '📖', desc: '全能辅助，治疗和魔法兼修' },
+        { targetClass: 'monk', name: '武僧', icon: '👊', desc: '近战格斗，高速连击和内功' }
+    ],
+    rogue: [
+        { targetClass: 'assassin', name: '刺客', icon: '🥷', desc: '一击必杀，极致暴击和速度' },
+        { targetClass: 'ranger', name: '游侠', icon: '🏹', desc: '远程多面手，陷阱和自然之力' }
+    ]
+};
+
+// 高级职业技能
+SKILL_SYSTEM.paladin = [
+    { id: 'holyStrike', name: '圣击', icon: '🛡️', mp: 10, type: 'attack', power: 2.0, desc: '圣光注入的打击', level: 30 },
+    { id: 'divineShield', name: '圣盾', icon: '✨', mp: 20, type: 'partyBuff', buffType: 'def', buffValue: 1.6, duration: 4, desc: '全队防御大幅提升', level: 32 },
+    { id: 'holyWrath', name: '神圣之怒', icon: '⚡', mp: 30, type: 'aoe', power: 2.5, desc: '圣光全体攻击', level: 36 },
+    { id: 'layOnHands', name: '圣疗', icon: '💚', mp: 35, type: 'heal', power: 3.0, desc: '强力治疗', level: 40 },
+    { id: 'aegis', name: '神盾', icon: '🔆', mp: 50, type: 'buff', buffType: 'invincible', duration: 2, desc: '无敌两回合', level: 50 }
+];
+SKILL_SYSTEM.berserker = [
+    { id: 'frenzy', name: '狂乱', icon: '🪓', mp: 10, type: 'attack', power: 2.5, desc: '疯狂的连续打击', level: 30 },
+    { id: 'bloodRage', name: '血怒', icon: '🩸', mp: 15, type: 'buff', buffType: 'str', buffValue: 2.0, duration: 3, desc: '牺牲HP提升攻击', level: 32 },
+    { id: 'cleave', name: '劈裂', icon: '💥', mp: 25, type: 'aoe', power: 2.2, desc: '全体斩击', level: 36 },
+    { id: 'rampage', name: '暴走', icon: '👹', mp: 35, type: 'attack', power: 3.5, desc: '不计代价的狂暴攻击', level: 40 },
+    { id: 'apocalypse', name: '毁灭斩', icon: '🔥', mp: 55, type: 'attack', power: 5.0, desc: '最终毁灭一击', level: 50 }
+];
+SKILL_SYSTEM.archmage = [
+    { id: 'arcaneBlast', name: '奥术爆破', icon: '🌟', mp: 15, type: 'magic', power: 2.8, desc: '纯粹奥术伤害', level: 30 },
+    { id: 'elementalStorm', name: '元素风暴', icon: '🌪️', mp: 30, type: 'aoe', power: 3.0, desc: '多元素全体攻击', level: 32 },
+    { id: 'timeWarp', name: '时间扭曲', icon: '⏳', mp: 25, type: 'partyBuff', buffType: 'spd', buffValue: 2.0, duration: 3, desc: '全队速度翻倍', level: 36 },
+    { id: 'manaBurst', name: '魔力爆发', icon: '💫', mp: 40, type: 'aoe', power: 4.0, desc: '消耗大量MP的超强AOE', level: 40 },
+    { id: 'cosmicRay', name: '宇宙射线', icon: '☄️', mp: 70, type: 'aoe', power: 5.5, desc: '毁天灭地的终极魔法', level: 50 }
+];
+SKILL_SYSTEM.necromancer = [
+    { id: 'soulDrain', name: '灵魂汲取', icon: '💀', mp: 10, type: 'drain', power: 2.0, desc: '吸取敌人生命力', level: 30 },
+    { id: 'curseAll', name: '群体诅咒', icon: '☠️', mp: 20, type: 'debuff', debuffType: 'str', debuffValue: 0.5, duration: 4, desc: '全体敌人攻击下降', level: 32 },
+    { id: 'darkPact', name: '暗黑契约', icon: '🌑', mp: 25, type: 'buff', buffType: 'int', buffValue: 2.0, duration: 3, desc: '大幅提升魔法力量', level: 36 },
+    { id: 'deathCoil', name: '死亡缠绕', icon: '🕸️', mp: 35, type: 'magic', power: 3.5, desc: '暗影伤害+恢复HP', level: 40 },
+    { id: 'plagueBringer', name: '瘟疫之触', icon: '☣️', mp: 60, type: 'aoe', power: 4.0, desc: '腐蚀全体敌人', level: 50 }
+];
+SKILL_SYSTEM.sage = [
+    { id: 'wisdomLight', name: '智慧之光', icon: '📖', mp: 12, type: 'magic', power: 2.2, desc: '智慧凝聚的光束', level: 30 },
+    { id: 'grandHeal', name: '大治愈', icon: '💗', mp: 30, type: 'partyHeal', power: 2.0, desc: '全队大量回复', level: 32 },
+    { id: 'barrier', name: '结界', icon: '🔮', mp: 25, type: 'partyBuff', buffType: 'def', buffValue: 1.8, duration: 4, desc: '全队防御壁', level: 36 },
+    { id: 'resurrection', name: '复苏', icon: '👼', mp: 50, type: 'revive', power: 1.0, desc: '满血复活', level: 40 },
+    { id: 'nirvana', name: '涅槃', icon: '🌈', mp: 70, type: 'partyHeal', power: 5.0, desc: '全队完全恢复', level: 50 }
+];
+SKILL_SYSTEM.monk = [
+    { id: 'tigerPalm', name: '虎掌', icon: '👊', mp: 8, type: 'attack', power: 2.0, desc: '迅猛的掌击', level: 30 },
+    { id: 'flurry', name: '乱拳', icon: '💨', mp: 20, type: 'attack', power: 1.0, hits: 4, desc: '四连拳', level: 32 },
+    { id: 'innerPeace', name: '内功', icon: '☯️', mp: 15, type: 'heal', power: 2.0, desc: '内力恢复', level: 36 },
+    { id: 'chakraBurst', name: '气爆', icon: '💥', mp: 30, type: 'aoe', power: 2.5, desc: '内力释放攻击全体', level: 40 },
+    { id: 'dragonFist', name: '龙拳', icon: '🐲', mp: 50, type: 'attack', power: 5.0, desc: '最强格斗技', level: 50 }
+];
+SKILL_SYSTEM.assassin = [
+    { id: 'shadowStep', name: '暗影步', icon: '🥷', mp: 10, type: 'buff', buffType: 'spd', buffValue: 2.0, duration: 2, desc: '瞬移到目标身后', level: 30 },
+    { id: 'deathMark', name: '死亡印记', icon: '🎯', mp: 15, type: 'debuff', debuffType: 'def', debuffValue: 0.3, duration: 3, desc: '标记目标降低防御', level: 32 },
+    { id: 'fanOfKnives', name: '刀扇', icon: '🗡️', mp: 25, type: 'aoe', power: 2.0, desc: '飞刀全体攻击', level: 36 },
+    { id: 'execute2', name: '处刑', icon: '💀', mp: 35, type: 'attack', power: 4.0, critBonus: 0.5, desc: '致命一击', level: 40 },
+    { id: 'phantomStrike', name: '幻影突袭', icon: '👤', mp: 55, type: 'attack', power: 2.0, hits: 3, desc: '三重幻影攻击', level: 50 }
+];
+SKILL_SYSTEM.ranger = [
+    { id: 'multiShot', name: '多重射击', icon: '🏹', mp: 12, type: 'aoe', power: 1.8, desc: '箭矢全体攻击', level: 30 },
+    { id: 'natureBond', name: '自然之力', icon: '🌿', mp: 15, type: 'partyBuff', buffType: 'str', buffValue: 1.4, duration: 4, desc: '自然祝福全队', level: 32 },
+    { id: 'entangle', name: '缠绕', icon: '🌱', mp: 20, type: 'debuff', debuffType: 'spd', debuffValue: 0.3, duration: 4, desc: '藤蔓束缚敌人', level: 36 },
+    { id: 'explosiveShot', name: '爆裂箭', icon: '💥', mp: 30, type: 'attack', power: 3.5, desc: '爆炸箭矢', level: 40 },
+    { id: 'arrowStorm', name: '箭暴', icon: '🌧️', mp: 55, type: 'aoe', power: 3.5, desc: '箭雨覆盖全体', level: 50 }
+];
+
+function showClassChange(charId) {
+    const char = gameState.party.find(c => c.id === charId);
+    if (!char) return;
+    if (char.level < 30) {
+        showToast('需要30级才能转职！', 'error');
+        return;
+    }
+    const baseClass = CLASSES[char.classId]?.advancedOf || char.classId;
+    const paths = CLASS_CHANGE_PATHS[baseClass];
+    if (!paths) {
+        showToast('该职业没有转职路径！', 'error');
+        return;
+    }
+    if (CLASSES[char.classId]?.advancedOf) {
+        showToast('已经是高级职业了！', 'error');
+        return;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = 'classChangeOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:400px;">
+            <h3>🔄 转职 - ${char.name}</h3>
+            <p style="margin:10px 0;color:#aaa;">当前职业: ${char.className} Lv.${char.level}</p>
+            <div style="display:flex;flex-direction:column;gap:10px;margin:15px 0;">
+                ${paths.map(p => `
+                    <button class="btn btn-primary" style="padding:12px;text-align:left;" onclick="performClassChange(${char.id},'${p.targetClass}')">
+                        <div>${p.icon} ${p.name}</div>
+                        <div style="font-size:9px;color:#ccc;margin-top:4px;">${p.desc}</div>
+                    </button>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary" onclick="document.getElementById('classChangeOverlay').remove()">取消</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function performClassChange(charId, targetClassId) {
+    const char = gameState.party.find(c => c.id === charId);
+    if (!char) return;
+    const newClass = CLASSES[targetClassId];
+    if (!newClass) return;
+
+    const oldSkills = [...(char.learnedSkills || [])];
+    char.classId = targetClassId;
+    char.className = newClass.name;
+    char.icon = newClass.icon;
+
+    // 保留原有技能，添加新职业技能
+    const newSkills = SKILL_SYSTEM[targetClassId] || [];
+    newSkills.forEach(skill => {
+        if (skill.level <= char.level && !char.learnedSkills.includes(skill.id)) {
+            char.learnedSkills.push(skill.id);
+        }
+    });
+
+    // 重算属性
+    const stats = calculateStats(char);
+    char.currentHp = stats.hp;
+    char.currentMp = stats.mp;
+
+    const overlay = document.getElementById('classChangeOverlay');
+    if (overlay) overlay.remove();
+
+    showToast(`🎉 ${char.name} 转职为 ${newClass.name}！`, 'success');
+    checkAchievement('classChange');
+    saveGame();
+    renderParty();
+}
 
 // ==================== 消耗品定义 ====================
 const CONSUMABLE_ITEMS = {
@@ -1698,7 +1857,16 @@ const CLASSES = {
     mage: { id: 'mage', name: '法师', icon: '🔮', imagePath: 'assets/characters/mage_v2.svg', baseHp: 80, baseStr: 5, baseDef: 6, baseSpd: 10, baseInt: 18, growth: { hp: 6, str: 0.5, def: 1, spd: 2, int: 3 } },
     archer: { id: 'archer', name: '弓箭手', icon: '🏹', imagePath: 'assets/characters/archer_v2.svg', baseHp: 100, baseStr: 12, baseDef: 8, baseSpd: 15, baseInt: 8, growth: { hp: 9, str: 2, def: 1.5, spd: 3, int: 1 } },
     priest: { id: 'priest', name: '牧师', icon: '✝️', imagePath: 'assets/characters/priest_v2.svg', baseHp: 90, baseStr: 8, baseDef: 10, baseSpd: 7, baseInt: 15, growth: { hp: 8, str: 1, def: 2, spd: 1, int: 2.5 } },
-    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue_v2.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } }
+    rogue: { id: 'rogue', name: '盗贼', icon: '🗡️', imagePath: 'assets/characters/rogue_v2.svg', baseHp: 95, baseStr: 14, baseDef: 7, baseSpd: 18, baseInt: 6, growth: { hp: 8, str: 2.5, def: 1, spd: 3.5, int: 0.5 } },
+    // 高级职业
+    paladin: { id: 'paladin', name: '圣骑士', icon: '🛡️', baseHp: 140, baseStr: 16, baseDef: 16, baseSpd: 7, baseInt: 10, growth: { hp: 14, str: 3, def: 3, spd: 1, int: 1.5 }, advancedOf: 'warrior' },
+    berserker: { id: 'berserker', name: '狂战士', icon: '🪓', baseHp: 130, baseStr: 20, baseDef: 8, baseSpd: 10, baseInt: 4, growth: { hp: 13, str: 4, def: 1, spd: 2, int: 0.3 }, advancedOf: 'warrior' },
+    archmage: { id: 'archmage', name: '大魔导师', icon: '🌟', baseHp: 90, baseStr: 6, baseDef: 7, baseSpd: 11, baseInt: 22, growth: { hp: 7, str: 0.5, def: 1.5, spd: 2, int: 4 }, advancedOf: 'mage' },
+    necromancer: { id: 'necromancer', name: '死灵法师', icon: '💀', baseHp: 85, baseStr: 8, baseDef: 6, baseSpd: 9, baseInt: 20, growth: { hp: 7, str: 1, def: 1, spd: 1.5, int: 3.5 }, advancedOf: 'mage' },
+    sage: { id: 'sage', name: '贤者', icon: '📖', baseHp: 100, baseStr: 9, baseDef: 11, baseSpd: 8, baseInt: 18, growth: { hp: 9, str: 1.5, def: 2, spd: 1, int: 3 }, advancedOf: 'priest' },
+    monk: { id: 'monk', name: '武僧', icon: '👊', baseHp: 110, baseStr: 14, baseDef: 12, baseSpd: 14, baseInt: 12, growth: { hp: 10, str: 2.5, def: 2, spd: 2.5, int: 1.5 }, advancedOf: 'priest' },
+    assassin: { id: 'assassin', name: '刺客', icon: '🥷', baseHp: 90, baseStr: 18, baseDef: 6, baseSpd: 20, baseInt: 8, growth: { hp: 7, str: 3.5, def: 0.8, spd: 4, int: 0.5 }, advancedOf: 'rogue' },
+    ranger: { id: 'ranger', name: '游侠', icon: '🏹', baseHp: 105, baseStr: 15, baseDef: 9, baseSpd: 16, baseInt: 10, growth: { hp: 9, str: 2.5, def: 1.5, spd: 3, int: 1.5 }, advancedOf: 'rogue' }
 };
 
 // ==================== 改进的图片辅助函数 ====================
@@ -1879,7 +2047,8 @@ let gameState = {
         weaponSkin: 'default',
         pet: 'none'
     },
-    enhancementMaterials: { common: 0, magic: 0, rare: 0, epic: 0, legendary: 0 }
+    enhancementMaterials: { common: 0, magic: 0, rare: 0, epic: 0, legendary: 0 },
+    stats: { monstersKilled: 0, goldEarned: 0, steps: 0, maxDamage: 0 }
 };
 
 // 战斗状态
@@ -1960,7 +2129,10 @@ function startNewGameConfirmed() {
             weaponSkin: 'default',
             pet: 'none'
         },
-        enhancementMaterials: { common: 5, magic: 2, rare: 0, epic: 0, legendary: 0 }
+        enhancementMaterials: { common: 5, magic: 2, rare: 0, epic: 0, legendary: 0 },
+        quests: { active: [], completed: [] },
+        questProgress: {},
+        stats: { monstersKilled: 0, goldEarned: 0, steps: 0, maxDamage: 0 }
     };
 
     // 创建初始角色 - 只有勇者
@@ -2057,6 +2229,7 @@ function unlockCharacter(bossId) {
     }
 
     showToast(`🎉 ${unlock.desc}`, 'success');
+    checkAchievement('party');
     return true;
 }
 
@@ -2489,6 +2662,7 @@ function performAttack(char, stats) {
     const finalDamage = Math.floor(damage);
 
     target.currentHp = Math.max(0, target.currentHp - finalDamage);
+    checkAchievement('damage', finalDamage);
 
     // Animation
     const attackerEl = document.querySelector(`[data-char-id="${char.id}"]`);
@@ -2759,13 +2933,21 @@ function gainXp(char, amount) {
         char.currentHp = stats.hp;
         char.currentMp = stats.mp;
 
-        // 学习新技能
+        // 学习新技能（当前职业 + 基础职业）
         const classSkills = SKILL_SYSTEM[char.classId] || [];
         classSkills.forEach(skill => {
             if (skill.level <= char.level && !char.learnedSkills.includes(skill.id)) {
                 char.learnedSkills.push(skill.id);
             }
         });
+        const baseClass = CLASSES[char.classId]?.advancedOf;
+        if (baseClass) {
+            (SKILL_SYSTEM[baseClass] || []).forEach(skill => {
+                if (skill.level <= char.level && !char.learnedSkills.includes(skill.id)) {
+                    char.learnedSkills.push(skill.id);
+                }
+            });
+        }
 
         if (SoundEnabled) AudioSystem.playLevelUp();
     }
@@ -2793,6 +2975,7 @@ function victory() {
     });
 
     gameState.gold += totalGold;
+    checkAchievement('gold', totalGold);
 
     const aliveChars = gameState.party.filter(c => c.currentHp > 0);
     const xpPerChar = Math.floor(totalXp / aliveChars.length);
@@ -2801,6 +2984,7 @@ function victory() {
         const levels = gainXp(char, xpPerChar);
         if (levels > 0) {
             addBattleLog(`🎉 ${char.name} 升到了 ${char.level} 级！`, 'levelup');
+            checkAchievement('level', char.level);
         }
         const stats = calculateStats(char);
         const mpRecovery = Math.floor(stats.mp * 0.2);
@@ -2809,15 +2993,19 @@ function victory() {
 
     addBattleLog(`🏆 战斗胜利！获得 ${totalXp} 经验和 ${totalGold} 金币！`, 'reward');
 
+    // 成就：击杀
+    const killCount = battleState.enemies.filter(e => e.currentHp <= 0).length;
+    checkAchievement('kill', killCount);
+
     // 更新任务进度 - 击杀类
     if (battleState.zone && battleState.zone.id) {
-        const killCount = battleState.enemies.filter(e => e.currentHp <= 0).length;
         for (let i = 0; i < killCount; i++) {
             updateQuestProgress('kill', battleState.zone.id);
         }
         // BOSS击败
         if (battleState.isBossBattle) {
             updateQuestProgress('boss', battleState.zone.id);
+            checkAchievement('boss');
         }
     }
 
@@ -2880,6 +3068,7 @@ function victory() {
                     if (!gameState.unlockedMaps.includes(mapId)) {
                         gameState.unlockedMaps.push(mapId);
                         addBattleLog(`🗺️ 解锁新区域：${MAP_ZONES[mapId]?.name || mapId}！`, 'unlock');
+                        checkAchievement('explore');
                     }
                 });
             }
@@ -3011,8 +3200,10 @@ function renderMenu() {
                 <p>勇者斗恶龙 RPG</p>
             </div>
             <div class="menu-buttons">
-                <button class="btn btn-primary" onclick="saveGame(); showToast('💾 已保存', 'success');">💾 保存游戏</button>
-                <button class="btn btn-secondary" onclick="if(loadGame()){showToast('📂 已加载','success');showScene('party');}else{showToast('❌ 没有存档','error');}">📂 选择存档</button>
+                <button class="btn btn-primary" onclick="showSaveLoadUI('save')">💾 保存游戏</button>
+                <button class="btn btn-secondary" onclick="showSaveLoadUI('load')">📂 选择存档</button>
+                <button class="btn btn-secondary" onclick="showSettings()">⚙️ 设置</button>
+                <button class="btn btn-secondary" onclick="showStatsPage()">📊 统计</button>
                 <button class="btn btn-secondary" onclick="isGameStarted=false;showScene('menu');">🏠 回到主菜单</button>
             </div>`;
     }
@@ -3129,9 +3320,12 @@ function renderParty() {
                         <h3>${char.name}</h3>
                         <div class="character-class">${char.className} Lv.${char.level}</div>
                     </div>
-                    <button class="btn btn-secondary skill-tree-btn" onclick="showSkillTree(${char.id})" style="padding:8px 12px;font-size:12px;">
-                        📚 技能
-                    </button>
+                    <div style="display:flex;gap:5px;">
+                        <button class="btn btn-secondary skill-tree-btn" onclick="showSkillTree(${char.id})" style="padding:8px 10px;font-size:11px;">
+                            📚 技能
+                        </button>
+                        ${char.level >= 30 && !CLASSES[char.classId]?.advancedOf ? `<button class="btn btn-primary" onclick="showClassChange(${char.id})" style="padding:8px 10px;font-size:11px;">🔄 转职</button>` : ''}
+                    </div>
                 </div>
                 <div class="bar-container">
                     <div class="bar-label"><span>HP</span><span>${char.currentHp}/${stats.hp}</span></div>
@@ -3263,6 +3457,9 @@ function renderCosmetics() {
             </div>
         `;
     }).join('');
+
+    // 追加成就列表
+    container.innerHTML += renderAchievements();
 }
 
 // ==================== 渲染怪物图鉴 ====================
@@ -3412,12 +3609,20 @@ async function init() {
         AssetLoader.hideLoadingScreen();
     }
 
+    // Load settings
+    loadSettings();
+
     // Load game
     loadGame();
     updateUI();
 
     // Always ensure menu scene is visible on startup
     showScene('menu');
+
+    // Show tutorial for new players
+    if (!GAME_SETTINGS.tutorialSeen) {
+        setTimeout(() => showTutorial(), 500);
+    }
 
     // Setup auto-save
     setInterval(autoSave, CONFIG.AUTO_SAVE_INTERVAL);
@@ -3881,6 +4086,8 @@ function completeQuest(questId) {
         if (equip) gameState.inventory.push(equip);
     }
 
+    checkAchievement('quest');
+    if (reward.item === 'legendary') checkAchievement('legendary');
     showQuestReward(quest, reward);
     saveGame();
     return true;
@@ -4005,6 +4212,378 @@ function renderQuests() {
     container.innerHTML = html;
 }
 
+// ==================== 成就系统 ====================
+const ACHIEVEMENTS = {
+    firstKill: { name: '初出茅庐', desc: '首次击杀怪物', icon: '⚔️' },
+    kill100: { name: '百人斩', desc: '击杀100只怪物', icon: '💀' },
+    kill500: { name: '千军破', desc: '击杀500只怪物', icon: '🏆' },
+    firstBoss: { name: '勇者之证', desc: '首次击败BOSS', icon: '👑' },
+    allBoss5: { name: '征服者', desc: '击败5个BOSS', icon: '🌟' },
+    level10: { name: '小有成就', desc: '角色达到10级', icon: '📈' },
+    level30: { name: '中流砥柱', desc: '角色达到30级', icon: '💪' },
+    level50: { name: '传说勇者', desc: '角色达到50级', icon: '⭐' },
+    level99: { name: '满级大佬', desc: '角色达到99级', icon: '🔥' },
+    gold1000: { name: '小富翁', desc: '累计获得1000金币', icon: '💰' },
+    gold10000: { name: '大富翁', desc: '累计获得10000金币', icon: '💎' },
+    gold100000: { name: '金币之王', desc: '累计获得100000金币', icon: '👸' },
+    fullParty: { name: '团队集结', desc: '队伍满员4人', icon: '👥' },
+    classChange: { name: '蜕变', desc: '完成一次转职', icon: '🔄' },
+    quest5: { name: '冒险新手', desc: '完成5个任务', icon: '📜' },
+    quest10: { name: '任务达人', desc: '完成10个任务', icon: '📋' },
+    legendary: { name: '传说收藏家', desc: '获得一件传说装备', icon: '🌈' },
+    enhance10: { name: '强化达人', desc: '装备强化到+10', icon: '🔨' },
+    explore5: { name: '探险家', desc: '解锁5个区域', icon: '🗺️' },
+    explore10: { name: '世界旅者', desc: '解锁10个区域', icon: '🌍' },
+    damage1000: { name: '重击', desc: '单次造成1000伤害', icon: '💥' },
+    steps10000: { name: '远征者', desc: '走过10000步', icon: '👣' }
+};
+
+function checkAchievement(type, value) {
+    if (!gameState.achievements) gameState.achievements = [];
+    if (!gameState.stats) gameState.stats = { monstersKilled: 0, goldEarned: 0, steps: 0, maxDamage: 0 };
+
+    const unlock = (id) => {
+        if (gameState.achievements.includes(id)) return;
+        gameState.achievements.push(id);
+        const ach = ACHIEVEMENTS[id];
+        if (ach) showAchievementToast(ach);
+        saveGame();
+    };
+
+    switch (type) {
+        case 'kill':
+            gameState.stats.monstersKilled = (gameState.stats.monstersKilled || 0) + (value || 1);
+            if (gameState.stats.monstersKilled >= 1) unlock('firstKill');
+            if (gameState.stats.monstersKilled >= 100) unlock('kill100');
+            if (gameState.stats.monstersKilled >= 500) unlock('kill500');
+            break;
+        case 'boss':
+            unlock('firstBoss');
+            if (gameState.defeatedBosses.length >= 5) unlock('allBoss5');
+            break;
+        case 'level':
+            if (value >= 10) unlock('level10');
+            if (value >= 30) unlock('level30');
+            if (value >= 50) unlock('level50');
+            if (value >= 99) unlock('level99');
+            break;
+        case 'gold':
+            gameState.stats.goldEarned = (gameState.stats.goldEarned || 0) + (value || 0);
+            if (gameState.stats.goldEarned >= 1000) unlock('gold1000');
+            if (gameState.stats.goldEarned >= 10000) unlock('gold10000');
+            if (gameState.stats.goldEarned >= 100000) unlock('gold100000');
+            break;
+        case 'party':
+            if (gameState.party.length >= 4) unlock('fullParty');
+            break;
+        case 'classChange':
+            unlock('classChange');
+            break;
+        case 'quest':
+            if (gameState.quests.completed.length >= 5) unlock('quest5');
+            if (gameState.quests.completed.length >= 10) unlock('quest10');
+            break;
+        case 'legendary':
+            unlock('legendary');
+            break;
+        case 'enhance':
+            if (value >= 10) unlock('enhance10');
+            break;
+        case 'explore':
+            if (gameState.unlockedMaps.length >= 5) unlock('explore5');
+            if (gameState.unlockedMaps.length >= 10) unlock('explore10');
+            break;
+        case 'damage':
+            if (value > (gameState.stats.maxDamage || 0)) gameState.stats.maxDamage = value;
+            if (value >= 1000) unlock('damage1000');
+            break;
+        case 'steps':
+            gameState.stats.steps = (gameState.stats.steps || 0) + (value || 1);
+            if (gameState.stats.steps >= 10000) unlock('steps10000');
+            break;
+    }
+}
+
+function showAchievementToast(ach) {
+    const toast = document.createElement('div');
+    toast.className = 'achievement-toast';
+    toast.innerHTML = `<div class="achievement-toast-icon">${ach.icon}</div><div><div class="achievement-toast-title">成就解锁！</div><div class="achievement-toast-name">${ach.name}</div><div class="achievement-toast-desc">${ach.desc}</div></div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+}
+
+function renderAchievements() {
+    const total = Object.keys(ACHIEVEMENTS).length;
+    const unlocked = (gameState.achievements || []).length;
+    let html = `<div class="achievements-header"><h3>🏅 成就 (${unlocked}/${total})</h3></div><div class="achievements-grid">`;
+    Object.entries(ACHIEVEMENTS).forEach(([id, ach]) => {
+        const done = (gameState.achievements || []).includes(id);
+        html += `<div class="achievement-card ${done ? 'unlocked' : 'locked'}">
+            <div class="achievement-icon">${done ? ach.icon : '🔒'}</div>
+            <div class="achievement-name">${done ? ach.name : '???'}</div>
+            <div class="achievement-desc">${done ? ach.desc : '未解锁'}</div>
+        </div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+// ==================== 多存档系统 ====================
+function saveToSlot(slotIndex) {
+    try {
+        const saveData = {
+            gameState: JSON.stringify(gameState),
+            timestamp: Date.now(),
+            preview: {
+                level: gameState.party[0]?.level || 1,
+                className: gameState.party[0]?.className || '???',
+                partySize: gameState.party.length,
+                playTime: gameState.playTime || 0,
+                currentMap: MAP_ZONES[gameState.currentMap]?.name || '未知',
+                gold: gameState.gold
+            }
+        };
+        localStorage.setItem(`dragonQuestSave_slot${slotIndex}`, JSON.stringify(saveData));
+        // 同时保存到默认槽位（兼容旧系统）
+        localStorage.setItem('dragonQuestSave', JSON.stringify(gameState));
+        showToast(`💾 已保存到存档 ${slotIndex + 1}`, 'success');
+        return true;
+    } catch (e) {
+        showToast('保存失败！', 'error');
+        return false;
+    }
+}
+
+function loadFromSlot(slotIndex) {
+    try {
+        const raw = localStorage.getItem(`dragonQuestSave_slot${slotIndex}`);
+        if (!raw) return false;
+        const saveData = JSON.parse(raw);
+        const parsed = JSON.parse(saveData.gameState);
+        gameState = { ...gameState, ...parsed };
+        localStorage.setItem('dragonQuestSave', JSON.stringify(gameState));
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function getSlotPreview(slotIndex) {
+    try {
+        const raw = localStorage.getItem(`dragonQuestSave_slot${slotIndex}`);
+        if (!raw) return null;
+        const saveData = JSON.parse(raw);
+        return { ...saveData.preview, timestamp: saveData.timestamp };
+    } catch (e) {
+        return null;
+    }
+}
+
+function formatPlayTime(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h}h ${m}m ${s}s`;
+}
+
+function showSaveLoadUI(mode) {
+    const overlay = document.createElement('div');
+    overlay.id = 'saveLoadOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    const title = mode === 'save' ? '💾 保存游戏' : '📂 选择存档';
+
+    let slotsHtml = '';
+    for (let i = 0; i < 3; i++) {
+        const preview = getSlotPreview(i);
+        if (preview) {
+            const date = new Date(preview.timestamp).toLocaleString('zh-CN');
+            slotsHtml += `<button class="btn ${mode === 'save' ? 'btn-primary' : 'btn-secondary'} save-slot-btn" onclick="${mode === 'save' ? `saveToSlot(${i})` : `loadSlot(${i})`};document.getElementById('saveLoadOverlay')?.remove();">
+                <div class="save-slot-info">
+                    <div class="save-slot-title">存档 ${i + 1}</div>
+                    <div class="save-slot-detail">${preview.className} Lv.${preview.level} | 队伍${preview.partySize}人 | ${preview.currentMap}</div>
+                    <div class="save-slot-detail">💰${preview.gold} | ⏱${formatPlayTime(preview.playTime)} | ${date}</div>
+                </div>
+            </button>`;
+        } else {
+            slotsHtml += `<button class="btn btn-secondary save-slot-btn" ${mode === 'save' ? `onclick="saveToSlot(${i});document.getElementById('saveLoadOverlay')?.remove();"` : 'disabled'}>
+                <div class="save-slot-info">
+                    <div class="save-slot-title">存档 ${i + 1}</div>
+                    <div class="save-slot-detail" style="color:#666;">空</div>
+                </div>
+            </button>`;
+        }
+    }
+
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:420px;">
+            <h3>${title}</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;margin:15px 0;">${slotsHtml}</div>
+            <button class="btn btn-secondary" onclick="document.getElementById('saveLoadOverlay').remove()">取消</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function loadSlot(slotIndex) {
+    if (loadFromSlot(slotIndex)) {
+        isGameStarted = true;
+        showScene('party');
+        showToast(`📂 已加载存档 ${slotIndex + 1}`, 'success');
+    } else {
+        showToast('加载失败！', 'error');
+    }
+}
+
+// ==================== 游戏设置 ====================
+const GAME_SETTINGS = {
+    soundEnabled: true,
+    battleSpeedDefault: 1,
+    fontSize: 'medium',
+    crtEnabled: true,
+    tutorialSeen: false
+};
+
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('dragonQuestSettings');
+        if (saved) Object.assign(GAME_SETTINGS, JSON.parse(saved));
+    } catch (e) {}
+    applySettings();
+}
+
+function saveSettings() {
+    localStorage.setItem('dragonQuestSettings', JSON.stringify(GAME_SETTINGS));
+    applySettings();
+}
+
+function applySettings() {
+    // CRT
+    const crt = document.querySelector('.crt-overlay');
+    if (crt) crt.style.display = GAME_SETTINGS.crtEnabled ? 'block' : 'none';
+    // 字体大小
+    const sizes = { small: '8px', medium: '10px', large: '13px' };
+    document.body.style.fontSize = sizes[GAME_SETTINGS.fontSize] || '10px';
+    // 战斗速度
+    if (typeof battleSpeed !== 'undefined') battleSpeed = GAME_SETTINGS.battleSpeedDefault;
+}
+
+function showSettings() {
+    const overlay = document.createElement('div');
+    overlay.id = 'settingsOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:400px;">
+            <h3>⚙️ 游戏设置</h3>
+            <div class="settings-list">
+                <div class="settings-item">
+                    <span>🔊 音效</span>
+                    <button class="btn btn-secondary settings-toggle" onclick="GAME_SETTINGS.soundEnabled=!GAME_SETTINGS.soundEnabled;saveSettings();showSettings();">
+                        ${GAME_SETTINGS.soundEnabled ? '开启' : '关闭'}
+                    </button>
+                </div>
+                <div class="settings-item">
+                    <span>⚡ 默认战斗速度</span>
+                    <div class="settings-speed-btns">
+                        ${[1,2,3].map(s => `<button class="btn ${GAME_SETTINGS.battleSpeedDefault===s?'btn-primary':'btn-secondary'}" onclick="GAME_SETTINGS.battleSpeedDefault=${s};saveSettings();showSettings();">×${s}</button>`).join('')}
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <span>🔤 文字大小</span>
+                    <div class="settings-speed-btns">
+                        ${['small','medium','large'].map(s => {
+                            const labels = {small:'小',medium:'中',large:'大'};
+                            return `<button class="btn ${GAME_SETTINGS.fontSize===s?'btn-primary':'btn-secondary'}" onclick="GAME_SETTINGS.fontSize='${s}';saveSettings();showSettings();">${labels[s]}</button>`;
+                        }).join('')}
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <span>📺 CRT扫描线</span>
+                    <button class="btn btn-secondary settings-toggle" onclick="GAME_SETTINGS.crtEnabled=!GAME_SETTINGS.crtEnabled;saveSettings();showSettings();">
+                        ${GAME_SETTINGS.crtEnabled ? '开启' : '关闭'}
+                    </button>
+                </div>
+                <div class="settings-item">
+                    <span>📖 新手引导</span>
+                    <button class="btn btn-secondary" onclick="document.getElementById('settingsOverlay').remove();showTutorial();">查看</button>
+                </div>
+            </div>
+            <button class="btn btn-secondary" style="margin-top:15px;" onclick="document.getElementById('settingsOverlay').remove()">关闭</button>
+        </div>`;
+    // 移除旧的
+    document.getElementById('settingsOverlay')?.remove();
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+// ==================== 新手引导 ====================
+const TUTORIAL_PAGES = [
+    { title: '🎮 基本操作', content: '使用方向键或虚拟摇杆移动角色。\n\nA键与NPC对话、调查物品。\nB键取消/返回。\n\n点击底部导航栏切换界面。' },
+    { title: '⚔️ 战斗系统', content: '在野外遭遇怪物进入战斗。\n\n战斗 → 普通攻击\n技能 → 消耗MP释放技能\n物品 → 使用药水等道具\n逃跑 → 尝试脱离战斗\n\n可设置自动战斗和加速。' },
+    { title: '💬 NPC交互', content: '村庄中有各种NPC：\n\n🏪 商店 → 买卖物品\n🍺 酒馆 → 获取情报\n🔨 铁匠 → 强化装备\n\n与NPC对话可接取任务！\n完成任务获得奖励。' },
+    { title: '📜 任务与探索', content: '任务分为主线和支线。\n\n主线推进剧情，解锁区域。\n支线提供额外奖励。\n\n击败BOSS解锁新队友！\n30级后可转职为高级职业。' }
+];
+
+function showTutorial() {
+    let page = 0;
+    const renderPage = () => {
+        const p = TUTORIAL_PAGES[page];
+        const overlay = document.getElementById('tutorialOverlay');
+        if (!overlay) return;
+        overlay.querySelector('.tutorial-content').innerHTML = `
+            <h3>${p.title}</h3>
+            <div class="tutorial-text">${p.content.replace(/\n/g, '<br>')}</div>
+            <div class="tutorial-dots">${TUTORIAL_PAGES.map((_, i) => `<span class="tutorial-dot ${i === page ? 'active' : ''}"></span>`).join('')}</div>
+            <div class="tutorial-buttons">
+                ${page > 0 ? '<button class="btn btn-secondary" onclick="window._tutorialPrev()">上一页</button>' : '<div></div>'}
+                ${page < TUTORIAL_PAGES.length - 1
+                    ? '<button class="btn btn-primary" onclick="window._tutorialNext()">下一页</button>'
+                    : '<button class="btn btn-primary" onclick="GAME_SETTINGS.tutorialSeen=true;saveSettings();document.getElementById(\'tutorialOverlay\').remove();">开始冒险！</button>'}
+            </div>`;
+    };
+    window._tutorialNext = () => { page++; renderPage(); };
+    window._tutorialPrev = () => { page--; renderPage(); };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'tutorialOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    overlay.innerHTML = `<div class="confirm-modal-panel tutorial-panel" style="max-width:380px;"><div class="tutorial-content"></div></div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+    renderPage();
+}
+
+// ==================== 游戏统计 ====================
+function renderStats() {
+    const stats = gameState.stats || {};
+    const playTime = formatPlayTime(gameState.playTime || 0);
+    return `
+        <div class="game-stats-panel">
+            <h3>📊 游戏统计</h3>
+            <div class="stats-grid">
+                <div class="stat-item-card"><div class="stat-icon">⏱</div><div class="stat-label">游戏时间</div><div class="stat-value">${playTime}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">💀</div><div class="stat-label">击杀怪物</div><div class="stat-value">${stats.monstersKilled || 0}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">💰</div><div class="stat-label">累计金币</div><div class="stat-value">${stats.goldEarned || 0}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">👣</div><div class="stat-label">走过步数</div><div class="stat-value">${stats.steps || 0}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">💥</div><div class="stat-label">最高伤害</div><div class="stat-value">${stats.maxDamage || 0}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">📜</div><div class="stat-label">完成任务</div><div class="stat-value">${(gameState.quests?.completed || []).length}</div></div>
+            </div>
+        </div>`;
+}
+
+function showStatsPage() {
+    const overlay = document.createElement('div');
+    overlay.id = 'statsOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:420px;">
+            ${renderStats()}
+            <button class="btn btn-secondary" style="margin-top:15px;" onclick="document.getElementById('statsOverlay').remove()">关闭</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
 // ==================== 导出 ====================
 window.startNewGame = startNewGame;
 window.continueGame = continueGame;
@@ -4057,6 +4636,22 @@ window.renderQuests = renderQuests;
 window.getQuestsByNpc = getQuestsByNpc;
 window.getNpcQuestStatus = getNpcQuestStatus;
 window.getAvailableQuests = getAvailableQuests;
+window.showClassChange = showClassChange;
+window.performClassChange = performClassChange;
+window.CLASS_CHANGE_PATHS = CLASS_CHANGE_PATHS;
+window.CLASSES = CLASSES;
+window.checkAchievement = checkAchievement;
+window.ACHIEVEMENTS = ACHIEVEMENTS;
+window.showSaveLoadUI = showSaveLoadUI;
+window.saveToSlot = saveToSlot;
+window.loadSlot = loadSlot;
+window.loadFromSlot = loadFromSlot;
+window.showSettings = showSettings;
+window.GAME_SETTINGS = GAME_SETTINGS;
+window.showTutorial = showTutorial;
+window.showStatsPage = showStatsPage;
+window._tutorialNext = () => {};
+window._tutorialPrev = () => {};
 
 // 启动
 window.onload = init;

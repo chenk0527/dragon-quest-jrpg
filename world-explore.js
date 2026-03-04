@@ -620,6 +620,8 @@ function move(dx, dy) {
     
     if(tile===T.GRASS||tile===T.PATH||tile===T.FLOOR||tile===T.LEAF) {
         W.player.x=nx; W.player.y=ny;
+        // 步数统计
+        if(typeof checkAchievement==='function') checkAchievement('steps', 1);
         // 随机遭遇
         const mapDef=MAPS[W.currentMap];
         if(mapDef&&!mapDef.safe) {

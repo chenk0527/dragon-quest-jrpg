@@ -2359,3 +2359,137 @@ body {
     from { transform: translateX(-20px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
+
+/* ============== 成就系统 ============== */
+.achievement-toast {
+    position: fixed;
+    top: 20px;
+    right: -300px;
+    z-index: 10000;
+    background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+    border: 2px solid var(--dq-gold);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+    transition: right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    max-width: 280px;
+}
+.achievement-toast.show { right: 20px; }
+.achievement-toast-icon { font-size: 28px; }
+.achievement-toast-title { font-size: 9px; color: var(--dq-gold); margin-bottom: 2px; }
+.achievement-toast-name { font-size: 11px; color: #fff; font-weight: bold; }
+.achievement-toast-desc { font-size: 8px; color: #aaa; margin-top: 2px; }
+
+.achievements-header { margin: 20px 0 10px; }
+.achievements-header h3 { color: var(--dq-gold); font-size: 13px; }
+.achievements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+.achievement-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    transition: transform 0.2s;
+}
+.achievement-card.unlocked {
+    border-color: var(--dq-gold);
+    background: rgba(255, 215, 0, 0.08);
+}
+.achievement-card.locked { opacity: 0.5; }
+.achievement-icon { font-size: 24px; margin-bottom: 4px; }
+.achievement-name { font-size: 9px; color: #fff; margin-bottom: 2px; }
+.achievement-desc { font-size: 7px; color: #aaa; }
+
+/* ============== 存档槽位 ============== */
+.save-slot-btn {
+    width: 100%;
+    text-align: left !important;
+    padding: 12px !important;
+}
+.save-slot-info { width: 100%; }
+.save-slot-title { font-size: 11px; color: var(--dq-gold); margin-bottom: 4px; }
+.save-slot-detail { font-size: 8px; color: #bbb; line-height: 1.6; }
+
+/* ============== 设置 ============== */
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 15px 0;
+}
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    font-size: 10px;
+}
+.settings-toggle { padding: 6px 14px !important; font-size: 9px !important; min-width: 60px; }
+.settings-speed-btns {
+    display: flex;
+    gap: 4px;
+}
+.settings-speed-btns .btn {
+    padding: 5px 10px !important;
+    font-size: 9px !important;
+}
+
+/* ============== 新手引导 ============== */
+.tutorial-panel { text-align: center; }
+.tutorial-panel h3 { font-size: 14px; color: var(--dq-gold); margin-bottom: 12px; }
+.tutorial-text {
+    font-size: 10px;
+    line-height: 1.8;
+    color: #ddd;
+    text-align: left;
+    padding: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    min-height: 120px;
+}
+.tutorial-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 15px 0;
+}
+.tutorial-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+}
+.tutorial-dot.active { background: var(--dq-gold); }
+.tutorial-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+.tutorial-buttons .btn { flex: 1; }
+
+/* ============== 游戏统计 ============== */
+.game-stats-panel h3 { color: var(--dq-gold); font-size: 13px; margin-bottom: 12px; }
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+.stat-item-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+}
+.stat-icon { font-size: 20px; margin-bottom: 4px; }
+.stat-label { font-size: 8px; color: #aaa; margin-bottom: 2px; }
+.stat-value { font-size: 12px; color: var(--dq-gold); font-weight: bold; }
