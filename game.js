@@ -120,6 +120,108 @@ function executeSkill(char, skill) {
         case 'partyBuff':
             performPartyBuff(char, skill);
             break;
+        case 'steal': {
+            const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+            if (aliveEnemies.length === 0) break;
+            const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+            const stealChance = 0.6;
+            if (Math.random() < stealChance) {
+                if (Math.random() < 0.7) {
+                    const gold = Math.floor(Math.random() * 41) + 10;
+                    gameState.gold += gold;
+                    addBattleLog(`${skill.icon} ${char.name} 从 ${target.name} 偷到了 ${gold} 金币！`, 'loot');
+                } else {
+                    const slots = ['weapon', 'helmet', 'armor', 'shield'];
+                    const slot = slots[Math.floor(Math.random() * slots.length)];
+                    const loot = generateEquipment(slot, char.level, null);
+                    addItemToInventory(loot);
+                    addBattleLog(`${skill.icon} ${char.name} 从 ${target.name} 偷到了 ${loot.name}！`, 'loot');
+                }
+            } else {
+                addBattleLog(`${skill.icon} ${char.name} 偷窃失败了！`, 'normal');
+            }
+            break;
+        }
+        case 'drain': {
+            const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+            if (aliveEnemies.length === 0) break;
+            const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+            const power = skill.power || 1.2;
+            let damage = Math.max(1, Math.floor(stats.int * power - target.def / 2));
+            target.currentHp = Math.max(0, target.currentHp - damage);
+            const mpRestore = Math.floor(damage * 0.5);
+            char.currentMp = Math.min(calculateStats(char).mp, char.currentMp + mpRestore + skill.mp);
+            addBattleLog(`${skill.icon} ${char.name} 对 ${target.name} 造成 ${damage} 伤害，恢复了 ${mpRestore} MP！`, 'damage');
+            if (target.currentHp <= 0) {
+                addBattleLog(`${target.icon || '💀'} ${target.name} 被击败了！`, 'normal');
+            }
+            break;
+        }
+        case 'escape':
+            addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name}，成功撤退！`, 'normal');
+            setTimeout(() => {
+                showScene('map');
+            }, 1000);
+            return;
+        case 'revive': {
+            const deadAlly = gameState.party.find(m => m.currentHp <= 0);
+            if (deadAlly) {
+                const maxHp = calculateStats(deadAlly).hp;
+                const reviveHp = Math.floor(maxHp * (skill.power || 0.5));
+                deadAlly.currentHp = Math.max(1, reviveHp);
+                addBattleLog(`${skill.icon} ${char.name} 复活了 ${deadAlly.name}，恢复 ${deadAlly.currentHp} HP！`, 'heal');
+                AudioSystem.playHeal();
+            } else {
+                addBattleLog(`${skill.icon} 没有需要复活的队友！`, 'normal');
+                char.currentMp += skill.mp;
+            }
+            break;
+        }
+        case 'dispel': {
+            const targetAlly = gameState.party.find(m => m.currentHp > 0 && m.buffs && m.buffs.some(b => b.type === 'debuff'));
+            if (targetAlly) {
+                targetAlly.buffs = targetAlly.buffs.filter(b => b.type !== 'debuff');
+                addBattleLog(`${skill.icon} ${char.name} 驱散了 ${targetAlly.name} 的负面状态！`, 'heal');
+            } else {
+                const self = char;
+                if (self.buffs) self.buffs = self.buffs.filter(b => b.value >= 1);
+                addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name} 清除了负面效果！`, 'heal');
+            }
+            break;
+        }
+        case 'counter':
+            if (!char.buffs) char.buffs = [];
+            char.buffs.push({ type: 'counter', value: skill.power || 1.5, duration: skill.duration || 3 });
+            addBattleLog(`${skill.icon} ${char.name} 进入反击姿态！`, 'heal');
+            break;
+        case 'dot': {
+            const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+            if (aliveEnemies.length === 0) break;
+            const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+            const dotDamage = Math.max(1, Math.floor(stats.str * (skill.power || 0.5)));
+            target.currentHp = Math.max(0, target.currentHp - dotDamage);
+            if (!target.debuffs) target.debuffs = [];
+            target.debuffs.push({ type: 'dot', damage: dotDamage, duration: skill.duration || 4 });
+            addBattleLog(`${skill.icon} ${char.name} 对 ${target.name} 施加了持续伤害（每回合 ${dotDamage}）！`, 'damage');
+            if (target.currentHp <= 0) {
+                addBattleLog(`${target.icon || '💀'} ${target.name} 被击败了！`, 'normal');
+            }
+            break;
+        }
+        case 'debuff': {
+            const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+            if (aliveEnemies.length === 0) break;
+            const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+            if (!target.debuffs) target.debuffs = [];
+            target.debuffs.push({
+                type: skill.debuffType || 'def',
+                value: skill.debuffValue || 0.5,
+                duration: skill.duration || 3
+            });
+            const debuffNames = { str: '攻击力', def: '防御力', spd: '速度', int: '智力' };
+            addBattleLog(`${skill.icon} ${char.name} 降低了 ${target.name} 的${debuffNames[skill.debuffType] || '属性'}！`, 'damage');
+            break;
+        }
         default:
             addBattleLog(`${char.name} 使用了 ${skill.name}！`, 'normal');
     }
@@ -651,6 +753,21 @@ const SKILL_SYSTEM = {
         { id: 'shadowDance', name: '影舞', icon: '💃', mp: 45, type: 'attack', power: 0.8, hits: 4, desc: '连续四次攻击', level: 35 }
     ]
 };
+
+// ==================== 消耗品定义 ====================
+const CONSUMABLE_ITEMS = {
+    smallPotion: { name: '小治疗药水', icon: '🧪', type: 'consumable', subType: 'heal', value: 50, desc: '恢复50HP', buyPrice: 30 },
+    mediumPotion: { name: '中治疗药水', icon: '🧪', type: 'consumable', subType: 'heal', value: 150, desc: '恢复150HP', buyPrice: 100 },
+    largePotion: { name: '大治疗药水', icon: '🧪', type: 'consumable', subType: 'heal', value: 500, desc: '恢复500HP', buyPrice: 300 },
+    elixir: { name: '万灵药', icon: '✨', type: 'consumable', subType: 'fullHeal', value: 0, desc: '完全恢复HP', buyPrice: 1000 },
+    ether: { name: '以太', icon: '💧', type: 'consumable', subType: 'mp', value: 50, desc: '恢复50MP', buyPrice: 80 }
+};
+
+function createConsumable(itemId) {
+    const template = CONSUMABLE_ITEMS[itemId];
+    if (!template) return null;
+    return { ...template, itemId };
+}
 
 // ==================== 资源加载管理器 ====================
 const AssetLoader = {
@@ -1650,6 +1767,46 @@ let battleState = null;
 
 // 开始新游戏
 function startNewGame() {
+    // 检查是否有存档
+    const existingSave = localStorage.getItem('dragonQuestSave');
+    if (existingSave) {
+        showConfirmModal('⚠️ 已有存档', '开始新游戏将覆盖当前存档，是否继续？', () => {
+            startNewGameConfirmed();
+        });
+        return;
+    }
+    startNewGameConfirmed();
+}
+
+function showConfirmModal(title, message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.id = 'confirmModalOverlay';
+    overlay.className = 'confirm-modal-overlay';
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel">
+            <h3>${title}</h3>
+            <p>${message}</p>
+            <div class="confirm-modal-buttons">
+                <button class="btn btn-primary" id="confirmYes">确认</button>
+                <button class="btn btn-secondary" id="confirmNo">取消</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+
+    overlay.querySelector('#confirmYes').onclick = () => {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 300);
+        onConfirm();
+    };
+    overlay.querySelector('#confirmNo').onclick = () => {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 300);
+    };
+}
+
+function startNewGameConfirmed() {
     gameState = {
         party: [],
         inventory: [],
@@ -1693,6 +1850,11 @@ function startNewGame() {
     gameState.party[0].equipment.weapon = starterWeapon;
     gameState.party[0].equipment.armor = starterArmor;
 
+    // 初始药水
+    gameState.inventory.push(createConsumable('smallPotion'));
+    gameState.inventory.push(createConsumable('smallPotion'));
+    gameState.inventory.push(createConsumable('smallPotion'));
+
     saveGame();
     showScene('party');
     showToast('🎮 新游戏开始！', 'success');
@@ -1735,7 +1897,7 @@ function createCharacter(name, classId) {
             shield: null,
             accessory: null
         },
-        learnedSkills: ['slash', 'fireball', 'aimedShot', 'cure', 'stab'], // 初始技能
+        learnedSkills: (SKILL_SYSTEM[classId] || []).filter(s => s.level <= 1).map(s => s.id),
         buffs: []
     };
 
@@ -1905,19 +2067,8 @@ function renderBattleLog() {
     const logContainer = document.getElementById('battleLog');
     if (!logContainer) return;
 
-    const typeColors = {
-        normal: '#fff',
-        damage: '#ff6b6b',
-        heal: '#51cf66',
-        loot: '#ffd43b',
-        levelup: '#cc5de8',
-        boss: '#ff6b6b',
-        unlock: '#74c0fc',
-        info: '#868e96'
-    };
-
     logContainer.innerHTML = battleState.logs.map(log =>
-        `<div style="color: ${typeColors[log.type] || '#fff'}; margin: 4px 0; font-size: 14px;">${log.message}</div>`
+        `<div class="log-entry log-${log.type || 'normal'}">${log.message}</div>`
     ).join('');
 
     logContainer.scrollTop = logContainer.scrollHeight;
@@ -2274,28 +2425,91 @@ function attemptFlee() {
 
 // 显示物品菜单
 function showItemMenu() {
-    // 简化处理：使用第一个治疗道具
-    const healItem = gameState.inventory.find(item => item.type === 'consumable');
-
-    if (healItem) {
-        const char = gameState.party[battleState.activeCharIndex];
-        const maxHp = calculateStats(char).hp;
-        char.currentHp = Math.min(maxHp, char.currentHp + 50);
-
-        // 移除使用的道具
-        const index = gameState.inventory.indexOf(healItem);
-        if (index > -1) gameState.inventory.splice(index, 1);
-
-        // Heal visual
-        const targetEl = document.querySelector(`[data-char-id="${char.id}"]`);
-        if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
-
-        addBattleLog(`🧪 使用 ${healItem.name} 恢复了 50 生命！`, 'heal');
-        AudioSystem.playHeal();
-        endTurn();
-    } else {
+    const consumables = gameState.inventory.filter(item => item.type === 'consumable');
+    if (consumables.length === 0) {
         addBattleLog('❌ 没有可用的道具！', 'normal');
+        return;
     }
+
+    // 合并同类物品
+    const grouped = {};
+    consumables.forEach(item => {
+        const key = item.itemId || item.name;
+        if (!grouped[key]) grouped[key] = { ...item, count: 0 };
+        grouped[key].count++;
+    });
+
+    const overlay = document.createElement('div');
+    overlay.id = 'itemMenuOverlay';
+    overlay.className = 'item-menu-overlay';
+    overlay.innerHTML = `
+        <div class="item-menu-panel">
+            <h3>💊 选择物品</h3>
+            <div class="item-list">
+                ${Object.values(grouped).map(item => `
+                    <div class="item-option" onclick="useItem('${item.itemId || item.name}')">
+                        <span class="item-icon">${item.icon || '🧪'}</span>
+                        <span class="item-name">${item.name} x${item.count}</span>
+                        <span class="item-desc">${item.desc || ''}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="btn btn-secondary" onclick="closeItemMenu()">取消</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function closeItemMenu() {
+    const overlay = document.getElementById('itemMenuOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+        setTimeout(() => overlay.remove(), 300);
+    }
+}
+
+function useItem(itemId) {
+    closeItemMenu();
+    const item = gameState.inventory.find(i => (i.itemId || i.name) === itemId && i.type === 'consumable');
+    if (!item) return;
+
+    const char = gameState.party[battleState.activeCharIndex];
+    const stats = calculateStats(char);
+
+    switch (item.subType) {
+        case 'heal': {
+            const prevHp = char.currentHp;
+            char.currentHp = Math.min(stats.hp, char.currentHp + (item.value || 50));
+            const healed = char.currentHp - prevHp;
+            addBattleLog(`🧪 ${char.name} 使用 ${item.name}，恢复了 ${healed} HP！`, 'heal');
+            break;
+        }
+        case 'fullHeal':
+            char.currentHp = stats.hp;
+            addBattleLog(`✨ ${char.name} 使用 ${item.name}，HP完全恢复！`, 'heal');
+            break;
+        case 'mp': {
+            const prevMp = char.currentMp;
+            char.currentMp = Math.min(stats.mp, char.currentMp + (item.value || 50));
+            const restored = char.currentMp - prevMp;
+            addBattleLog(`💧 ${char.name} 使用 ${item.name}，恢复了 ${restored} MP！`, 'heal');
+            break;
+        }
+        default:
+            char.currentHp = Math.min(stats.hp, char.currentHp + (item.value || 50));
+            addBattleLog(`🧪 使用了 ${item.name}！`, 'heal');
+    }
+
+    // 移除使用的道具
+    const index = gameState.inventory.indexOf(item);
+    if (index > -1) gameState.inventory.splice(index, 1);
+
+    const targetEl = document.querySelector(`[data-char-id="${char.id}"]`);
+    if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+    AudioSystem.playHeal();
+    renderBattle();
+    endTurn();
 }
 
 // 渲染战斗界面
@@ -2362,7 +2576,7 @@ function gainXp(char, amount) {
         // 学习新技能
         const classSkills = SKILL_SYSTEM[char.classId] || [];
         classSkills.forEach(skill => {
-            if (skill.level === char.level && !char.learnedSkills.includes(skill.id)) {
+            if (skill.level <= char.level && !char.learnedSkills.includes(skill.id)) {
                 char.learnedSkills.push(skill.id);
             }
         });
@@ -2428,6 +2642,18 @@ function victory() {
         const loot = generateEquipment(slot, avgLevel, battleState.isBossBattle ? 'rare' : null);
         addItemToInventory(loot);
         addBattleLog(`🎁 掉落：[${RARITY_NAMES[loot.rarity]}] ${loot.name}！`, 'loot');
+    }
+
+    // 掉落药水
+    if (Math.random() < 0.4) {
+        const potionPool = ['smallPotion', 'smallPotion', 'smallPotion', 'mediumPotion', 'mediumPotion', 'ether'];
+        if (battleState.isBossBattle) potionPool.push('largePotion', 'elixir');
+        const potionId = potionPool[Math.floor(Math.random() * potionPool.length)];
+        const potion = createConsumable(potionId);
+        if (potion) {
+            gameState.inventory.push(potion);
+            addBattleLog(`🧪 掉落：${potion.name}！`, 'loot');
+        }
     }
 
     // 掉落强化材料
@@ -3155,6 +3381,12 @@ window.selectSkillForBattle = selectSkillForBattle;
 window.getSkillById = getSkillById;
 window.executeSkill = executeSkill;
 window.SKILL_SYSTEM = SKILL_SYSTEM;
+window.CONSUMABLE_ITEMS = CONSUMABLE_ITEMS;
+window.createConsumable = createConsumable;
+window.showItemMenu = showItemMenu;
+window.closeItemMenu = closeItemMenu;
+window.useItem = useItem;
+window.showConfirmModal = showConfirmModal;
 
 // 启动
 window.onload = init;

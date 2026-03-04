@@ -1870,3 +1870,170 @@ body {
         transform: translateY(-10px);
     }
 }
+
+/* ============== 战斗日志颜色 ============== */
+.log-entry {
+    margin: 4px 0;
+    font-size: 14px;
+}
+.log-normal { color: #fff; }
+.log-damage { color: #ff6b6b; }
+.log-heal { color: #51cf66; }
+.log-loot { color: #ffd43b; }
+.log-levelup { color: #cc5de8; }
+.log-boss { color: #ff6b6b; }
+.log-unlock { color: #74c0fc; }
+.log-info { color: #868e96; }
+.log-reward { color: #ffd43b; }
+
+/* ============== 敌人选择光标 ============== */
+.enemy-unit:not(.dead) {
+    cursor: pointer;
+}
+
+/* ============== 加载界面 ============== */
+.loading-screen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--dq-bg-dark);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+.loading-screen.active {
+    display: flex;
+}
+.loading-content {
+    text-align: center;
+    padding: 20px;
+}
+.loading-title {
+    font-size: 20px;
+    color: var(--dq-gold);
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(255,215,0,0.5);
+}
+.loading-bar-container {
+    width: 280px;
+    height: 16px;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid var(--dq-blue);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 auto 15px;
+}
+.loading-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--dq-blue) 0%, var(--dq-blue-light) 100%);
+    transition: width 0.3s ease;
+}
+.loading-text {
+    font-size: 10px;
+    color: var(--dq-gray);
+}
+
+/* ============== 物品选择面板 ============== */
+.item-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 9000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.item-menu-overlay.active {
+    opacity: 1;
+}
+.item-menu-panel {
+    background: var(--dq-bg);
+    border: 2px solid var(--dq-blue);
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 280px;
+    max-width: 360px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.item-menu-panel h3 {
+    color: var(--dq-gold);
+    margin-bottom: 12px;
+    text-align: center;
+}
+.item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.item-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.item-option:hover {
+    background: rgba(74,144,226,0.2);
+    border-color: var(--dq-blue);
+}
+.item-icon { font-size: 16px; }
+.item-name { color: var(--dq-white); font-size: 10px; flex: 1; }
+.item-desc { color: var(--dq-gray); font-size: 8px; }
+
+/* ============== 确认模态框 ============== */
+.confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 9000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.confirm-modal-overlay.active {
+    opacity: 1;
+}
+.confirm-modal-panel {
+    background: var(--dq-bg);
+    border: 2px solid var(--dq-gold);
+    border-radius: 8px;
+    padding: 20px;
+    min-width: 280px;
+    max-width: 360px;
+    text-align: center;
+}
+.confirm-modal-panel h3 {
+    color: var(--dq-gold);
+    margin-bottom: 12px;
+}
+.confirm-modal-panel p {
+    color: var(--dq-white);
+    margin-bottom: 16px;
+    font-size: 10px;
+    line-height: 1.6;
+}
+.confirm-modal-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
