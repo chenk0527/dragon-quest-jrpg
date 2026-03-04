@@ -49,10 +49,12 @@ const MAPS = {
             // 建筑4: 村长家（右下）
             makeBuilding(map, 26, 20, 8, 6);
             
-            // 围栏装饰
+            // 围栏装饰（避开出口通道 x=17-23）
             for (let x = 2; x < 38; x += 3) {
                 if (map[2][x] === T.GRASS) map[2][x] = T.FENCE;
-                if (map[27][x] === T.GRASS) map[27][x] = T.FENCE;
+                if (x < 17 || x > 23) {
+                    if (map[27][x] === T.GRASS) map[27][x] = T.FENCE;
+                }
             }
             
             // 水池（中心偏右）
