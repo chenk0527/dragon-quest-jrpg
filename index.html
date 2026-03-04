@@ -107,17 +107,28 @@
             <!-- 战斗界面 - DQ风格 -->
             <div class="scene" id="sceneBattle">
                 <div class="battle-field">
+                    <!-- 速度控制 -->
+                    <div class="battle-speed-controls" id="battleSpeedControls">
+                        <button class="speed-btn active" onclick="setBattleSpeed(1)">×1</button>
+                        <button class="speed-btn" onclick="setBattleSpeed(2)">×2</button>
+                        <button class="speed-btn" onclick="setBattleSpeed(3)">×3</button>
+                    </div>
                     <!-- 战斗区域: 勇者在左(背面), 敌人在右(正面) -->
                     <div class="battle-arena" id="battleArena">
                         <div class="battle-party" id="battleParty"></div>
                         <div class="battle-enemies" id="battleEnemies"></div>
                     </div>
-                    
+
                     <!-- 战斗日志 -->
                     <div class="battle-log" id="battleLog"></div>
-                    
+
+                    <!-- 战斗控制栏 -->
+                    <div class="battle-controls-bar">
+                        <button class="auto-battle-btn" id="autoBattleBtn" onclick="toggleAutoBattle()">🤖 自动</button>
+                    </div>
+
                     <!-- 经典命令菜单 -->
-                    <div class="battle-menu">
+                    <div class="battle-menu" id="battleMenu">
                         <button class="battle-btn" onclick="battleAction('attack')">⚔️战斗</button>
                         <button class="battle-btn" onclick="battleAction('skill')">🔥技能</button>
                         <button class="battle-btn" onclick="battleAction('item')">💊物品</button>

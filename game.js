@@ -14,7 +14,14 @@ const CONFIG = {
     XP_CURVE: 1.9,
     MAX_ENHANCE: 15,
     COSMETIC_SLOTS: ['hair', 'face', 'body', 'back', 'weaponSkin', 'pet'],
-    ASSETS_VERSION: '4.0.0'
+    ASSETS_VERSION: '4.0.0',
+    BATTLE_SPEED: 1,
+    AUTO_BATTLE_INTERVAL: 1500,
+    MAX_COMBO_CHANCE: 0.3,
+    BASE_CRIT_RATE: 0.05,
+    CRIT_MULTIPLIER: 1.5,
+    COMBO_DAMAGE_MULT: 0.75,
+    BASE_FLEE_CHANCE: 0.5
 };
 
 // 显示技能树界面
@@ -235,9 +242,9 @@ function performSkillAttack(char, skill, stats) {
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
     if (aliveEnemies.length === 0) return;
 
-    const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
+    const targetIdx = battleState.selectedTarget % aliveEnemies.length;
+    const target = aliveEnemies[targetIdx];
 
-    // 计算伤害
     let power = skill.power || 1.5;
     let damage = 0;
 
@@ -247,29 +254,32 @@ function performSkillAttack(char, skill, stats) {
         damage = Math.max(1, stats.str * power - target.def / 2);
     }
 
-    // 暴击加成
-    const isCritical = Math.random() < (0.15 + (skill.critBonus || 0));
-    if (isCritical) damage *= 1.5;
+    const isCritical = Math.random() < (calcCritRate(stats) + (skill.critBonus || 0));
+    if (isCritical) damage *= CONFIG.CRIT_MULTIPLIER;
 
     damage = Math.floor(damage);
     target.currentHp = Math.max(0, target.currentHp - damage);
 
-    // 动画
     BattleAnimations.skillAnimation(skill.name);
     setTimeout(() => {
-        const targetEl = document.querySelector(`[data-enemy-index="${battleState.selectedTarget % aliveEnemies.length}"]`);
+        const targetEl = document.querySelector(`[data-enemy-index="${targetIdx}"]`);
         if (targetEl) {
+            BattleAnimations.enemyHitFlash(targetEl);
             BattleAnimations.shakeElement(targetEl, 10, 400);
-            BattleAnimations.flashElement(targetEl, skill.element === 'fire' ? '#ff6600' : '#ffaa00', 300);
+            BattleAnimations.showDamageNumber(targetEl, damage, isCritical ? 'critical' : 'damage');
         }
-    }, 400);
+        if (isCritical) BattleAnimations.shakeScreen('light');
+    }, getAnimDuration(400));
 
-    const critText = isCritical ? ' 💥暴击!' : '';
-    addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name} 对 ${target.name} 造成 ${damage} 伤害！${critText}`, 'damage');
+    if (isCritical) {
+        addBattleLog(`💥 ${char.name} 使用 ${skill.name} 暴击 ${target.name}！造成 ${damage} 伤害！`, 'critical');
+    } else {
+        addBattleLog(`✨ ${char.name} 使用 ${skill.name} 对 ${target.name} 造成 ${damage} 伤害！`, 'damage');
+    }
     AudioSystem.playAttack();
 
     if (target.currentHp <= 0) {
-        addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
+        addBattleLog(`💀 ${target.name} 被击败了！`, 'damage');
     }
 }
 
@@ -278,6 +288,7 @@ function performAOEAttack(char, skill, stats) {
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
 
     let power = skill.power || 1.2;
+    let totalDmg = 0;
 
     aliveEnemies.forEach((target, index) => {
         let damage = 0;
@@ -288,18 +299,21 @@ function performAOEAttack(char, skill, stats) {
         }
         damage = Math.floor(damage);
         target.currentHp = Math.max(0, target.currentHp - damage);
+        totalDmg += damage;
 
-        // 视觉反馈
         setTimeout(() => {
             const targetEl = document.querySelector(`[data-enemy-index="${index}"]`);
             if (targetEl) {
+                BattleAnimations.enemyHitFlash(targetEl);
                 BattleAnimations.shakeElement(targetEl, 8, 300);
+                BattleAnimations.showDamageNumber(targetEl, damage, 'damage');
             }
-        }, index * 100);
+        }, getAnimDuration(index * 100));
     });
 
     BattleAnimations.skillAnimation(skill.name);
-    addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name} 攻击了全体敌人！`, 'damage');
+    BattleAnimations.shakeScreen('light');
+    addBattleLog(`✨ ${char.name} 使用 ${skill.name} 攻击全体敌人！共 ${totalDmg} 伤害！`, 'damage');
     AudioSystem.playAttack();
 }
 
@@ -314,9 +328,12 @@ function performHeal(char, skill, stats) {
     const actualHeal = target.currentHp - prevHp;
 
     const targetEl = document.querySelector(`[data-char-id="${target.id}"]`);
-    if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+    if (targetEl) {
+        BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+        BattleAnimations.showDamageNumber(targetEl, actualHeal, 'heal');
+    }
 
-    addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name} 恢复了 ${actualHeal} 生命！`, 'heal');
+    addBattleLog(`💚 ${char.name} 使用 ${skill.name} 恢复了 ${actualHeal} 生命！`, 'heal');
     AudioSystem.playHeal();
 }
 
@@ -329,10 +346,15 @@ function performPartyHeal(char, skill, stats) {
             const maxHp = calculateStats(member).hp;
             const prevHp = member.currentHp;
             member.currentHp = Math.min(maxHp, member.currentHp + healAmount);
+            const actualHeal = member.currentHp - prevHp;
+            const memberEl = document.querySelector(`[data-char-id="${member.id}"]`);
+            if (memberEl && actualHeal > 0) {
+                BattleAnimations.showDamageNumber(memberEl, actualHeal, 'heal');
+            }
         }
     });
 
-    addBattleLog(`${skill.icon} ${char.name} 使用 ${skill.name} 恢复了全队生命！`, 'heal');
+    addBattleLog(`💚 ${char.name} 使用 ${skill.name} 恢复了全队生命！`, 'heal');
     AudioSystem.playHeal();
 }
 
@@ -1010,15 +1032,23 @@ const ParticleSystem = {
 };
 
 // ==================== 战斗动画系统 ====================
+let battleSpeed = 1;
+let autoBattleActive = false;
+let autoBattleTimer = null;
+
+function getSpeedMultiplier() { return battleSpeed; }
+function getAnimDuration(base) { return Math.floor(base / battleSpeed); }
+
 const BattleAnimations = {
     shakeElement(element, intensity = 5, duration = 300) {
         if (!element) return;
+        const actualDur = getAnimDuration(duration);
         const originalTransform = element.style.transform;
         const startTime = Date.now();
 
         const shake = () => {
             const elapsed = Date.now() - startTime;
-            if (elapsed < duration) {
+            if (elapsed < actualDur) {
                 const x = (Math.random() - 0.5) * intensity;
                 const y = (Math.random() - 0.5) * intensity;
                 element.style.transform = `translate(${x}px, ${y}px)`;
@@ -1032,29 +1062,81 @@ const BattleAnimations = {
 
     flashElement(element, color = '#fff', duration = 200) {
         if (!element) return;
+        const actualDur = getAnimDuration(duration);
         const originalFilter = element.style.filter;
         element.style.filter = `brightness(2) drop-shadow(0 0 10px ${color})`;
         setTimeout(() => {
             element.style.filter = originalFilter;
-        }, duration);
+        }, actualDur);
     },
 
-    showDamageNumber(target, damage, isCritical = false) {
+    showDamageNumber(target, damage, type = 'damage') {
+        if (!target) return;
         const rect = target.getBoundingClientRect();
         const number = document.createElement('div');
-        number.className = 'damage-number' + (isCritical ? ' critical' : '');
-        number.textContent = damage;
-        number.style.left = rect.left + rect.width / 2 + 'px';
+        const offsetX = (Math.random() - 0.5) * 30;
+
+        if (type === 'critical') {
+            number.className = 'damage-number critical';
+            number.textContent = damage + '!';
+        } else if (type === 'heal') {
+            number.className = 'damage-number heal';
+            number.textContent = '+' + damage;
+        } else if (type === 'combo') {
+            number.className = 'damage-number combo';
+            number.textContent = damage;
+        } else {
+            number.className = 'damage-number';
+            number.textContent = damage;
+        }
+
+        number.style.left = (rect.left + rect.width / 2 + offsetX) + 'px';
         number.style.top = rect.top + 'px';
         document.body.appendChild(number);
 
-        // Animate
         setTimeout(() => {
-            number.style.transform = 'translateY(-50px)';
+            number.style.transform = 'translateY(-60px)';
             number.style.opacity = '0';
         }, 10);
 
-        setTimeout(() => number.remove(), 1000);
+        setTimeout(() => number.remove(), getAnimDuration(1000));
+    },
+
+    shakeScreen(intensity = 'light') {
+        const battleField = document.querySelector('.battle-field');
+        if (!battleField) return;
+        battleField.classList.add('shake-screen');
+        const dur = intensity === 'heavy' ? 500 : 300;
+        setTimeout(() => battleField.classList.remove('shake-screen'), getAnimDuration(dur));
+    },
+
+    flashWhite() {
+        const overlay = document.createElement('div');
+        overlay.className = 'flash-overlay flash-white';
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.remove(), getAnimDuration(400));
+    },
+
+    enemyHitFlash(element) {
+        if (!element) return;
+        element.classList.add('enemy-hit');
+        setTimeout(() => element.classList.remove('enemy-hit'), getAnimDuration(400));
+    },
+
+    showComboText(target) {
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        const text = document.createElement('div');
+        text.className = 'combo-text';
+        text.textContent = '连击！';
+        text.style.left = (rect.left + rect.width / 2 - 30) + 'px';
+        text.style.top = (rect.top - 20) + 'px';
+        document.body.appendChild(text);
+        setTimeout(() => {
+            text.style.transform = 'translateY(-40px) scale(1.3)';
+            text.style.opacity = '0';
+        }, 10);
+        setTimeout(() => text.remove(), getAnimDuration(800));
     },
 
     attackAnimation(attacker, target, callback) {
@@ -1065,20 +1147,20 @@ const BattleAnimations = {
             attackerEl.style.transform = 'translateX(20px)';
             setTimeout(() => {
                 attackerEl.style.transform = 'translateX(0)';
-            }, 200);
+            }, getAnimDuration(200));
         }
 
         setTimeout(() => {
             if (targetEl) {
+                this.enemyHitFlash(targetEl);
                 this.shakeElement(targetEl, 8, 300);
-                this.flashElement(targetEl, '#ff0000', 150);
             }
             if (callback) callback();
-        }, 200);
+        }, getAnimDuration(200));
     },
 
     skillAnimation(skillName, target, callback) {
-        // Create skill effect overlay
+        this.flashWhite();
         const overlay = document.createElement('div');
         overlay.className = 'skill-effect-overlay';
         overlay.innerHTML = `<div class="skill-name">${skillName}</div>`;
@@ -1090,9 +1172,9 @@ const BattleAnimations = {
 
         setTimeout(() => {
             overlay.classList.remove('active');
-            setTimeout(() => overlay.remove(), 300);
+            setTimeout(() => overlay.remove(), getAnimDuration(300));
             if (callback) callback();
-        }, 800);
+        }, getAnimDuration(800));
     }
 };
 
@@ -2188,6 +2270,7 @@ function startBattle(zoneId) {
     // Apply battle background
     applyBattleBackground(zoneId);
 
+    stopAutoBattle();
     battleState = {
         zone: { id: zoneId, ...zone },
         enemies: generateEnemies(zoneId),
@@ -2213,6 +2296,7 @@ function startBossBattle(zoneId) {
     // Apply battle background
     applyBattleBackground(zoneId);
 
+    stopAutoBattle();
     battleState = {
         zone: { id: zoneId, ...MAP_ZONES[zoneId] },
         enemies: [{
@@ -2275,6 +2359,8 @@ function nextTurn() {
         if (char.currentHp > 0) {
             addBattleLog(`🎯 ${char.name} 的回合`, 'normal');
             renderBattle();
+            // 自动战斗触发
+            if (autoBattleActive) scheduleNextAutoBattle();
             return;
         }
         battleState.activeCharIndex++;
@@ -2290,7 +2376,6 @@ function enemyTurn() {
 
     battleState.enemies.forEach((enemy, idx) => {
         if (enemy.currentHp > 0) {
-            // 随机选择目标
             const aliveChars = gameState.party.filter(c => c.currentHp > 0);
             if (aliveChars.length === 0) return;
 
@@ -2298,26 +2383,26 @@ function enemyTurn() {
             const stats = calculateStats(target);
 
             const damage = Math.max(1, enemy.str - stats.def / 2);
-            target.currentHp = Math.max(0, target.currentHp - damage);
+            const finalDamage = Math.floor(damage);
+            target.currentHp = Math.max(0, target.currentHp - finalDamage);
 
-            // Visual feedback
             const targetEl = document.querySelector(`[data-char-id="${target.id}"]`);
             if (targetEl) {
                 BattleAnimations.shakeElement(targetEl, 5, 200);
                 BattleAnimations.flashElement(targetEl, '#ff0000', 150);
+                BattleAnimations.showDamageNumber(targetEl, finalDamage, 'damage');
             }
 
-            addBattleLog(`${enemy.icon} ${enemy.name} 攻击 ${target.name} 造成 ${Math.floor(damage)} 伤害！`, 'damage');
+            addBattleLog(`⚔️ ${enemy.name} 攻击 ${target.name} 造成 ${finalDamage} 伤害！`, 'damage');
 
             if (SoundEnabled) AudioSystem.playDamage();
         }
     });
 
-    // 重置角色回合
     battleState.activeCharIndex = 0;
     battleState.turn++;
 
-    setTimeout(() => nextTurn(), 500);
+    setTimeout(() => nextTurn(), getAnimDuration(500));
 }
 
 // 战斗行动
@@ -2349,14 +2434,26 @@ function battleAction(action) {
     }
 }
 
+// 计算暴击率（基于幸运/智力）
+function calcCritRate(stats) {
+    const luckFactor = (stats.int || 10) / 200;
+    return Math.min(0.4, CONFIG.BASE_CRIT_RATE + luckFactor);
+}
+
+// 计算连击概率（基于速度）
+function calcComboChance(stats) {
+    return Math.min(CONFIG.MAX_COMBO_CHANCE, (stats.spd || 10) / 100);
+}
+
 // 执行攻击
 function performAttack(char, stats) {
     const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
     if (aliveEnemies.length === 0) return;
 
-    const target = aliveEnemies[battleState.selectedTarget % aliveEnemies.length];
-    const isCritical = Math.random() < 0.15; // 15% crit chance
-    const critMultiplier = isCritical ? 1.5 : 1;
+    const targetIdx = battleState.selectedTarget % aliveEnemies.length;
+    const target = aliveEnemies[targetIdx];
+    const isCritical = Math.random() < calcCritRate(stats);
+    const critMultiplier = isCritical ? CONFIG.CRIT_MULTIPLIER : 1;
     const damage = Math.max(1, stats.str * (0.9 + Math.random() * 0.2) * critMultiplier - target.def / 2);
     const finalDamage = Math.floor(damage);
 
@@ -2364,36 +2461,69 @@ function performAttack(char, stats) {
 
     // Animation
     const attackerEl = document.querySelector(`[data-char-id="${char.id}"]`);
-    const targetEl = document.querySelector(`[data-enemy-index="${battleState.selectedTarget % aliveEnemies.length}"]`);
+    const targetEl = document.querySelector(`[data-enemy-index="${targetIdx}"]`);
 
     if (attackerEl) {
         attackerEl.style.transform = 'translateX(15px)';
-        setTimeout(() => attackerEl.style.transform = '', 200);
+        setTimeout(() => attackerEl.style.transform = '', getAnimDuration(200));
     }
 
     setTimeout(() => {
         if (targetEl) {
-            BattleAnimations.shakeElement(targetEl, 8, 300);
-            BattleAnimations.flashElement(targetEl, isCritical ? '#ffaa00' : '#ff0000', 200);
+            BattleAnimations.enemyHitFlash(targetEl);
+            BattleAnimations.shakeElement(targetEl, isCritical ? 12 : 8, 300);
+            BattleAnimations.showDamageNumber(targetEl, finalDamage, isCritical ? 'critical' : 'damage');
         }
-    }, 200);
+    }, getAnimDuration(200));
 
-    // Particle effects
-    if (isCritical && ParticleSystem.canvas) {
-        const rect = targetEl?.getBoundingClientRect();
-        if (rect) {
-            ParticleSystem.createBurst('critical', rect.left + rect.width/2, rect.top);
+    if (isCritical) {
+        BattleAnimations.shakeScreen('light');
+        if (ParticleSystem.canvas) {
+            const rect = targetEl?.getBoundingClientRect();
+            if (rect) ParticleSystem.createBurst('critical', rect.left + rect.width/2, rect.top);
         }
         AudioSystem.playCritical();
+        addBattleLog(`💥 ${char.name} 对 ${target.name} 暴击！造成 ${finalDamage} 伤害！`, 'critical');
     } else {
         AudioSystem.playAttack();
+        addBattleLog(`⚔️ ${char.name} 攻击 ${target.name} 造成 ${finalDamage} 伤害！`, 'damage');
     }
 
-    const critText = isCritical ? ' 💥暴击!' : '';
-    addBattleLog(`${char.icon} ${char.name} 攻击 ${target.icon} ${target.name} 造成 ${finalDamage} 伤害！${critText}`, isCritical ? 'damage' : 'normal');
+    if (target.currentHp <= 0) {
+        addBattleLog(`💀 ${target.name} 被击败了！`, 'damage');
+    }
+
+    // 连击判定
+    const comboChance = calcComboChance(stats);
+    if (Math.random() < comboChance && target.currentHp > 0) {
+        setTimeout(() => {
+            performComboAttack(char, stats, target, targetIdx);
+        }, getAnimDuration(400));
+    } else {
+        endTurn();
+    }
+}
+
+// 连击攻击
+function performComboAttack(char, stats, target, targetIdx) {
+    if (!battleState || target.currentHp <= 0) { endTurn(); return; }
+
+    const comboDamage = Math.floor(Math.max(1, stats.str * (0.9 + Math.random() * 0.2) * CONFIG.COMBO_DAMAGE_MULT - target.def / 2));
+    target.currentHp = Math.max(0, target.currentHp - comboDamage);
+
+    const targetEl = document.querySelector(`[data-enemy-index="${targetIdx}"]`);
+    if (targetEl) {
+        BattleAnimations.showComboText(targetEl);
+        BattleAnimations.enemyHitFlash(targetEl);
+        BattleAnimations.shakeElement(targetEl, 6, 200);
+        BattleAnimations.showDamageNumber(targetEl, comboDamage, 'combo');
+    }
+
+    AudioSystem.playAttack();
+    addBattleLog(`⚡ ${char.name} 连击！对 ${target.name} 追加 ${comboDamage} 伤害！`, 'combo');
 
     if (target.currentHp <= 0) {
-        addBattleLog(`${target.icon} ${target.name} 被击败了！`, 'normal');
+        addBattleLog(`💀 ${target.name} 被击败了！`, 'damage');
     }
 
     endTurn();
@@ -2415,22 +2545,32 @@ function selectTarget(index) {
 // 结束回合
 function endTurn() {
     battleState.activeCharIndex++;
-    setTimeout(() => nextTurn(), 500);
+    setTimeout(() => nextTurn(), getAnimDuration(500));
 }
 
 // 尝试逃跑
 function attemptFlee() {
-    const fleeChance = 0.5;
+    // BOSS战无法逃跑
+    if (battleState && battleState.isBossBattle) {
+        addBattleLog('🚫 BOSS战中无法逃跑！', 'damage');
+        return;
+    }
+
+    // 逃跑成功率 = 50% + (我方平均速度 - 敌方平均速度) × 2%
+    const aliveParty = gameState.party.filter(c => c.currentHp > 0);
+    const avgPartySpd = aliveParty.reduce((sum, c) => sum + calculateStats(c).spd, 0) / (aliveParty.length || 1);
+    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    const avgEnemySpd = aliveEnemies.reduce((sum, e) => sum + (e.spd || 10), 0) / (aliveEnemies.length || 1);
+    const fleeChance = Math.max(0.1, Math.min(0.95, CONFIG.BASE_FLEE_CHANCE + (avgPartySpd - avgEnemySpd) * 0.02));
+
     if (Math.random() < fleeChance) {
-        addBattleLog('🏃 成功逃跑！', 'normal');
+        stopAutoBattle();
+        addBattleLog('💨 成功逃跑！', 'flee');
         setTimeout(() => {
-            showScene('map');
-            // Reset battle background
-            const battleField = document.getElementById('battleField');
-            if (battleField) battleField.style.background = '';
-        }, 1000);
+            returnFromBattle();
+        }, getAnimDuration(1000));
     } else {
-        addBattleLog('❌ 逃跑失败！', 'normal');
+        addBattleLog('💨 逃跑失败！浪费了一回合...', 'flee');
         endTurn();
     }
 }
@@ -2518,7 +2658,10 @@ function useItem(itemId) {
     if (index > -1) gameState.inventory.splice(index, 1);
 
     const targetEl = document.querySelector(`[data-char-id="${char.id}"]`);
-    if (targetEl) BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+    if (targetEl) {
+        BattleAnimations.flashElement(targetEl, '#00ff00', 300);
+        BattleAnimations.showDamageNumber(targetEl, item.value || 50, 'heal');
+    }
     AudioSystem.playHeal();
     renderBattle();
     endTurn();
@@ -2601,17 +2744,16 @@ function gainXp(char, amount) {
 
 // 胜利处理
 function victory() {
+    stopAutoBattle();
+
     let totalXp = 0;
     let totalGold = 0;
-    const defeatedEnemies = [];
 
     battleState.enemies.forEach(enemy => {
         if (enemy.currentHp <= 0) {
             totalXp += enemy.xp || 10;
             totalGold += enemy.gold || 5;
-            defeatedEnemies.push(enemy);
 
-            // 更新图鉴击杀数
             const enemyId = Object.keys(BESTIARY).find(key => BESTIARY[key].name === enemy.name);
             if (enemyId && gameState.bestiary[enemyId]) {
                 gameState.bestiary[enemyId].killed++;
@@ -2621,7 +2763,6 @@ function victory() {
 
     gameState.gold += totalGold;
 
-    // 分配经验并恢复MP
     const aliveChars = gameState.party.filter(c => c.currentHp > 0);
     const xpPerChar = Math.floor(totalXp / aliveChars.length);
 
@@ -2630,69 +2771,40 @@ function victory() {
         if (levels > 0) {
             addBattleLog(`🎉 ${char.name} 升到了 ${char.level} 级！`, 'levelup');
         }
-        // 恢复部分MP
         const stats = calculateStats(char);
-        const mpRecovery = Math.floor(stats.mp * 0.2); // 恢复20%MP
+        const mpRecovery = Math.floor(stats.mp * 0.2);
         char.currentMp = Math.min(stats.mp, char.currentMp + mpRecovery);
     });
 
     addBattleLog(`🏆 战斗胜利！获得 ${totalXp} 经验和 ${totalGold} 金币！`, 'reward');
 
-    // 播放胜利音效
     AudioSystem.playVictory();
 
-    // 显示胜利画面
-    showVictoryScreen(totalXp, totalGold);
+    // 生成战利品
+    const lootItems = generateLootDrops();
 
-    // 掉落装备
-    const avgLevel = Math.floor(gameState.party.reduce((sum, c) => sum + c.level, 0) / gameState.party.length);
-    const dropCount = battleState.isBossBattle ? 3 : (Math.random() < 0.7 ? 1 : 0);
-
-    for (let i = 0; i < dropCount; i++) {
-        const slots = ['weapon', 'helmet', 'armor', 'shield'];
-        const slot = slots[Math.floor(Math.random() * slots.length)];
-        const loot = generateEquipment(slot, avgLevel, battleState.isBossBattle ? 'rare' : null);
-        addItemToInventory(loot);
-        addBattleLog(`🎁 掉落：[${RARITY_NAMES[loot.rarity]}] ${loot.name}！`, 'loot');
-    }
-
-    // 掉落药水
-    if (Math.random() < 0.4) {
-        const potionPool = ['smallPotion', 'smallPotion', 'smallPotion', 'mediumPotion', 'mediumPotion', 'ether'];
-        if (battleState.isBossBattle) potionPool.push('largePotion', 'elixir');
-        const potionId = potionPool[Math.floor(Math.random() * potionPool.length)];
-        const potion = createConsumable(potionId);
-        if (potion) {
-            gameState.inventory.push(potion);
-            addBattleLog(`🧪 掉落：${potion.name}！`, 'loot');
+    // 记录战利品日志
+    lootItems.forEach(loot => {
+        if (loot.type === 'equipment') {
+            addBattleLog(`🎁 掉落：[${RARITY_NAMES[loot.rarity]}] ${loot.item.name}！`, 'loot');
+        } else if (loot.type === 'consumable') {
+            addBattleLog(`🧪 掉落：${loot.item.name}！`, 'loot');
+        } else if (loot.type === 'material') {
+            addBattleLog(`💎 掉落：${loot.name}`, 'loot');
         }
-    }
+    });
 
-    // 掉落强化材料
-    const materialDropCount = battleState.isBossBattle ? 5 : (Math.floor(Math.random() * 3) + 1);
-    for (let i = 0; i < materialDropCount; i++) {
-        const rarityRoll = Math.random();
-        let materialType = 'common';
-        if (rarityRoll > 0.98) materialType = 'legendary';
-        else if (rarityRoll > 0.90) materialType = 'epic';
-        else if (rarityRoll > 0.75) materialType = 'rare';
-        else if (rarityRoll > 0.50) materialType = 'magic';
-
-        addEnhancementMaterial(materialType, 1);
-        const typeNames = { common: '普通', magic: '魔法', rare: '稀有', epic: '史诗', legendary: '传说' };
-        addBattleLog(`💎 掉落：${typeNames[materialType]}强化石 x1`, 'loot');
-    }
+    // 显示胜利画面（含战利品列表）
+    showVictoryScreen(totalXp, totalGold, lootItems);
 
     // BOSS战特殊奖励
     if (battleState.isBossBattle) {
         const zoneId = battleState.zone.id;
 
-        // 解锁新角色（首次击败时）
         if (!gameState.defeatedBosses.includes(zoneId)) {
             unlockCharacter(zoneId);
         }
 
-        // 解锁时装
         const cosmeticDrops = {
             forest: { slot: 'back', id: 'capeRed' },
             cave: { slot: 'face', id: 'eyepatch' },
@@ -2716,11 +2828,9 @@ function victory() {
             unlockCosmetic(drop.id, drop.slot);
         }
 
-        // 记录击败
         if (!gameState.defeatedBosses.includes(battleState.zone.id)) {
             gameState.defeatedBosses.push(battleState.zone.id);
 
-            // 解锁新区域
             const zone = MAP_ZONES[battleState.zone.id];
             if (zone.unlocks) {
                 zone.unlocks.forEach(mapId => {
@@ -2738,7 +2848,11 @@ function victory() {
 }
 
 // 显示胜利画面
-function showVictoryScreen(xp, gold) {
+function showVictoryScreen(xp, gold, lootItems) {
+    const lootHtml = lootItems && lootItems.length > 0
+        ? `<div class="victory-loot-list">${renderLootList(lootItems)}</div>`
+        : '';
+
     const overlay = document.createElement('div');
     overlay.className = 'victory-overlay';
     overlay.innerHTML = `
@@ -2748,17 +2862,18 @@ function showVictoryScreen(xp, gold) {
                 <div class="victory-stat">✨ 经验值: ${xp}</div>
                 <div class="victory-stat">💰 金币: ${gold}</div>
             </div>
+            ${lootHtml}
             <button class="btn btn-primary" onclick="this.closest('.victory-overlay').remove(); returnFromBattle();">继续</button>
         </div>
     `;
     document.body.appendChild(overlay);
 
-    // Animate in
     setTimeout(() => overlay.classList.add('active'), 10);
 }
 
 // 失败处理
 function defeat() {
+    stopAutoBattle();
     addBattleLog('💀 队伍全灭...', 'damage');
     AudioSystem.playDefeat();
 
@@ -3430,6 +3545,166 @@ function closeDialog() {
     }
 }
 
+// ==================== 自动战斗系统 ====================
+function toggleAutoBattle() {
+    if (autoBattleActive) {
+        stopAutoBattle();
+    } else {
+        startAutoBattle();
+    }
+}
+
+function startAutoBattle() {
+    autoBattleActive = true;
+    const btn = document.getElementById('autoBattleBtn');
+    if (btn) {
+        btn.textContent = '⏹ 停止';
+        btn.classList.add('active');
+    }
+    runAutoBattle();
+}
+
+function stopAutoBattle() {
+    autoBattleActive = false;
+    if (autoBattleTimer) {
+        clearTimeout(autoBattleTimer);
+        autoBattleTimer = null;
+    }
+    const btn = document.getElementById('autoBattleBtn');
+    if (btn) {
+        btn.textContent = '🤖 自动';
+        btn.classList.remove('active');
+    }
+}
+
+function runAutoBattle() {
+    if (!autoBattleActive || !battleState) return;
+
+    const char = gameState.party[battleState.activeCharIndex];
+    if (!char || char.currentHp <= 0) return;
+
+    const stats = calculateStats(char);
+
+    // AI逻辑: HP<30%时用药水，否则攻击血最少的敌人
+    const hpPercent = char.currentHp / stats.hp;
+    if (hpPercent < 0.3) {
+        const healItem = gameState.inventory.find(i => i.type === 'consumable' && (i.subType === 'heal' || i.subType === 'fullHeal'));
+        if (healItem) {
+            useItem(healItem.itemId || healItem.name);
+            scheduleNextAutoBattle();
+            return;
+        }
+    }
+
+    // 攻击血最少的敌人
+    const aliveEnemies = battleState.enemies.filter(e => e.currentHp > 0);
+    if (aliveEnemies.length > 0) {
+        let minHpIdx = 0;
+        let minHp = Infinity;
+        aliveEnemies.forEach((e, i) => {
+            if (e.currentHp < minHp) { minHp = e.currentHp; minHpIdx = i; }
+        });
+        battleState.selectedTarget = minHpIdx;
+        battleAction('attack');
+    }
+
+    scheduleNextAutoBattle();
+}
+
+function scheduleNextAutoBattle() {
+    if (!autoBattleActive) return;
+    autoBattleTimer = setTimeout(() => {
+        if (autoBattleActive && battleState) runAutoBattle();
+    }, CONFIG.AUTO_BATTLE_INTERVAL / battleSpeed);
+}
+
+// ==================== 战斗速度控制 ====================
+function setBattleSpeed(speed) {
+    battleSpeed = speed;
+    const btns = document.querySelectorAll('.speed-btn');
+    btns.forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === `×${speed}`);
+    });
+}
+
+// ==================== 战利品掉落系统增强 ====================
+function generateLootDrops() {
+    const lootItems = [];
+    const avgLevel = Math.floor(gameState.party.reduce((sum, c) => sum + c.level, 0) / gameState.party.length);
+    const zoneLevel = battleState.zone.level || avgLevel;
+
+    // 装备掉落
+    const dropCount = battleState.isBossBattle ? 3 : (Math.random() < 0.7 ? 1 : 0);
+    for (let i = 0; i < dropCount; i++) {
+        const slots = ['weapon', 'helmet', 'armor', 'shield'];
+        const slot = slots[Math.floor(Math.random() * slots.length)];
+
+        // 根据区域等级影响稀有度
+        let forcedRarity = null;
+        if (battleState.isBossBattle) {
+            const roll = Math.random();
+            forcedRarity = roll < 0.3 ? 'epic' : roll < 0.7 ? 'rare' : null;
+        } else if (zoneLevel >= 50) {
+            if (Math.random() < 0.15) forcedRarity = 'rare';
+        }
+
+        const loot = generateEquipment(slot, avgLevel, forcedRarity);
+        addItemToInventory(loot);
+        lootItems.push({ type: 'equipment', item: loot, rarity: loot.rarity });
+    }
+
+    // 药水掉落
+    if (Math.random() < 0.4) {
+        const potionPool = ['smallPotion', 'smallPotion', 'smallPotion', 'mediumPotion', 'mediumPotion', 'ether'];
+        if (battleState.isBossBattle) potionPool.push('largePotion', 'elixir');
+        const potionId = potionPool[Math.floor(Math.random() * potionPool.length)];
+        const potion = createConsumable(potionId);
+        if (potion) {
+            gameState.inventory.push(potion);
+            lootItems.push({ type: 'consumable', item: potion, rarity: 'common' });
+        }
+    }
+
+    // 强化材料掉落
+    const materialDropCount = battleState.isBossBattle ? 5 : (Math.floor(Math.random() * 3) + 1);
+    for (let i = 0; i < materialDropCount; i++) {
+        const rarityRoll = Math.random();
+        let materialType = 'common';
+        if (rarityRoll > 0.98) materialType = 'legendary';
+        else if (rarityRoll > 0.90) materialType = 'epic';
+        else if (rarityRoll > 0.75) materialType = 'rare';
+        else if (rarityRoll > 0.50) materialType = 'magic';
+
+        addEnhancementMaterial(materialType, 1);
+        const typeNames = { common: '普通', magic: '魔法', rare: '稀有', epic: '史诗', legendary: '传说' };
+        lootItems.push({ type: 'material', name: `${typeNames[materialType]}强化石`, rarity: materialType });
+    }
+
+    return lootItems;
+}
+
+function renderLootList(lootItems) {
+    if (!lootItems || lootItems.length === 0) return '';
+    return lootItems.map((loot, idx) => {
+        const rarity = loot.rarity || 'common';
+        let icon = '📦';
+        let name = '';
+        if (loot.type === 'equipment') {
+            icon = '⚔️';
+            name = `[${RARITY_NAMES[rarity]}] ${loot.item.name}`;
+        } else if (loot.type === 'consumable') {
+            icon = '🧪';
+            name = loot.item.name;
+        } else if (loot.type === 'material') {
+            icon = '💎';
+            name = `${loot.name} ×1`;
+        }
+        return `<div class="loot-item rarity-${rarity}" style="animation-delay: ${idx * 0.1}s">
+            <span>${icon}</span><span>${name}</span>
+        </div>`;
+    }).join('');
+}
+
 // ==================== 导出 ====================
 window.startNewGame = startNewGame;
 window.continueGame = continueGame;
@@ -3471,6 +3746,8 @@ window.useItem = useItem;
 window.showConfirmModal = showConfirmModal;
 window.returnFromBattle = returnFromBattle;
 window.startBattle = startBattle;
+window.toggleAutoBattle = toggleAutoBattle;
+window.setBattleSpeed = setBattleSpeed;
 
 // 启动
 window.onload = init;
