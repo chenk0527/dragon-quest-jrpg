@@ -18,6 +18,203 @@ let W = {
     transitioning: false
 };
 
+// ======== 天气系统 ========
+const ZONE_WEATHER = {
+    village:'clear', plains:'clear', forest:'rain', cave:'none', mine:'none', crypt:'fog',
+    desert:'sandstorm', swamp:'rain', volcano:'ash', darkForest:'fog', castle:'fog',
+    snow:'snow', skyCity:'wind', abyss:'dark', rift:'lightning', divine:'light',
+    dragonRealm:'ash', demonCastle:'dark'
+};
+
+const WEATHER_LABELS = {
+    clear:'\u2600\uFE0F\u6674', rain:'\uD83C\uDF27\uFE0F\u96E8', snow:'\u2744\uFE0F\u96EA',
+    fog:'\uD83C\uDF2B\uFE0F\u96FE', sandstorm:'\uD83C\uDFDC\uFE0F\u6C99\u66B4',
+    ash:'\uD83C\uDF0B\u7070\u70EC', lightning:'\u26A1\u95EA\u7535',
+    light:'\u2728\u5723\u5149', wind:'\uD83D\uDCA8\u98CE', dark:'\uD83C\uDF11\u9ED1\u6697',
+    none:''
+};
+
+const WeatherSystem = {
+    current: 'clear',
+    particles: [],
+    timer: 0,
+    changeInterval: 180 * 60, // 3 minutes at ~60fps
+    flashTimer: 0,
+    flashCooldown: 0,
+    fogAlpha: 0,
+    fogDir: 1,
+
+    init() {
+        this.current = ZONE_WEATHER[W.currentMap] || 'clear';
+        this.particles = [];
+        this.timer = 0;
+        this.flashTimer = 0;
+        this.flashCooldown = Math.floor(Math.random() * 180) + 300;
+        this._initParticles();
+    },
+
+    _initParticles() {
+        this.particles = [];
+        const count = 30;
+        const cw = W.canvas ? W.canvas.width : 480;
+        const ch = W.canvas ? W.canvas.height : 320;
+        for (let i = 0; i < count; i++) {
+            this.particles.push({
+                x: Math.random() * cw,
+                y: Math.random() * ch,
+                vx: 0, vy: 0,
+                size: 2,
+                alpha: 0.5 + Math.random() * 0.5
+            });
+        }
+    },
+
+    setZone(zone) {
+        const w = ZONE_WEATHER[zone] || 'clear';
+        if (w !== this.current) {
+            this.current = w;
+            this._initParticles();
+        }
+    },
+
+    update() {
+        this.timer++;
+        if (!W.canvas) return;
+        const cw = W.canvas.width, ch = W.canvas.height;
+        const w = this.current;
+
+        // Update fog oscillation
+        this.fogAlpha += 0.005 * this.fogDir;
+        if (this.fogAlpha > 0.35) this.fogDir = -1;
+        if (this.fogAlpha < 0.1) this.fogDir = 1;
+
+        // Update lightning flash
+        if (w === 'lightning') {
+            if (this.flashTimer > 0) this.flashTimer--;
+            this.flashCooldown--;
+            if (this.flashCooldown <= 0) {
+                this.flashTimer = 6; // ~100ms at 60fps
+                this.flashCooldown = 300 + Math.floor(Math.random() * 180); // 5-8s
+            }
+        }
+
+        this.particles.forEach(p => {
+            switch (w) {
+                case 'rain':
+                    p.vx = -1; p.vy = 6; p.size = 2; break;
+                case 'snow':
+                    p.vx = Math.sin(this.timer * 0.01 + p.x * 0.1) * 0.5;
+                    p.vy = 1; p.size = 3; break;
+                case 'sandstorm':
+                    p.vx = 4; p.vy = 0.5; p.size = 2; break;
+                case 'ash':
+                    p.vx = Math.sin(this.timer * 0.02 + p.y * 0.05) * 0.3;
+                    p.vy = 1.5; p.size = 2; break;
+                case 'light':
+                    p.vx = Math.sin(this.timer * 0.015 + p.x * 0.08) * 0.4;
+                    p.vy = -1; p.size = 2; break;
+                case 'wind':
+                    p.vx = 6; p.vy = 0; p.size = 1; break;
+                case 'lightning':
+                    p.vx = -0.5; p.vy = 5; p.size = 2; break;
+            }
+            p.x += p.vx; p.y += p.vy;
+            if (p.x > cw + 10) p.x = -10;
+            if (p.x < -10) p.x = cw + 10;
+            if (p.y > ch + 10) { p.y = -10; p.x = Math.random() * cw; }
+            if (p.y < -10) { p.y = ch + 10; p.x = Math.random() * cw; }
+        });
+    },
+
+    render(ctx, canvas) {
+        if (!ctx || !canvas) return;
+        const cw = canvas.width, ch = canvas.height;
+        const w = this.current;
+        if (w === 'none' || w === 'clear') return;
+
+        ctx.save();
+        switch (w) {
+            case 'rain':
+                ctx.strokeStyle = 'rgba(100,150,255,0.5)';
+                ctx.lineWidth = 1;
+                this.particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - 3, p.y + 10);
+                    ctx.stroke();
+                });
+                break;
+            case 'snow':
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                this.particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                break;
+            case 'sandstorm':
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(210,180,100,${p.alpha * 0.6})`;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                ctx.fillStyle = `rgba(210,180,100,0.1)`;
+                ctx.fillRect(0, 0, cw, ch);
+                break;
+            case 'fog':
+                ctx.fillStyle = `rgba(255,255,255,${this.fogAlpha})`;
+                ctx.fillRect(0, 0, cw, ch);
+                break;
+            case 'ash':
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(255,${80 + Math.floor(Math.random() * 40)},0,${p.alpha * 0.7})`;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                });
+                break;
+            case 'dark': {
+                const grd = ctx.createRadialGradient(cw / 2, ch / 2, cw * 0.15, cw / 2, ch / 2, cw * 0.6);
+                grd.addColorStop(0, 'rgba(0,0,0,0)');
+                grd.addColorStop(1, 'rgba(0,0,0,0.7)');
+                ctx.fillStyle = grd;
+                ctx.fillRect(0, 0, cw, ch);
+                break;
+            }
+            case 'lightning':
+                ctx.strokeStyle = 'rgba(100,150,255,0.4)';
+                ctx.lineWidth = 1;
+                this.particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x - 2, p.y + 8);
+                    ctx.stroke();
+                });
+                if (this.flashTimer > 0) {
+                    ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.3})`;
+                    ctx.fillRect(0, 0, cw, ch);
+                }
+                break;
+            case 'light':
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(255,215,0,${p.alpha * 0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                break;
+            case 'wind':
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 1;
+                this.particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(p.x + 15, p.y);
+                    ctx.stroke();
+                });
+                break;
+        }
+        ctx.restore();
+    }
+};
+
 // ======== 钓鱼系统 ========
 const FISH_TYPES = [
     { id:'carp',      name:'鲤鱼',   emoji:'🐟', rarity:'common',    sellPrice:10,  healAmount:20  },
@@ -1438,6 +1635,7 @@ function initWorld(targetMap) {
         bindButtons();
     }
     W.initialized = true;
+    WeatherSystem.init();
 
     if (!W.loopStarted) { W.loopStarted = true; loop(); }
 
@@ -1451,6 +1649,7 @@ function loadMap(mapId) {
     const mapDef = MAPS[mapId];
     if (!mapDef) return;
     W.currentMap = mapId;
+    WeatherSystem.setZone(mapId);
     W.mapW = mapDef.width;
     W.mapH = mapDef.height;
     const data = mapDef.generate();
@@ -1817,6 +2016,7 @@ function closeWorldDialog() {
 // ======== 游戏循环 ========
 function loop() {
     W.time++;
+    WeatherSystem.update();
     if(W.areaNameTimer>0) {
         W.areaNameTimer--;
         if(W.areaNameTimer>90) W.areaNameAlpha=Math.min(1,(120-W.areaNameTimer)/30);
@@ -1865,7 +2065,10 @@ function draw() {
     
     // 玩家
     drawPlayer(ctx, (W.player.x-W.camera.x)*W.TILE, (W.player.y-W.camera.y)*W.TILE);
-    
+
+    // 天气效果
+    WeatherSystem.render(ctx, W.canvas);
+
     // HUD
     drawHUD(ctx, cw, ch, mapDef);
 }
@@ -1905,6 +2108,16 @@ function drawHUD(ctx, cw, ch, mapDef) {
         ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(cw-100,52,92,20);
         ctx.fillStyle='#FFD700'; ctx.font='10px monospace';
         ctx.fillText('💰 '+gameState.gold+'G',cw-94,66);
+    }
+
+    // 天气指示器（右上）
+    if(WeatherSystem.current && WeatherSystem.current !== 'none') {
+        const wLabel = WEATHER_LABELS[WeatherSystem.current] || '';
+        if(wLabel) {
+            ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(cw-100,76,92,18);
+            ctx.fillStyle='#aaddff'; ctx.font='10px monospace';
+            ctx.fillText(wLabel,cw-94,89);
+        }
     }
 
     // Minimap (bottom-right)
