@@ -1033,6 +1033,121 @@ function drawMonsterSprite(ctx, sx, sy, mon) {
             ctx.fillStyle='#ff0000'; ctx.fillRect(sx+12,by+7,3,3); ctx.fillRect(sx+18,by+7,3,3);
             ctx.fillStyle='#888'; ctx.fillRect(sx+4,by+16,6,10); ctx.fillRect(sx+22,by+14,4,14);
             break;
+        // ===== 新区域BOSS精灵 =====
+        case 'diamondGiant':
+            ctx.fillStyle='#00ffff'; ctx.fillRect(sx+8,by+4,16,20);
+            ctx.fillStyle='#88ffff'; ctx.fillRect(sx+10,by+6,4,4); ctx.fillRect(sx+18,by+6,4,4);
+            ctx.fillStyle='#00cccc'; ctx.fillRect(sx+4,by+10,6,12); ctx.fillRect(sx+22,by+10,6,12);
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+12,by+8,2,2); ctx.fillRect(sx+18,by+8,2,2);
+            ctx.fillStyle='#004444'; ctx.fillRect(sx+14,by+14,4,2);
+            break;
+        case 'lichKing':
+            ctx.fillStyle='#9966ff'; ctx.fillRect(sx+10,by+6,12,14);
+            ctx.fillStyle='#6633cc'; ctx.fillRect(sx+8,by+2,16,6);
+            ctx.fillStyle='#ff00ff'; ctx.fillRect(sx+12,by+8,3,3); ctx.fillRect(sx+17,by+8,3,3);
+            ctx.fillStyle='#330066'; ctx.fillRect(sx+6,by+12,4,10); ctx.fillRect(sx+22,by+12,4,10);
+            // 法杖
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+24,by+4,2,16); ctx.fillRect(sx+22,by+2,6,4);
+            break;
+        case 'pharaoh':
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+10,by+2,12,6); // 头冠
+            ctx.fillStyle='#DAA520'; ctx.fillRect(sx+8,by+0,16,4);
+            ctx.fillStyle='#DEB887'; ctx.fillRect(sx+11,by+6,10,10); // 脸
+            ctx.fillStyle='#000'; ctx.fillRect(sx+13,by+8,2,2); ctx.fillRect(sx+17,by+8,2,2);
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+10,by+16,12,10); // 身体
+            break;
+        case 'swampQueen':
+            ctx.fillStyle='#00cc66'; ctx.fillRect(sx+10,by+8,12,14);
+            ctx.fillStyle='#228B22'; ctx.fillRect(sx+8,by+4,16,6);
+            ctx.fillStyle='#7CFC00'; ctx.fillRect(sx+6,by+10,4,8); ctx.fillRect(sx+22,by+10,4,8);
+            ctx.fillStyle='#ff00ff'; ctx.fillRect(sx+12,by+10,3,2); ctx.fillRect(sx+17,by+10,3,2);
+            // 藤蔓
+            ctx.fillStyle='#006400'; for(let i=0;i<3;i++) ctx.fillRect(sx+4+i*10,by+20+Math.sin(W.time*0.05+i)*2,2,6);
+            break;
+        case 'flameLord':
+            ctx.fillStyle='#ff4400'; ctx.fillRect(sx+10,by+8,12,14);
+            ctx.fillStyle='#ff8800'; ctx.fillRect(sx+8,by+4,16,8);
+            ctx.fillStyle='#ffcc00'; ctx.fillRect(sx+12,by+2,8,4);
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+12,by+10,3,3); ctx.fillRect(sx+17,by+10,3,3);
+            // 火焰光环
+            const fa=Math.sin(W.time*0.08)*2;
+            ctx.fillStyle='rgba(255,100,0,0.5)'; ctx.fillRect(sx+4+fa,by+2,4,6); ctx.fillRect(sx+24-fa,by+2,4,6);
+            break;
+        case 'vampireCount':
+            ctx.fillStyle='#880000'; ctx.fillRect(sx+10,by+6,12,14);
+            ctx.fillStyle='#1a0a0a'; ctx.fillRect(sx+6,by+8,20,12); // 斗篷
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+11,by+4,10,8); // 脸
+            ctx.fillStyle='#ff0000'; ctx.fillRect(sx+13,by+8,2,2); ctx.fillRect(sx+17,by+8,2,2);
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+14,by+12,1,2); ctx.fillRect(sx+17,by+12,1,2); // 獠牙
+            break;
+        case 'deathKnight':
+            ctx.fillStyle='#4B0082'; ctx.fillRect(sx+10,by+8,12,14);
+            ctx.fillStyle='#2a0040'; ctx.fillRect(sx+8,by+4,16,8);
+            ctx.fillStyle='#ff0000'; ctx.fillRect(sx+12,by+7,3,2); ctx.fillRect(sx+17,by+7,3,2);
+            ctx.fillStyle='#666'; ctx.fillRect(sx+22,by+6,4,14); // 剑
+            ctx.fillStyle='#333'; ctx.fillRect(sx+20,by+18,8,2); // 剑柄
+            break;
+        case 'iceQueen':
+            ctx.fillStyle='#87CEEB'; ctx.fillRect(sx+10,by+8,12,14);
+            ctx.fillStyle='#E0FFFF'; ctx.fillRect(sx+11,by+4,10,8); // 脸
+            ctx.fillStyle='#B0E0E6'; ctx.fillRect(sx+8,by+0,16,6); // 冰冠
+            ctx.fillStyle='#4169E1'; ctx.fillRect(sx+13,by+8,2,2); ctx.fillRect(sx+17,by+8,2,2);
+            ctx.fillStyle='#00BFFF'; ctx.fillRect(sx+6,by+10,4,10); ctx.fillRect(sx+22,by+10,4,10);
+            break;
+        case 'archAngel':
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+10,by+8,12,14);
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+11,by+4,10,8);
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+10,by+1,12,4); // 光环
+            ctx.fillStyle='#4169E1'; ctx.fillRect(sx+13,by+8,2,2); ctx.fillRect(sx+17,by+8,2,2);
+            // 翅膀
+            ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fillRect(sx+2,by+6,8,12); ctx.fillRect(sx+22,by+6,8,12);
+            break;
+        case 'abyssLord':
+            ctx.fillStyle='#8B0000'; ctx.fillRect(sx+8,by+6,16,16);
+            ctx.fillStyle='#4B0000'; ctx.fillRect(sx+6,by+2,20,8);
+            ctx.fillStyle='#ff0000'; ctx.fillRect(sx+12,by+6,3,3); ctx.fillRect(sx+17,by+6,3,3);
+            ctx.fillStyle='#440000'; ctx.fillRect(sx+4,by+8,4,12); ctx.fillRect(sx+24,by+8,4,12);
+            // 暗黑光环
+            ctx.fillStyle='rgba(128,0,0,0.3)'; ctx.fillRect(sx+2,by,28,24);
+            break;
+        case 'timeDragon':
+            ctx.fillStyle='#9400D3'; ctx.fillRect(sx+8,by+4,16,18);
+            ctx.fillStyle='#7B00B0'; ctx.fillRect(sx+6,by+2,8,6); // 头
+            ctx.fillStyle='#ff00ff'; ctx.fillRect(sx+8,by+4,2,2); ctx.fillRect(sx+12,by+4,2,2);
+            ctx.fillStyle='#6A00A0'; ctx.fillRect(sx+4,by+8,4,10); ctx.fillRect(sx+24,by+8,4,10); // 翅膀
+            ctx.fillStyle='#9400D3'; ctx.fillRect(sx+14,by+20,4,6); // 尾巴
+            break;
+        case 'divineAvatar':
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+8,by+6,16,16);
+            ctx.fillStyle='#fff'; ctx.fillRect(sx+10,by+2,12,8);
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+8,by-1,16,4); // 光环
+            const glow2=0.5+Math.sin(W.time*0.06)*0.3;
+            ctx.globalAlpha=glow2; ctx.fillStyle='#FFD700'; ctx.fillRect(sx+2,by,28,24);
+            ctx.globalAlpha=1;
+            ctx.fillStyle='#4169E1'; ctx.fillRect(sx+12,by+6,3,3); ctx.fillRect(sx+17,by+6,3,3);
+            break;
+        case 'dragonKing':
+            ctx.fillStyle='#FF4500'; ctx.fillRect(sx+6,by+4,20,18);
+            ctx.fillStyle='#CC3700'; ctx.fillRect(sx+4,by+2,10,6);
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+6,by+4,2,2); ctx.fillRect(sx+12,by+4,2,2);
+            ctx.fillStyle='#8B0000'; ctx.fillRect(sx+2,by+6,4,14); ctx.fillRect(sx+26,by+6,4,14);
+            ctx.fillStyle='#FF4500'; ctx.fillRect(sx+12,by+20,8,6);
+            // 火焰呼吸
+            const fb=Math.sin(W.time*0.1)*2;
+            ctx.fillStyle='rgba(255,100,0,0.6)'; ctx.fillRect(sx+4+fb,by+8,3,2);
+            break;
+        case 'demonEmperor':
+            ctx.fillStyle='#8B0000'; ctx.fillRect(sx+6,by+4,20,20);
+            ctx.fillStyle='#4B0000'; ctx.fillRect(sx+4,by+0,24,8);
+            ctx.fillStyle='#ff0000'; ctx.fillRect(sx+10,by+4,4,4); ctx.fillRect(sx+18,by+4,4,4);
+            ctx.fillStyle='#660000'; ctx.fillRect(sx+2,by+6,4,14); ctx.fillRect(sx+26,by+6,4,14);
+            // 恶魔之角
+            ctx.fillStyle='#FFD700'; ctx.fillRect(sx+6,by-2,3,5); ctx.fillRect(sx+23,by-2,3,5);
+            // 暗黑光环
+            const da=0.3+Math.sin(W.time*0.04)*0.2;
+            ctx.globalAlpha=da; ctx.fillStyle='#ff0000'; ctx.fillRect(sx,by-4,32,32);
+            ctx.globalAlpha=1;
+            break;
         default:
             ctx.fillStyle=mon.color||'#44dd44';
             ctx.beginPath(); ctx.arc(sx+16,sy+20,10,0,Math.PI*2); ctx.fill();
