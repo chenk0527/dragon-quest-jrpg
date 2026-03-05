@@ -2274,6 +2274,7 @@ let gameState = {
     playTime: 0,
     newGamePlus: 0,
     achievements: [],
+    claimedAchievements: [],
     bestiary: {},
     quests: { active: [], completed: [] },
     questProgress: {},
@@ -2359,6 +2360,7 @@ function startNewGameConfirmed() {
         playTime: 0,
         newGamePlus: 0,
         achievements: [],
+        claimedAchievements: [],
         bestiary: {},
         cosmetics: {
             hair: ['warriorDefault'],
@@ -4528,28 +4530,28 @@ function renderQuests() {
 
 // ==================== 成就系统 ====================
 const ACHIEVEMENTS = {
-    firstKill: { name: '初出茅庐', desc: '首次击杀怪物', icon: '⚔️' },
-    kill100: { name: '百人斩', desc: '击杀100只怪物', icon: '💀' },
-    kill500: { name: '千军破', desc: '击杀500只怪物', icon: '🏆' },
-    firstBoss: { name: '勇者之证', desc: '首次击败BOSS', icon: '👑' },
-    allBoss5: { name: '征服者', desc: '击败5个BOSS', icon: '🌟' },
-    level10: { name: '小有成就', desc: '角色达到10级', icon: '📈' },
-    level30: { name: '中流砥柱', desc: '角色达到30级', icon: '💪' },
-    level50: { name: '传说勇者', desc: '角色达到50级', icon: '⭐' },
-    level99: { name: '满级大佬', desc: '角色达到99级', icon: '🔥' },
-    gold1000: { name: '小富翁', desc: '累计获得1000金币', icon: '💰' },
-    gold10000: { name: '大富翁', desc: '累计获得10000金币', icon: '💎' },
-    gold100000: { name: '金币之王', desc: '累计获得100000金币', icon: '👸' },
-    fullParty: { name: '团队集结', desc: '队伍满员4人', icon: '👥' },
-    classChange: { name: '蜕变', desc: '完成一次转职', icon: '🔄' },
-    quest5: { name: '冒险新手', desc: '完成5个任务', icon: '📜' },
-    quest10: { name: '任务达人', desc: '完成10个任务', icon: '📋' },
-    legendary: { name: '传说收藏家', desc: '获得一件传说装备', icon: '🌈' },
-    enhance10: { name: '强化达人', desc: '装备强化到+10', icon: '🔨' },
-    explore5: { name: '探险家', desc: '解锁5个区域', icon: '🗺️' },
-    explore10: { name: '世界旅者', desc: '解锁10个区域', icon: '🌍' },
-    damage1000: { name: '重击', desc: '单次造成1000伤害', icon: '💥' },
-    steps10000: { name: '远征者', desc: '走过10000步', icon: '👣' }
+    firstKill: { name: '初出茅庐', desc: '首次击杀怪物', icon: '⚔️', reward: { gold: 100, xp: 50 } },
+    kill100: { name: '百人斩', desc: '击杀100只怪物', icon: '💀', reward: { gold: 500, xp: 200 } },
+    kill500: { name: '千军破', desc: '击杀500只怪物', icon: '🏆', reward: { gold: 2000, xp: 1000, title: '千军破' } },
+    firstBoss: { name: '勇者之证', desc: '首次击败BOSS', icon: '👑', reward: { gold: 1000, xp: 500 } },
+    allBoss5: { name: '征服者', desc: '击败5个BOSS', icon: '🌟', reward: { gold: 2000, xp: 1000, title: 'champion' } },
+    level10: { name: '小有成就', desc: '角色达到10级', icon: '📈', reward: { gold: 500, xp: 200, title: 'veteran' } },
+    level30: { name: '中流砥柱', desc: '角色达到30级', icon: '💪', reward: { gold: 500, xp: 200, title: 'veteran' } },
+    level50: { name: '传说勇者', desc: '角色达到50级', icon: '⭐', reward: { gold: 2000, xp: 1000, title: 'champion' } },
+    level99: { name: '满级大佬', desc: '角色达到99级', icon: '🔥', reward: { gold: 2000, xp: 1000, title: 'champion' } },
+    gold1000: { name: '小富翁', desc: '累计获得1000金币', icon: '💰', reward: { gold: 100, xp: 50 } },
+    gold10000: { name: '大富翁', desc: '累计获得10000金币', icon: '💎', reward: { gold: 500, xp: 200 } },
+    gold100000: { name: '金币之王', desc: '累计获得100000金币', icon: '👸', reward: { gold: 2000, xp: 1000, title: 'champion' } },
+    fullParty: { name: '团队集结', desc: '队伍满员4人', icon: '👥', reward: { gold: 500, xp: 200 } },
+    classChange: { name: '蜕变', desc: '完成一次转职', icon: '🔄', reward: { gold: 500, xp: 200 } },
+    quest5: { name: '冒险新手', desc: '完成5个任务', icon: '📜', reward: { gold: 100, xp: 50 } },
+    quest10: { name: '任务达人', desc: '完成10个任务', icon: '📋', reward: { gold: 500, xp: 200 } },
+    legendary: { name: '传说收藏家', desc: '获得一件传说装备', icon: '🌈', reward: { gold: 1000, xp: 500 } },
+    enhance10: { name: '强化达人', desc: '装备强化到+10', icon: '🔨', reward: { gold: 1000, xp: 500 } },
+    explore5: { name: '探险家', desc: '解锁5个区域', icon: '🗺️', reward: { gold: 100, xp: 50 } },
+    explore10: { name: '世界旅者', desc: '解锁10个区域', icon: '🌍', reward: { gold: 500, xp: 200 } },
+    damage1000: { name: '重击', desc: '单次造成1000伤害', icon: '💥', reward: { gold: 1000, xp: 500 } },
+    steps10000: { name: '远征者', desc: '走过10000步', icon: '👣', reward: { gold: 500, xp: 200 } }
 };
 
 function checkAchievement(type, value) {
@@ -4628,16 +4630,47 @@ function showAchievementToast(ach) {
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
 }
 
+function claimAchievementReward(achId) {
+    if (!gameState.claimedAchievements) gameState.claimedAchievements = [];
+    if (!(gameState.achievements || []).includes(achId)) return;
+    if (gameState.claimedAchievements.includes(achId)) return;
+    const ach = ACHIEVEMENTS[achId];
+    if (!ach || !ach.reward) return;
+    const reward = ach.reward;
+    gameState.gold += reward.gold;
+    if (gameState.party.length > 0) {
+        gainXp(gameState.party[0], reward.xp);
+    }
+    if (reward.title) {
+        gameState.title = reward.title;
+    }
+    gameState.claimedAchievements.push(achId);
+    showToast(`${ach.icon} 领取奖励: ${reward.gold}金币, ${reward.xp}经验${reward.title ? ', 称号: ' + reward.title : ''}`, 'success');
+    saveGame();
+    if (typeof updateDisplay === 'function') updateDisplay();
+}
+
 function renderAchievements() {
     const total = Object.keys(ACHIEVEMENTS).length;
     const unlocked = (gameState.achievements || []).length;
+    if (!gameState.claimedAchievements) gameState.claimedAchievements = [];
     let html = `<div class="achievements-header"><h3>🏅 成就 (${unlocked}/${total})</h3></div><div class="achievements-grid">`;
     Object.entries(ACHIEVEMENTS).forEach(([id, ach]) => {
         const done = (gameState.achievements || []).includes(id);
+        const claimed = gameState.claimedAchievements.includes(id);
+        let rewardBtn = '';
+        if (done && ach.reward) {
+            if (claimed) {
+                rewardBtn = `<div class="achievement-claimed" style="color:#27ae60;font-size:12px;margin-top:4px;">✅ 已领取</div>`;
+            } else {
+                rewardBtn = `<button class="btn btn-primary" style="font-size:11px;padding:2px 8px;margin-top:4px;" onclick="claimAchievementReward('${id}')">领取奖励</button>`;
+            }
+        }
         html += `<div class="achievement-card ${done ? 'unlocked' : 'locked'}">
             <div class="achievement-icon">${done ? ach.icon : '🔒'}</div>
             <div class="achievement-name">${done ? ach.name : '???'}</div>
             <div class="achievement-desc">${done ? ach.desc : '未解锁'}</div>
+            ${rewardBtn}
         </div>`;
     });
     html += '</div>';
@@ -4959,6 +4992,7 @@ window.performClassChange = performClassChange;
 window.CLASS_CHANGE_PATHS = CLASS_CHANGE_PATHS;
 window.CLASSES = CLASSES;
 window.checkAchievement = checkAchievement;
+window.claimAchievementReward = claimAchievementReward;
 window.ACHIEVEMENTS = ACHIEVEMENTS;
 window.showSaveLoadUI = showSaveLoadUI;
 window.saveToSlot = saveToSlot;
