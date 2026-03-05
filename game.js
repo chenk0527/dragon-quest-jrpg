@@ -2660,14 +2660,15 @@ function generateEnemies(zoneId) {
             const levelScale = zone.level / template.level;
             const scaledLevel = Math.min(99, Math.floor(template.level * (0.8 + Math.random() * 0.4)));
 
+            const ngMult = typeof getNGPlusMultiplier === 'function' ? getNGPlusMultiplier() : 1;
             enemies.push({
                 ...template,
                 id: Date.now() + i,
                 level: scaledLevel,
-                currentHp: Math.floor(template.hp * (1 + (scaledLevel - template.level) * 0.1)),
-                maxHp: Math.floor(template.hp * (1 + (scaledLevel - template.level) * 0.1)),
-                str: Math.floor(template.str * (1 + (scaledLevel - template.level) * 0.05)),
-                def: Math.floor(template.def * (1 + (scaledLevel - template.level) * 0.05))
+                currentHp: Math.floor(template.hp * (1 + (scaledLevel - template.level) * 0.1) * ngMult),
+                maxHp: Math.floor(template.hp * (1 + (scaledLevel - template.level) * 0.1) * ngMult),
+                str: Math.floor(template.str * (1 + (scaledLevel - template.level) * 0.05) * ngMult),
+                def: Math.floor(template.def * (1 + (scaledLevel - template.level) * 0.05) * ngMult)
             });
 
             // 解锁图鉴
@@ -3400,6 +3401,18 @@ function defeat() {
 }
 
 function continueAfterDefeat() {
+    // 无尽模式失败
+    if (typeof endlessState !== 'undefined' && endlessState && endlessState.active) {
+        endlessOnBattleEnd(false);
+        // 恢复角色
+        gameState.party.forEach(char => {
+            const stats = calculateStats(char);
+            char.currentHp = stats.hp;
+            if (char.currentMp !== undefined) char.currentMp = stats.mp || 25;
+        });
+        return;
+    }
+    
     // 恢复角色
     gameState.party.forEach(char => {
         const stats = calculateStats(char);
@@ -3415,6 +3428,11 @@ function continueAfterDefeat() {
 
 // 战斗结束后返回：如果从冒险系统来的回到冒险，否则回地图
 function returnFromBattle() {
+    // 无尽模式联动
+    if (typeof endlessState !== 'undefined' && endlessState && endlessState.active) {
+        endlessOnBattleEnd(true);
+        return;
+    }
     if (window.WorldSystem && window.WorldSystem.fromWorldExploration) {
         window.WorldSystem.fromWorldExploration = false;
         showScene('world');
