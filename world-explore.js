@@ -1448,7 +1448,16 @@ function action() {
                 if (typeof showRecruitMenu === 'function') showRecruitMenu();
                 else showWorldDialog('💬 ' + npc.name, npc.dialog);
                 break;
-            default: showWorldDialog('💬 '+npc.name, npc.dialog); break;
+            default:
+                // Use enhanced NPC dialogs from Phase 9 if available
+                if (typeof NPC_DIALOGS !== 'undefined' && NPC_DIALOGS[W.currentMap] && NPC_DIALOGS[W.currentMap][npc.name]) {
+                    const dialogs = NPC_DIALOGS[W.currentMap][npc.name];
+                    const randomDialog = dialogs[Math.floor(Math.random() * dialogs.length)];
+                    showWorldDialog('💬 ' + npc.name, randomDialog);
+                } else {
+                    showWorldDialog('💬 '+npc.name, npc.dialog);
+                }
+                break;
         }
     }
 }
@@ -1834,6 +1843,9 @@ function showSmithMenu() {
         ${equipList || '<div style="color:#888;font-size:8px;">没有可洗练的装备</div>'}
         ${setInfo}
         <div style="color:#888;font-size:7px;margin:8px 0 4px;">💡 洗练会随机重新生成装备属性和名称</div>
+        <button onclick="closeNPCMenu();if(typeof showCraftingUI==='function')showCraftingUI();" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
+            background:#2a1a3a;border:2px solid #9b59b6;border-radius:4px;color:#bb88ff;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🔨 合成工坊</button>
         <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
             background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;

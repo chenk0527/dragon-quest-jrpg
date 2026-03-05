@@ -5290,5 +5290,1053 @@ window.STATUS_EFFECTS = STATUS_EFFECTS;
 window.applyStatusEffect = applyStatusEffect;
 window.processStatusEffects = processStatusEffects;
 
+// ==================== Phase 9: Daily Quest System ====================
+const DAILY_QUEST_TEMPLATES = [
+    { id: 'dq_kill10', name: '怪物猎人', desc: '击杀10只怪物', type: 'kill', target: 10, reward: { xp: 300, gold: 200 }, icon: '💀' },
+    { id: 'dq_kill25', name: '百战猎手', desc: '击杀25只怪物', type: 'kill', target: 25, reward: { xp: 800, gold: 500 }, icon: '⚔️' },
+    { id: 'dq_gold500', name: '淘金者', desc: '累计获得500金币', type: 'gold', target: 500, reward: { xp: 400, gold: 300 }, icon: '💰' },
+    { id: 'dq_gold2000', name: '财富之路', desc: '累计获得2000金币', type: 'gold', target: 2000, reward: { xp: 1000, gold: 800 }, icon: '💎' },
+    { id: 'dq_battle5', name: '战场老兵', desc: '完成5场战斗', type: 'battles', target: 5, reward: { xp: 500, gold: 300 }, icon: '🛡️' },
+    { id: 'dq_battle10', name: '不屈战士', desc: '完成10场战斗', type: 'battles', target: 10, reward: { xp: 1200, gold: 700 }, icon: '🔥' },
+    { id: 'dq_noheal3', name: '铁血勇者', desc: '连续3场战斗不使用治疗', type: 'noHeal', target: 3, reward: { xp: 600, gold: 400 }, icon: '💪' },
+    { id: 'dq_crit10', name: '暴击达人', desc: '累计触发10次暴击', type: 'crit', target: 10, reward: { xp: 500, gold: 350 }, icon: '💥' },
+    { id: 'dq_endless5', name: '无尽挑战', desc: '在无尽模式达到第5波', type: 'endless', target: 5, reward: { xp: 1500, gold: 1000 }, icon: '🌊' },
+    { id: 'dq_boss1', name: '挑战权威', desc: '击败1个BOSS', type: 'boss', target: 1, reward: { xp: 2000, gold: 1500 }, icon: '👑' },
+    { id: 'dq_material5', name: '材料收集', desc: '获得5个强化材料', type: 'material', target: 5, reward: { xp: 400, gold: 250 }, icon: '💎' },
+    { id: 'dq_explore2', name: '区域探索', desc: '探索2个不同区域', type: 'explore', target: 2, reward: { xp: 600, gold: 400 }, icon: '🗺️' }
+];
+
+function getDailyQuestSeed() {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+}
+
+function seededRandom(seed) {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) {
+        h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+    }
+    return function() {
+        h = (h * 1103515245 + 12345) & 0x7fffffff;
+        return (h % 1000) / 1000;
+    };
+}
+
+function generateDailyQuests() {
+    const seed = getDailyQuestSeed();
+    const rng = seededRandom(seed);
+
+    // Check if we need to refresh daily quests
+    if (!gameState.dailyQuests || gameState.dailyQuestSeed !== seed) {
+        const shuffled = [...DAILY_QUEST_TEMPLATES].sort(() => rng() - 0.5);
+        const selected = shuffled.slice(0, 4);
+        gameState.dailyQuests = selected.map(q => ({
+            ...q,
+            progress: 0,
+            completed: false,
+            claimed: false
+        }));
+        gameState.dailyQuestSeed = seed;
+        gameState.dailyQuestStats = { kills: 0, gold: 0, battles: 0, crits: 0, noHealStreak: 0, healUsed: false, materials: 0, exploredZones: [] };
+        saveGame();
+    }
+    return gameState.dailyQuests;
+}
+
+function updateDailyQuestProgress(type, value) {
+    if (!gameState.dailyQuests) return;
+    if (!gameState.dailyQuestStats) gameState.dailyQuestStats = { kills: 0, gold: 0, battles: 0, crits: 0, noHealStreak: 0, healUsed: false, materials: 0, exploredZones: [] };
+
+    const stats = gameState.dailyQuestStats;
+    switch(type) {
+        case 'kill': stats.kills += (value || 1); break;
+        case 'gold': stats.gold += (value || 0); break;
+        case 'battle':
+            stats.battles += 1;
+            if (!stats.healUsed) stats.noHealStreak += 1;
+            stats.healUsed = false;
+            break;
+        case 'healUsed': stats.healUsed = true; stats.noHealStreak = 0; break;
+        case 'crit': stats.crits += (value || 1); break;
+        case 'endless': stats.endlessWave = Math.max(stats.endlessWave || 0, value || 0); break;
+        case 'boss': stats.bossKills = (stats.bossKills || 0) + 1; break;
+        case 'material': stats.materials += (value || 1); break;
+        case 'explore':
+            if (value && !stats.exploredZones.includes(value)) stats.exploredZones.push(value);
+            break;
+    }
+
+    gameState.dailyQuests.forEach(q => {
+        if (q.claimed) return;
+        let current = 0;
+        switch(q.type) {
+            case 'kill': current = stats.kills; break;
+            case 'gold': current = stats.gold; break;
+            case 'battles': current = stats.battles; break;
+            case 'noHeal': current = stats.noHealStreak; break;
+            case 'crit': current = stats.crits; break;
+            case 'endless': current = stats.endlessWave || 0; break;
+            case 'boss': current = stats.bossKills || 0; break;
+            case 'material': current = stats.materials; break;
+            case 'explore': current = stats.exploredZones.length; break;
+        }
+        q.progress = Math.min(current, q.target);
+        if (q.progress >= q.target && !q.completed) {
+            q.completed = true;
+            showToast(`📋 每日任务完成: ${q.name}!`, 'success');
+        }
+    });
+}
+
+function claimDailyQuest(index) {
+    if (!gameState.dailyQuests || !gameState.dailyQuests[index]) return;
+    const q = gameState.dailyQuests[index];
+    if (!q.completed || q.claimed) return;
+
+    q.claimed = true;
+    const reward = q.reward;
+    if (reward.xp) {
+        gameState.party.filter(c => c.currentHp > 0).forEach(c => gainXp(c, Math.floor(reward.xp / gameState.party.length)));
+    }
+    if (reward.gold) gameState.gold += reward.gold;
+
+    showToast(`🎁 领取奖励: ${reward.xp}XP + ${reward.gold}金币!`, 'success');
+    AudioSystem.playChestOpen();
+    saveGame();
+    renderQuests();
+}
+
+window.claimDailyQuest = claimDailyQuest;
+window.generateDailyQuests = generateDailyQuests;
+window.updateDailyQuestProgress = updateDailyQuestProgress;
+
+// ==================== Phase 9: Arena System ====================
+const ARENA_RANKS = [
+    { rank: 1, name: '青铜挑战者', icon: '🥉', team: [
+        { name: '训练兵A', icon: '⚔️', level: 5, hp: 200, str: 20, def: 10, spd: 8 },
+        { name: '训练兵B', icon: '🛡️', level: 5, hp: 250, str: 15, def: 15, spd: 6 }
+    ], reward: { gold: 500, xp: 300 }},
+    { rank: 2, name: '白银斗士', icon: '🥈', team: [
+        { name: '剑士', icon: '⚔️', level: 12, hp: 400, str: 35, def: 20, spd: 15 },
+        { name: '弓手', icon: '🏹', level: 12, hp: 300, str: 40, def: 12, spd: 22 },
+        { name: '治疗师', icon: '💚', level: 10, hp: 250, str: 15, def: 15, spd: 10 }
+    ], reward: { gold: 1000, xp: 600 }},
+    { rank: 3, name: '黄金勇者', icon: '🏅', team: [
+        { name: '重装骑士', icon: '🛡️', level: 20, hp: 800, str: 50, def: 45, spd: 10 },
+        { name: '火焰法师', icon: '🔥', level: 20, hp: 400, str: 65, def: 15, spd: 18, element: 'fire' },
+        { name: '暗影弓手', icon: '🏹', level: 20, hp: 450, str: 55, def: 18, spd: 28 }
+    ], reward: { gold: 2000, xp: 1200 }},
+    { rank: 4, name: '白金战将', icon: '⭐', team: [
+        { name: '圣骑士', icon: '🛡️', level: 30, hp: 1200, str: 70, def: 60, spd: 15 },
+        { name: '冰霜术士', icon: '❄️', level: 30, hp: 600, str: 85, def: 25, spd: 20, element: 'ice' },
+        { name: '刺客', icon: '🗡️', level: 30, hp: 500, str: 80, def: 15, spd: 40 },
+        { name: '牧师', icon: '✝️', level: 28, hp: 550, str: 30, def: 30, spd: 12 }
+    ], reward: { gold: 4000, xp: 2500 }},
+    { rank: 5, name: '钻石精英', icon: '💎', team: [
+        { name: '龙骑士', icon: '🐉', level: 40, hp: 1800, str: 95, def: 75, spd: 22 },
+        { name: '雷霆法师', icon: '⚡', level: 40, hp: 800, str: 110, def: 30, spd: 25, element: 'thunder' },
+        { name: '暗影大师', icon: '🥷', level: 40, hp: 700, str: 100, def: 20, spd: 50 },
+        { name: '大贤者', icon: '📖', level: 38, hp: 900, str: 50, def: 40, spd: 18 }
+    ], reward: { gold: 8000, xp: 5000 }},
+    { rank: 6, name: '大师之路', icon: '🔥', team: [
+        { name: '魔剑士', icon: '⚔️', level: 50, hp: 2500, str: 120, def: 90, spd: 30 },
+        { name: '大魔导', icon: '🌟', level: 50, hp: 1200, str: 140, def: 40, spd: 28 },
+        { name: '幻影杀手', icon: '👤', level: 50, hp: 1000, str: 130, def: 25, spd: 60 },
+        { name: '神官', icon: '✨', level: 48, hp: 1500, str: 70, def: 55, spd: 20 }
+    ], reward: { gold: 15000, xp: 8000 }},
+    { rank: 7, name: '传说挑战', icon: '🌟', team: [
+        { name: '灭世战士', icon: '💀', level: 65, hp: 4000, str: 160, def: 120, spd: 35 },
+        { name: '末日法师', icon: '☄️', level: 65, hp: 2000, str: 180, def: 50, spd: 32 },
+        { name: '死神刺客', icon: '💀', level: 65, hp: 1500, str: 170, def: 30, spd: 70 },
+        { name: '光明祭司', icon: '🌈', level: 62, hp: 2500, str: 90, def: 70, spd: 25 }
+    ], reward: { gold: 25000, xp: 15000 }},
+    { rank: 8, name: '神话境界', icon: '👑', team: [
+        { name: '天神战士', icon: '⚡', level: 80, hp: 6000, str: 200, def: 160, spd: 40 },
+        { name: '毁灭法王', icon: '💫', level: 80, hp: 3000, str: 230, def: 60, spd: 38 },
+        { name: '暗影帝王', icon: '🌑', level: 80, hp: 2500, str: 220, def: 40, spd: 80 },
+        { name: '圣光女神', icon: '👸', level: 78, hp: 4000, str: 120, def: 90, spd: 30 }
+    ], reward: { gold: 50000, xp: 30000 }},
+    { rank: 9, name: '超越极限', icon: '🔮', team: [
+        { name: '混沌骑士', icon: '👹', level: 92, hp: 10000, str: 280, def: 200, spd: 50 },
+        { name: '创世法神', icon: '🌟', level: 92, hp: 5000, str: 300, def: 80, spd: 45 },
+        { name: '时空刺客', icon: '⏳', level: 92, hp: 4000, str: 290, def: 50, spd: 100 },
+        { name: '永恒祭司', icon: '🌈', level: 90, hp: 6000, str: 160, def: 120, spd: 35 }
+    ], reward: { gold: 80000, xp: 50000 }},
+    { rank: 10, name: '竞技场之王', icon: '🏆', team: [
+        { name: '绝世剑圣', icon: '⚔️', level: 99, hp: 15000, str: 380, def: 280, spd: 60 },
+        { name: '深渊法皇', icon: '💀', level: 99, hp: 8000, str: 400, def: 100, spd: 55 },
+        { name: '虚空暗杀', icon: '👾', level: 99, hp: 6000, str: 380, def: 60, spd: 120 },
+        { name: '创世神官', icon: '✨', level: 99, hp: 10000, str: 200, def: 150, spd: 40 }
+    ], reward: { gold: 200000, xp: 100000, legendary: true }}
+];
+
+function showArena() {
+    if (!gameState.arenaRank) gameState.arenaRank = 0;
+    const currentRank = gameState.arenaRank;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'arenaOverlay';
+    overlay.className = 'confirm-modal-overlay';
+
+    let ranksHtml = ARENA_RANKS.map((r, i) => {
+        const beaten = i < currentRank;
+        const current = i === currentRank;
+        const locked = i > currentRank;
+        return `<div class="arena-rank-card ${beaten ? 'beaten' : ''} ${current ? 'current' : ''} ${locked ? 'locked' : ''}"
+                     onclick="${current ? `startArenaFight(${i})` : ''}">
+            <div class="arena-rank-icon">${beaten ? '✅' : locked ? '🔒' : r.icon}</div>
+            <div class="arena-rank-info">
+                <div class="arena-rank-name">${r.name}</div>
+                <div class="arena-rank-detail">${locked ? '需先击败前一排名' : `${r.team.length}人队 Lv.${r.team[0].level}`}</div>
+                ${current ? `<div class="arena-rank-reward">奖励: ${r.reward.gold}G + ${r.reward.xp}XP${r.reward.legendary ? ' + 传说装备' : ''}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:420px;max-height:80vh;overflow-y:auto;">
+            <h3>🏟️ 竞技场</h3>
+            <div style="color:#FFD700;text-align:center;margin-bottom:10px;font-size:10px;">当前排名: ${currentRank > 0 ? ARENA_RANKS[currentRank-1].name : '未入榜'} (${currentRank}/10)</div>
+            ${currentRank >= 10 ? '<div style="color:#FFD700;text-align:center;font-size:12px;margin:10px 0;">🏆 恭喜！你已征服竞技场！</div>' : ''}
+            <div class="arena-ranks-list">${ranksHtml}</div>
+            <button class="btn btn-secondary" style="margin-top:10px;" onclick="document.getElementById('arenaOverlay').remove()">关闭</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function startArenaFight(rankIndex) {
+    const rank = ARENA_RANKS[rankIndex];
+    if (!rank) return;
+
+    document.getElementById('arenaOverlay')?.remove();
+
+    // Create enemies from arena team
+    const arenaEnemies = rank.team.map((member, i) => ({
+        ...member,
+        id: Date.now() + i,
+        currentHp: member.hp,
+        maxHp: member.hp,
+        xp: Math.floor(rank.reward.xp / rank.team.length),
+        gold: Math.floor(rank.reward.gold / rank.team.length),
+        isArena: true
+    }));
+
+    applyBattleBackground('castle');
+    stopAutoBattle();
+    battleState = {
+        zone: { id: 'arena', name: '竞技场', level: rank.team[0].level },
+        enemies: arenaEnemies,
+        turn: 0,
+        activeCharIndex: 0,
+        selectedTarget: 0,
+        logs: [],
+        isBossBattle: false,
+        isArena: true,
+        arenaRank: rankIndex
+    };
+
+    showScene('battle');
+    renderBattle();
+    addBattleLog(`🏟️ 竞技场 ${rank.name} 开始！`, 'boss');
+    nextTurn();
+}
+
+// Hook into victory for arena rewards
+const _origVictory = victory;
+victory = function() {
+    if (battleState && battleState.isArena) {
+        stopAutoBattle();
+        const rankIndex = battleState.arenaRank;
+        const rank = ARENA_RANKS[rankIndex];
+
+        if (rank) {
+            gameState.gold += rank.reward.gold;
+            gameState.party.filter(c => c.currentHp > 0).forEach(c => {
+                gainXp(c, Math.floor(rank.reward.xp / gameState.party.length));
+            });
+
+            if (rankIndex >= (gameState.arenaRank || 0)) {
+                gameState.arenaRank = rankIndex + 1;
+            }
+
+            if (rank.reward.legendary) {
+                const slots = ['weapon', 'armor', 'helmet', 'shield', 'accessory'];
+                const slot = slots[Math.floor(Math.random() * slots.length)];
+                const equip = generateEquipment(slot, 99, 'legendary');
+                addItemToInventory(equip);
+                addBattleLog(`🌟 获得传说装备: ${equip.name}!`, 'loot');
+            }
+
+            addBattleLog(`🏟️ 竞技场胜利! +${rank.reward.gold}G +${rank.reward.xp}XP`, 'reward');
+            AudioSystem.playVictory();
+        }
+
+        showVictoryScreen(rank.reward.xp, rank.reward.gold, []);
+        updateUI();
+        saveGame();
+        return;
+    }
+    _origVictory();
+};
+
+// Hook into returnFromBattle for arena
+const _origReturnFromBattle = returnFromBattle;
+returnFromBattle = function() {
+    if (battleState && battleState.isArena) {
+        battleState = null;
+        showArena();
+        return;
+    }
+    _origReturnFromBattle();
+};
+
+window.showArena = showArena;
+window.startArenaFight = startArenaFight;
+
+// ==================== Phase 9: Crafting System ====================
+const RARITY_ORDER = ['common', 'magic', 'rare', 'epic', 'legendary'];
+
+function showCraftingUI() {
+    const overlay = document.createElement('div');
+    overlay.id = 'craftingOverlay';
+    overlay.className = 'confirm-modal-overlay';
+
+    // Group inventory equipment by rarity+slot
+    const equipments = gameState.inventory.filter(item => item.slot && item.rarity);
+    const grouped = {};
+    equipments.forEach(item => {
+        const key = `${item.rarity}_${item.slot}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+    });
+
+    // Find craftable combinations (3 of same rarity to upgrade)
+    let craftableHtml = '';
+    let hasCraftable = false;
+
+    Object.entries(grouped).forEach(([key, items]) => {
+        if (items.length >= 3) {
+            const [rarity, slot] = key.split('_');
+            const rarityIdx = RARITY_ORDER.indexOf(rarity);
+            if (rarityIdx < RARITY_ORDER.length - 1) {
+                const nextRarity = RARITY_ORDER[rarityIdx + 1];
+                hasCraftable = true;
+                craftableHtml += `
+                    <div class="craft-recipe" onclick="performCraft('${rarity}', '${slot}')">
+                        <div class="craft-materials">
+                            <span class="craft-item rarity-${rarity}">${items[0].icon} ${RARITY_NAMES[rarity]}${EQUIPMENT_TYPES[slot]?.name} x3</span>
+                        </div>
+                        <div class="craft-arrow">→</div>
+                        <div class="craft-result">
+                            <span class="craft-item rarity-${nextRarity}">${getEquipIcon(slot, nextRarity)} ${RARITY_NAMES[nextRarity]}${EQUIPMENT_TYPES[slot]?.name}</span>
+                        </div>
+                        <div class="craft-count">(拥有${items.length}件)</div>
+                    </div>`;
+            }
+        }
+    });
+
+    // Also show material crafting
+    let materialHtml = '';
+    Object.entries(gameState.enhancementMaterials || {}).forEach(([type, count]) => {
+        const idx = RARITY_ORDER.indexOf(type);
+        if (idx >= 0 && idx < RARITY_ORDER.length - 1 && count >= 3) {
+            const nextType = RARITY_ORDER[idx + 1];
+            const typeNames = { common: '普通', magic: '魔法', rare: '稀有', epic: '史诗', legendary: '传说' };
+            materialHtml += `
+                <div class="craft-recipe" onclick="craftMaterial('${type}')">
+                    <div class="craft-materials">
+                        <span class="craft-item rarity-${type}">◆ ${typeNames[type]}强化石 x3</span>
+                    </div>
+                    <div class="craft-arrow">→</div>
+                    <div class="craft-result">
+                        <span class="craft-item rarity-${nextType}">◆ ${typeNames[nextType]}强化石 x1</span>
+                    </div>
+                    <div class="craft-count">(拥有${count}个)</div>
+                </div>`;
+        }
+    });
+
+    overlay.innerHTML = `
+        <div class="confirm-modal-panel" style="max-width:420px;max-height:80vh;overflow-y:auto;">
+            <h3>🔨 合成工坊</h3>
+            <div style="color:#aaa;text-align:center;font-size:9px;margin-bottom:10px;">3件同品质装备 → 1件更高品质装备</div>
+            <div class="craft-section">
+                <h4 style="color:#FFD700;margin:10px 0 5px;">⚔️ 装备合成</h4>
+                ${hasCraftable ? craftableHtml : '<div style="color:#888;font-size:9px;padding:10px;text-align:center;">背包中没有可合成的装备<br>需要3件同品质同类型装备</div>'}
+            </div>
+            <div class="craft-section">
+                <h4 style="color:#FFD700;margin:10px 0 5px;">💎 材料合成</h4>
+                ${materialHtml || '<div style="color:#888;font-size:9px;padding:10px;text-align:center;">没有可合成的材料<br>需要3个同品质强化石</div>'}
+            </div>
+            <button class="btn btn-secondary" style="margin-top:10px;" onclick="document.getElementById('craftingOverlay').remove()">关闭</button>
+        </div>`;
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+function performCraft(rarity, slot) {
+    const items = gameState.inventory.filter(i => i.rarity === rarity && i.slot === slot);
+    if (items.length < 3) {
+        showToast('材料不足! 需要3件同品质装备', 'error');
+        return;
+    }
+
+    // Remove 3 items
+    for (let i = 0; i < 3; i++) {
+        const idx = gameState.inventory.indexOf(items[i]);
+        if (idx > -1) gameState.inventory.splice(idx, 1);
+    }
+
+    // Generate upgraded equipment
+    const nextRarity = RARITY_ORDER[RARITY_ORDER.indexOf(rarity) + 1];
+    const avgLevel = Math.floor(items.reduce((s, i) => s + (i.level || 1), 0) / 3);
+    const newEquip = generateEquipment(slot, avgLevel, nextRarity);
+    addItemToInventory(newEquip);
+
+    showToast(`🔨 合成成功! 获得 ${newEquip.name}!`, 'success');
+    AudioSystem.playLevelUp();
+    saveGame();
+
+    // Refresh crafting UI
+    document.getElementById('craftingOverlay')?.remove();
+    showCraftingUI();
+}
+
+function craftMaterial(type) {
+    if ((gameState.enhancementMaterials[type] || 0) < 3) {
+        showToast('材料不足! 需要3个同品质强化石', 'error');
+        return;
+    }
+
+    gameState.enhancementMaterials[type] -= 3;
+    const nextType = RARITY_ORDER[RARITY_ORDER.indexOf(type) + 1];
+    gameState.enhancementMaterials[nextType] = (gameState.enhancementMaterials[nextType] || 0) + 1;
+
+    const typeNames = { common: '普通', magic: '魔法', rare: '稀有', epic: '史诗', legendary: '传说' };
+    showToast(`🔨 合成成功! 获得${typeNames[nextType]}强化石!`, 'success');
+    AudioSystem.playChestOpen();
+    saveGame();
+
+    document.getElementById('craftingOverlay')?.remove();
+    showCraftingUI();
+}
+
+window.showCraftingUI = showCraftingUI;
+window.performCraft = performCraft;
+window.craftMaterial = craftMaterial;
+
+// ==================== Phase 9: Enhanced Story & Lore ====================
+const ZONE_LORE = {
+    plains: { title: '风吹草原', text: '微风吹过无垠的草地，远处的村庄炊烟袅袅。这里是新手冒险者的起点，温和的史莱姆在草丛中若隐若现。' },
+    forest: { title: '迷雾森林', text: '浓雾缭绕的古老森林，树木参天，阳光难以穿透树冠。据说这片森林中住着一位远古的守护者...' },
+    cave: { title: '阴暗洞穴', text: '洞穴入口散发着腐臭的气息。深处传来骷髅碰撞的声音，不死生物在此筑巢。勇敢的冒险者才敢踏入此地。' },
+    mine: { title: '废弃矿坑', text: '曾经繁荣的矿山如今已被遗弃。发疯的矮人矿工和觉醒的土元素占据了这里。传说深处有钻石巨人守护着宝藏。' },
+    crypt: { title: '古代墓地', text: '阴风阵阵的古墓，石碑上刻着已经无法辨认的文字。巫妖王在此统治着不死军团，任何踏入此地的活物都将成为他的仆从。' },
+    desert: { title: '灼热沙漠', text: '滚烫的沙丘延伸到天际线。远处的金字塔中沉睡着法老王。沙漠强盗横行，只有最坚韧的冒险者才能生存。' },
+    swamp: { title: '剧毒沼泽', text: '紫色的毒雾弥漫在沼泽上空。腐烂的树木从泥水中探出。据说沼泽深处住着一位神秘的女王...' },
+    volcano: { title: '熔岩地带', text: '大地在脚下颤抖，岩浆在裂缝中流淌。空气灼热到几乎无法呼吸。火焰领主在此地统治着所有火属性生物。' },
+    darkForest: { title: '黑暗森林', text: '即使白天，这片森林也暗如黑夜。吸血鬼伯爵和他的眷属在此出没。踏入此地的旅人很少能活着出来。' },
+    castle: { title: '幽灵古堡', text: '高耸的城堡矗立在悬崖之上，乌鸦盘旋在塔尖。城堡中游荡着死亡骑士的亡魂，永远守护着这座诅咒之城。' },
+    snow: { title: '冰封雪原', text: '冰天雪地的极北之境，寒风刺骨。雪怪和冰霜巨人在暴风雪中出没。冰霜女王的宫殿在极光之下闪烁着蓝色的光芒。' },
+    skyCity: { title: '天空之城', text: '漂浮在云端之上的神秘城市。天使守卫巡逻在光之回廊中。传说这里是通往更高领域的门户。' },
+    abyss: { title: '深渊之门', text: '大地的裂缝通向无底深渊。黑暗中有无数双眼睛在注视着来者。深渊领主在此等待着敢于挑战他的勇者。' },
+    rift: { title: '时空裂隙', text: '时空在这里扭曲变形，过去和未来在此交汇。来自不同维度的生物从裂缝中涌出。时空龙在裂隙中游弋。' },
+    divine: { title: '神域外围', text: '圣洁的光芒照耀着这片领域。连空气都带着神圣的气息。只有最伟大的勇者才有资格踏入此地。' },
+    dragonRealm: { title: '龙之领域', text: '龙族的圣地，天空中飞龙掠过。大地因龙王的咆哮而震颤。这里是世上最危险也最壮观的地方。' },
+    demonCastle: { title: '魔王城', text: '黑暗的尽头，混沌魔王的城堡。一切邪恶的根源。最终决战即将开始...' }
+};
+
+const NPC_DIALOGS = {
+    village: {
+        '村长': ['这里是新手村，欢迎回来！', '去东面的草原磨练自己吧。', '听说森林深处有一位强大的守护者。', '村子的安全就靠你了！'],
+        '商人': ['看看有什么需要的吧！', '最近强盗越来越多了...', '我有上好的武器和防具！', '生意兴隆啊！'],
+        '少女': ['你好！你是冒险者吗？', '外面很危险，要小心！', '我在等心爱的人回来...', '加油！我相信你！'],
+        '酒馆老板': ['来杯酒吧，旅途辛苦了！', '听说北方的雪原有传说中的宝物。', '最近来了很多冒险者，都是为了魔王城。', '你可以在这里休息恢复体力。']
+    },
+    plains: { '旅行者': ['小心草丛中的史莱姆！', '继续往前就是迷雾森林了。', '我曾经也是一名冒险者...'] },
+    forest: { '猎人': ['这片森林不太平。', '树精在夜晚会移动。', '深处的BOSS非常强大，做好准备！'] },
+    desert: { '沙漠商人': ['水在沙漠中比金子还贵！', '法老王的诅咒至今未解。', '蝎子藏在沙子下面，走路要小心。'] },
+    snow: { '雪地行者': ['这里的暴风雪能冻死一头牛。', '冰霜女王...美丽而致命。', '极光出现时运气会特别好。'] }
+};
+
+// Track visited zones for lore display
+function showZoneLore(zoneId) {
+    const lore = ZONE_LORE[zoneId];
+    if (!lore) return;
+
+    if (!gameState.visitedZones) gameState.visitedZones = [];
+    if (gameState.visitedZones.includes(zoneId)) return;
+    gameState.visitedZones.push(zoneId);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'zone-lore-overlay';
+    overlay.innerHTML = `
+        <div class="zone-lore-content">
+            <div class="zone-lore-title">${MAP_ZONES[zoneId]?.icon || ''} ${lore.title}</div>
+            <div class="zone-lore-text">${lore.text}</div>
+            <div class="zone-lore-hint">点击继续</div>
+        </div>`;
+    overlay.onclick = () => { overlay.classList.remove('active'); setTimeout(() => overlay.remove(), 300); };
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.classList.add('active'), 10);
+}
+
+// Hook zone entry for lore
+const _origEnterZone = enterZone;
+enterZone = function(zoneId) {
+    showZoneLore(zoneId);
+    updateDailyQuestProgress('explore', zoneId);
+    _origEnterZone(zoneId);
+};
+
+window.showZoneLore = showZoneLore;
+window.ZONE_LORE = ZONE_LORE;
+window.NPC_DIALOGS = NPC_DIALOGS;
+
+// ==================== Phase 9: Battle Particle Effects ====================
+const BattleParticles = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    animId: null,
+
+    init() {
+        if (this.canvas) return;
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'battleParticleCanvas';
+        this.canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:500;';
+        document.body.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+    },
+
+    resize() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    },
+
+    spawn(type, x, y, count) {
+        if (!this.ctx) this.init();
+        for (let i = 0; i < (count || 8); i++) {
+            const p = { x, y, life: 1, decay: 0.015 + Math.random() * 0.02 };
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 1 + Math.random() * 3;
+            p.vx = Math.cos(angle) * speed;
+            p.vy = Math.sin(angle) * speed;
+
+            switch(type) {
+                case 'slash':
+                    p.color = '#ffffff';
+                    p.size = 2 + Math.random() * 3;
+                    p.vx = (Math.random() - 0.3) * 6;
+                    p.vy = (Math.random() - 0.5) * 2;
+                    p.shape = 'line';
+                    p.length = 8 + Math.random() * 12;
+                    p.angle = -0.5 + Math.random() * 0.3;
+                    break;
+                case 'magic':
+                    p.color = ['#4488ff', '#88aaff', '#aaccff', '#ffffff'][Math.floor(Math.random() * 4)];
+                    p.size = 3 + Math.random() * 4;
+                    p.shape = 'circle';
+                    p.orbit = Math.random() * Math.PI * 2;
+                    p.orbitSpeed = 0.05 + Math.random() * 0.1;
+                    p.orbitRadius = 10 + Math.random() * 20;
+                    break;
+                case 'heal':
+                    p.color = ['#44ff44', '#88ff88', '#aaffaa', '#ffffff'][Math.floor(Math.random() * 4)];
+                    p.size = 2 + Math.random() * 3;
+                    p.vy = -1 - Math.random() * 2;
+                    p.vx = (Math.random() - 0.5) * 1;
+                    p.shape = 'cross';
+                    break;
+                case 'fire':
+                    p.color = ['#ff4400', '#ff8800', '#ffaa00', '#ffdd00'][Math.floor(Math.random() * 4)];
+                    p.size = 3 + Math.random() * 5;
+                    p.vy = -2 - Math.random() * 3;
+                    p.shape = 'circle';
+                    break;
+                case 'ice':
+                    p.color = ['#88ccff', '#aaddff', '#ccecff', '#ffffff'][Math.floor(Math.random() * 4)];
+                    p.size = 2 + Math.random() * 4;
+                    p.shape = 'diamond';
+                    p.rotation = Math.random() * Math.PI;
+                    break;
+                case 'thunder':
+                    p.color = ['#ffff00', '#ffdd00', '#ffffff'][Math.floor(Math.random() * 3)];
+                    p.size = 1 + Math.random() * 2;
+                    p.vx *= 3;
+                    p.vy *= 3;
+                    p.shape = 'line';
+                    p.length = 4 + Math.random() * 8;
+                    p.angle = Math.random() * Math.PI;
+                    break;
+                default:
+                    p.color = '#ffaa00';
+                    p.size = 2 + Math.random() * 3;
+                    p.shape = 'circle';
+            }
+            this.particles.push(p);
+        }
+        if (!this.animId) this.animate();
+    },
+
+    animate() {
+        if (!this.ctx) return;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.particles = this.particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= p.decay;
+            if (p.orbit !== undefined) {
+                p.orbit += p.orbitSpeed;
+                p.x += Math.cos(p.orbit) * 0.5;
+                p.y += Math.sin(p.orbit) * 0.5;
+            }
+
+            if (p.life <= 0) return false;
+
+            this.ctx.globalAlpha = p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.strokeStyle = p.color;
+
+            switch(p.shape) {
+                case 'line':
+                    this.ctx.lineWidth = p.size * 0.5;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.x, p.y);
+                    this.ctx.lineTo(p.x + Math.cos(p.angle || 0) * (p.length || 10), p.y + Math.sin(p.angle || 0) * (p.length || 10));
+                    this.ctx.stroke();
+                    break;
+                case 'cross':
+                    const s = p.size;
+                    this.ctx.fillRect(p.x - s/6, p.y - s/2, s/3, s);
+                    this.ctx.fillRect(p.x - s/2, p.y - s/6, s, s/3);
+                    break;
+                case 'diamond':
+                    this.ctx.save();
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate(p.rotation || 0);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, -p.size);
+                    this.ctx.lineTo(p.size * 0.6, 0);
+                    this.ctx.lineTo(0, p.size);
+                    this.ctx.lineTo(-p.size * 0.6, 0);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.restore();
+                    break;
+                default:
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+            }
+            return true;
+        });
+
+        this.ctx.globalAlpha = 1;
+
+        if (this.particles.length > 0) {
+            this.animId = requestAnimationFrame(() => this.animate());
+        } else {
+            this.animId = null;
+        }
+    },
+
+    clear() {
+        this.particles = [];
+        if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
+        if (this.ctx) this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+};
+
+window.BattleParticles = BattleParticles;
+
+// Hook battle animations to add particles
+const _origPerformAttack = performAttack;
+performAttack = function(char, stats) {
+    const aliveEnemies = battleState?.enemies?.filter(e => e.currentHp > 0);
+    if (aliveEnemies?.length > 0) {
+        const targetIdx = battleState.selectedTarget % aliveEnemies.length;
+        setTimeout(() => {
+            const targetEl = document.querySelector(`[data-enemy-index="${targetIdx}"]`);
+            if (targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                BattleParticles.spawn('slash', rect.left + rect.width/2, rect.top + rect.height/2, 12);
+            }
+        }, getAnimDuration(200));
+    }
+    _origPerformAttack(char, stats);
+};
+
+const _origPerformHeal = performHeal;
+performHeal = function(char, skill, stats) {
+    setTimeout(() => {
+        const target = gameState.party[battleState?.activeCharIndex];
+        if (target) {
+            const targetEl = document.querySelector(`[data-char-id="${target.id}"]`);
+            if (targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                BattleParticles.spawn('heal', rect.left + rect.width/2, rect.top + rect.height/2, 15);
+            }
+        }
+    }, 100);
+    _origPerformHeal(char, skill, stats);
+};
+
+const _origPerformSkillAttack = performSkillAttack;
+performSkillAttack = function(char, skill, stats) {
+    const aliveEnemies = battleState?.enemies?.filter(e => e.currentHp > 0);
+    if (aliveEnemies?.length > 0) {
+        const targetIdx = battleState.selectedTarget % aliveEnemies.length;
+        setTimeout(() => {
+            const targetEl = document.querySelector(`[data-enemy-index="${targetIdx}"]`);
+            if (targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                let pType = 'magic';
+                if (skill.element === 'fire') pType = 'fire';
+                else if (skill.element === 'ice') pType = 'ice';
+                else if (skill.element === 'thunder') pType = 'thunder';
+                BattleParticles.spawn(pType, rect.left + rect.width/2, rect.top + rect.height/2, 20);
+            }
+        }, getAnimDuration(400));
+    }
+    _origPerformSkillAttack(char, skill, stats);
+};
+
+// ==================== Phase 9: Day/Night Cycle ====================
+const DayNightCycle = {
+    getTimeOfDay() {
+        const hour = new Date().getHours();
+        if (hour >= 6 && hour < 10) return 'dawn';
+        if (hour >= 10 && hour < 17) return 'day';
+        if (hour >= 17 && hour < 20) return 'dusk';
+        return 'night';
+    },
+
+    getOverlayColor() {
+        switch(this.getTimeOfDay()) {
+            case 'dawn': return 'rgba(255, 180, 100, 0.08)';
+            case 'day': return 'rgba(0, 0, 0, 0)';
+            case 'dusk': return 'rgba(255, 120, 50, 0.12)';
+            case 'night': return 'rgba(20, 20, 80, 0.2)';
+        }
+    },
+
+    apply() {
+        let overlay = document.getElementById('dayNightOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'dayNightOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;transition:background-color 60s ease;';
+            document.body.appendChild(overlay);
+        }
+        overlay.style.backgroundColor = this.getOverlayColor();
+    },
+
+    start() {
+        this.apply();
+        setInterval(() => this.apply(), 60000);
+    }
+};
+
+// ==================== Phase 9: Weather Effects ====================
+const WeatherSystem = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    currentWeather: null,
+    animId: null,
+
+    init() {
+        if (this.canvas) return;
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'weatherCanvas';
+        this.canvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;opacity:0.6;';
+        document.body.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+    },
+
+    resize() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    },
+
+    setWeather(type) {
+        if (type === this.currentWeather) return;
+        this.currentWeather = type;
+        this.particles = [];
+        if (!type) {
+            this.stop();
+            return;
+        }
+        if (!this.ctx) this.init();
+        if (!this.animId) this.animate();
+    },
+
+    stop() {
+        this.currentWeather = null;
+        this.particles = [];
+        if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
+        if (this.ctx) this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+
+    spawnParticle() {
+        if (!this.canvas) return null;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+
+        switch(this.currentWeather) {
+            case 'rain':
+                return { x: Math.random() * w, y: -10, vx: -1, vy: 8 + Math.random() * 4, size: 1, length: 10 + Math.random() * 10, color: 'rgba(100,150,255,0.4)' };
+            case 'snow':
+                return { x: Math.random() * w, y: -10, vx: Math.sin(Date.now()/1000 + Math.random() * 10) * 0.5, vy: 1 + Math.random() * 1.5, size: 2 + Math.random() * 3, color: 'rgba(255,255,255,0.7)', wobble: Math.random() * Math.PI * 2 };
+            case 'sand':
+                return { x: w + 10, y: Math.random() * h, vx: -4 - Math.random() * 3, vy: Math.random() * 2 - 1, size: 1 + Math.random() * 2, color: `rgba(${200 + Math.random()*55},${180 + Math.random()*40},${100 + Math.random()*50},0.3)` };
+            default: return null;
+        }
+    },
+
+    animate() {
+        if (!this.ctx || !this.currentWeather) return;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        this.ctx.clearRect(0, 0, w, h);
+
+        // Spawn new particles
+        const spawnRate = { rain: 8, snow: 2, sand: 5 }[this.currentWeather] || 3;
+        for (let i = 0; i < spawnRate; i++) {
+            const p = this.spawnParticle();
+            if (p) this.particles.push(p);
+        }
+
+        // Update and draw
+        this.particles = this.particles.filter(p => {
+            if (p.wobble !== undefined) {
+                p.wobble += 0.02;
+                p.vx = Math.sin(p.wobble) * 0.5;
+            }
+            p.x += p.vx;
+            p.y += p.vy;
+
+            if (p.y > h + 10 || p.x < -10 || p.x > w + 10) return false;
+
+            this.ctx.fillStyle = p.color;
+            this.ctx.strokeStyle = p.color;
+
+            if (p.length) {
+                // Rain drop
+                this.ctx.lineWidth = p.size;
+                this.ctx.beginPath();
+                this.ctx.moveTo(p.x, p.y);
+                this.ctx.lineTo(p.x + p.vx * 2, p.y + p.length);
+                this.ctx.stroke();
+            } else {
+                // Snow/sand particle
+                this.ctx.beginPath();
+                this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+            return true;
+        });
+
+        // Limit particles
+        if (this.particles.length > 500) this.particles.splice(0, this.particles.length - 500);
+
+        this.animId = requestAnimationFrame(() => this.animate());
+    }
+};
+
+// Apply weather based on current zone
+function updateWeatherForZone(zoneId) {
+    const weatherMap = {
+        swamp: 'rain', snow: 'snow', desert: 'sand',
+        plains: null, forest: null, cave: null, mine: null,
+        crypt: null, volcano: null, darkForest: null, castle: null,
+        skyCity: null, abyss: null, rift: null, divine: null,
+        dragonRealm: null, demonCastle: null
+    };
+    const weather = weatherMap[zoneId];
+    if (weather) {
+        WeatherSystem.setWeather(weather);
+    } else {
+        WeatherSystem.stop();
+    }
+}
+
+// Hook into showScene for weather
+const _origShowScene = showScene;
+showScene = function(sceneId) {
+    _origShowScene(sceneId);
+    if (sceneId === 'world' || sceneId === 'battle') {
+        updateWeatherForZone(gameState.currentMap);
+    } else {
+        WeatherSystem.stop();
+    }
+};
+
+window.DayNightCycle = DayNightCycle;
+window.WeatherSystem = WeatherSystem;
+window.showScene = showScene;
+window.enterZone = enterZone;
+
+// ==================== Phase 9: Hook daily quest tracking into battle ====================
+// Wrap victory to track daily quests
+const _origVictoryP9 = victory;
+victory = function() {
+    // Track daily quest stats
+    if (battleState) {
+        const killCount = battleState.enemies.filter(e => e.currentHp <= 0).length;
+        updateDailyQuestProgress('kill', killCount);
+        updateDailyQuestProgress('battle');
+
+        let totalGold = 0;
+        battleState.enemies.forEach(e => { if (e.currentHp <= 0) totalGold += (e.gold || 0); });
+        updateDailyQuestProgress('gold', totalGold);
+
+        if (battleState.isBossBattle) updateDailyQuestProgress('boss');
+    }
+    _origVictoryP9();
+};
+
+// Track materials in daily quests
+const _origAddEnhanceMat = addEnhancementMaterial;
+addEnhancementMaterial = function(type, amount) {
+    _origAddEnhanceMat(type, amount);
+    updateDailyQuestProgress('material', amount);
+};
+
+// Track crits
+const _origCalcCritRate = calcCritRate;
+
+// Update renderQuests to include daily quests
+const _origRenderQuests = renderQuests;
+renderQuests = function() {
+    _origRenderQuests();
+
+    const container = document.getElementById('questContainer');
+    if (!container) return;
+
+    // Generate/refresh daily quests
+    const dailyQuests = generateDailyQuests();
+
+    let dailyHtml = `<div class="quest-section"><div class="quest-section-title">📋 每日任务 <span style="font-size:8px;color:#888;">(每天重置)</span></div>`;
+    dailyQuests.forEach((q, i) => {
+        const pct = Math.min(100, (q.progress / q.target) * 100);
+        dailyHtml += `
+            <div class="quest-card quest-daily ${q.completed ? 'quest-completable' : ''} ${q.claimed ? 'quest-completed' : ''}">
+                <div class="quest-header">
+                    <span class="quest-name">${q.icon} ${q.name}</span>
+                    <span class="quest-progress-text">${q.progress}/${q.target}</span>
+                </div>
+                <div class="quest-desc">${q.desc}</div>
+                <div class="quest-progress-bar"><div class="quest-progress-fill" style="width:${pct}%"></div></div>
+                <div class="quest-reward-preview">奖励: ${q.reward.xp}XP + ${q.reward.gold}G</div>
+                ${q.completed && !q.claimed ? `<button class="btn btn-primary" style="margin-top:5px;padding:5px 10px;font-size:9px;" onclick="claimDailyQuest(${i})">领取奖励</button>` : ''}
+                ${q.claimed ? '<div style="color:#44ff44;font-size:9px;margin-top:3px;">✅ 已领取</div>' : ''}
+            </div>`;
+    });
+    dailyHtml += '</div>';
+
+    container.insertAdjacentHTML('afterbegin', dailyHtml);
+};
+
+// ==================== Phase 9: Enhanced Bestiary with Lore ====================
+const MONSTER_LORE = {
+    slime: '史莱姆是世界上最常见的魔物。它们由凝聚的魔力形成，虽然个体弱小，但数量庞大。传说中，史莱姆王是所有史莱姆的祖先。',
+    insect: '魔化的昆虫比普通昆虫大数十倍。它们的甲壳坚硬如铁，毒素足以致命。螳螂王是昆虫族群的最高统治者。',
+    beast: '被魔气污染的野兽比普通动物凶暴得多。狼人据说是被诅咒的人类，只在月圆之夜才会恢复人形。',
+    dragon: '龙族是最古老、最强大的种族。它们拥有超越一切生物的力量和智慧。龙王是所有龙的统治者，据说已活了数万年。',
+    undead: '不死族是被黑暗魔法复活的亡者。它们没有意识，只是执行着召唤者的命令。巫妖王是其中的异类——它保留了生前的全部记忆和力量。',
+    demon: '恶魔来自另一个维度的深渊。它们以生物的恐惧和痛苦为食。混沌魔王是恶魔中的至高存在。',
+    elemental: '元素生物是自然之力的具现化。它们没有实体，由纯粹的魔力构成。与之战斗需要克制其属性。',
+    plant: '被魔力污染的植物拥有了自我意识。树精是其中最古老的存在，有些已经活了数千年。',
+    human: '堕落的人类——强盗、叛徒、黑巫师。他们抛弃了人性，成为了冒险者的敌人。',
+    myth: '神话中的生物确实存在。凤凰可以从灰烬中重生，克拉肯可以吞噬整艘船。',
+    mech: '古代文明留下的机械遗产。没人知道是谁制造了它们，但它们依然在忠实地执行着数千年前的命令。',
+    special: '无法归类的特殊存在。它们超越了常识，每一个都是独一无二的。'
+};
+
+// Override renderBestiary to include lore
+const _origRenderBestiary = renderBestiary;
+renderBestiary = function() {
+    _origRenderBestiary();
+
+    // Add family lore tooltips
+    const container = document.getElementById('bestiaryContainer');
+    if (!container) return;
+
+    container.querySelectorAll('.bestiary-family h3').forEach(h3 => {
+        const familyNames = {
+            '史莱姆家族': 'slime', '昆虫家族': 'insect', '野兽家族': 'beast',
+            '龙族': 'dragon', '不死族': 'undead', '恶魔族': 'demon',
+            '元素族': 'elemental', '植物族': 'plant', '人型族': 'human',
+            '神话生物': 'myth', '机械族': 'mech', '特殊': 'special'
+        };
+        const familyId = familyNames[h3.textContent];
+        if (familyId && MONSTER_LORE[familyId]) {
+            const lore = document.createElement('div');
+            lore.className = 'family-lore';
+            lore.textContent = MONSTER_LORE[familyId];
+            h3.parentElement.insertBefore(lore, h3.nextSibling);
+        }
+    });
+
+    // Add total stats
+    const total = Object.keys(BESTIARY).length;
+    const discovered = Object.keys(gameState.bestiary).filter(k => gameState.bestiary[k]?.seen).length;
+    const header = document.createElement('div');
+    header.className = 'bestiary-header-stats';
+    header.innerHTML = `<div>发现: ${discovered}/${total} (${Math.floor(discovered/total*100)}%)</div>`;
+    container.insertBefore(header, container.firstChild);
+};
+
+// ==================== Phase 9: Start Day/Night on Init ====================
+const _origInit = init;
+init = async function() {
+    await _origInit();
+    DayNightCycle.start();
+    BattleParticles.init();
+};
+
+// ==================== Phase 9: Update Nav for Arena ====================
+// Add arena button to menu
+const _origRenderMenu = renderMenu;
+renderMenu = function() {
+    _origRenderMenu();
+    if (isGameStarted) {
+        const menuEl = document.querySelector('#sceneMenu .menu-buttons');
+        if (menuEl) {
+            // Insert arena button after endless mode button
+            const endlessBtn = menuEl.querySelector('.btn-danger');
+            if (endlessBtn) {
+                const arenaBtn = document.createElement('button');
+                arenaBtn.className = 'btn btn-danger';
+                arenaBtn.style.background = 'linear-gradient(135deg, #8B4513, #DAA520)';
+                arenaBtn.onclick = showArena;
+                arenaBtn.textContent = '🏟️ 竞技场';
+                endlessBtn.parentElement.insertBefore(arenaBtn, endlessBtn.nextSibling);
+            }
+        }
+    }
+};
+
+window.renderMenu = renderMenu;
+window.renderQuests = renderQuests;
+window.renderBestiary = renderBestiary;
+window.init = init;
+window.victory = victory;
+window.returnFromBattle = returnFromBattle;
+window.addEnhancementMaterial = addEnhancementMaterial;
+window.performAttack = performAttack;
+window.enterZone = enterZone;
+
 // 启动
 window.onload = init;
