@@ -3459,14 +3459,17 @@ function renderMenu() {
                 ${hasSave ? '<button class="btn btn-secondary" onclick="continueGame()">📂 继续游戏</button>' : ''}
             </div>`;
     } else {
+        const ngLabel = (typeof gameState !== 'undefined' && gameState.newGamePlus > 0) ? ` (NG+${gameState.newGamePlus})` : '';
         menuEl.innerHTML = `
             <div class="game-title">
                 <h2>DRAGON QUEST</h2>
-                <p>勇者斗恶龙 RPG</p>
+                <p>勇者斗恶龙 RPG${ngLabel}</p>
             </div>
             <div class="menu-buttons">
                 <button class="btn btn-primary" onclick="showSaveLoadUI('save')">💾 保存游戏</button>
                 <button class="btn btn-secondary" onclick="showSaveLoadUI('load')">📂 选择存档</button>
+                <button class="btn btn-danger" onclick="startEndlessMode()">⚔️ 无尽模式</button>
+                <button class="btn btn-secondary" onclick="startNewGamePlus()">🌟 New Game+</button>
                 <button class="btn btn-secondary" onclick="showSettings()">⚙️ 设置</button>
                 <button class="btn btn-secondary" onclick="showStatsPage()">📊 统计</button>
                 <button class="btn btn-secondary" onclick="isGameStarted=false;showScene('menu');">🏠 回到主菜单</button>
@@ -4962,6 +4965,289 @@ function getSellPrice(equip) {
     const base = (equip.str || 0) + (equip.def || 0) + (equip.hp || 0) + (equip.spd || 0) + (equip.int || 0);
     return Math.max(5, Math.floor(base * 5 * (rarityMult[equip.rarity] || 0.3)));
 }
+
+// ==================== 新区域商店装备 ====================
+Object.assign(SHOP_EQUIPMENT, {
+    mine: [
+        { slot: 'weapon', name: '矮人战锤', level: 20, rarity: 'rare', price: 2000 },
+        { slot: 'armor', name: '矿石铠甲', level: 20, rarity: 'rare', price: 1800 },
+        { slot: 'helmet', name: '矿工头盔', level: 18, rarity: 'rare', price: 1200 }
+    ],
+    crypt: [
+        { slot: 'weapon', name: '亡灵之刃', level: 30, rarity: 'epic', price: 4000 },
+        { slot: 'armor', name: '遗迹圣甲', level: 28, rarity: 'epic', price: 3500 },
+        { slot: 'accessory', name: '诅咒护符', level: 25, rarity: 'rare', price: 2500 }
+    ],
+    desert: [
+        { slot: 'weapon', name: '沙漠弯刀', level: 35, rarity: 'epic', price: 5500 },
+        { slot: 'armor', name: '沙漠行者甲', level: 33, rarity: 'epic', price: 5000 },
+        { slot: 'shield', name: '法老之盾', level: 35, rarity: 'epic', price: 4500 }
+    ],
+    swamp: [
+        { slot: 'weapon', name: '毒藤之鞭', level: 40, rarity: 'epic', price: 7000 },
+        { slot: 'accessory', name: '沼泽之心', level: 38, rarity: 'epic', price: 6000 }
+    ],
+    volcano: [
+        { slot: 'weapon', name: '熔岩巨剑', level: 48, rarity: 'legendary', price: 12000 },
+        { slot: 'armor', name: '火焰之铠', level: 45, rarity: 'epic', price: 10000 },
+        { slot: 'helmet', name: '炎龙盔', level: 45, rarity: 'epic', price: 8000 }
+    ],
+    castle: [
+        { slot: 'weapon', name: '幽灵骑士剑', level: 60, rarity: 'legendary', price: 18000 },
+        { slot: 'armor', name: '暗影铠甲', level: 58, rarity: 'legendary', price: 16000 },
+        { slot: 'shield', name: '灵魂之盾', level: 55, rarity: 'epic', price: 12000 }
+    ],
+    snow: [
+        { slot: 'weapon', name: '冰霜之刃', level: 70, rarity: 'legendary', price: 25000 },
+        { slot: 'armor', name: '冰晶战甲', level: 68, rarity: 'legendary', price: 22000 },
+        { slot: 'accessory', name: '雪花项链', level: 65, rarity: 'legendary', price: 18000 }
+    ],
+    divine: [
+        { slot: 'weapon', name: '圣光之剑', level: 95, rarity: 'legendary', price: 80000 },
+        { slot: 'armor', name: '神圣铠甲', level: 92, rarity: 'legendary', price: 70000 },
+        { slot: 'accessory', name: '神之祝福', level: 90, rarity: 'legendary', price: 60000 }
+    ],
+    demonCastle: [
+        { slot: 'weapon', name: '混沌毁灭者', level: 99, rarity: 'legendary', price: 150000 },
+        { slot: 'armor', name: '终极铠甲', level: 99, rarity: 'legendary', price: 130000 },
+        { slot: 'shield', name: '命运之盾', level: 99, rarity: 'legendary', price: 120000 }
+    ]
+});
+
+// ==================== 套装系统 ====================
+const EQUIPMENT_SETS = {
+    forestGuard: { name: '🌲 森林守护套', pieces: ['精灵之刃','森林护甲','自然护符'],
+        bonus2: { def: 15, hp: 50, desc: '防御+15, HP+50' },
+        bonus3: { def: 30, hp: 120, str: 10, desc: '防御+30, HP+120, 攻击+10, 自然治愈' }
+    },
+    mineForge: { name: '⛏️ 矿石锻造套', pieces: ['矮人战锤','矿石铠甲','矿工头盔'],
+        bonus2: { def: 25, str: 15, desc: '防御+25, 攻击+15' },
+        bonus3: { def: 50, str: 30, hp: 100, desc: '防御+50, 攻击+30, HP+100, 坚不可摧' }
+    },
+    undeadBane: { name: '🏛️ 亡灵克星套', pieces: ['亡灵之刃','遗迹圣甲','诅咒护符'],
+        bonus2: { str: 30, int: 20, desc: '攻击+30, 智力+20' },
+        bonus3: { str: 60, int: 40, hp: 150, desc: '攻击+60, 智力+40, HP+150, 圣光护体' }
+    },
+    desertKing: { name: '🏜️ 沙漠之王套', pieces: ['沙漠弯刀','沙漠行者甲','法老之盾'],
+        bonus2: { spd: 25, str: 20, desc: '速度+25, 攻击+20' },
+        bonus3: { spd: 50, str: 45, def: 30, desc: '速度+50, 攻击+45, 防御+30, 沙暴之力' }
+    },
+    flameLord: { name: '🔥 火焰领主套', pieces: ['熔岩巨剑','火焰之铠','炎龙盔'],
+        bonus2: { str: 40, hp: 100, desc: '攻击+40, HP+100' },
+        bonus3: { str: 80, hp: 250, def: 40, desc: '攻击+80, HP+250, 防御+40, 烈焰灼烧' }
+    },
+    ghostKnight: { name: '💀 幽灵骑士套', pieces: ['幽灵骑士剑','暗影铠甲','灵魂之盾'],
+        bonus2: { str: 50, def: 40, desc: '攻击+50, 防御+40' },
+        bonus3: { str: 100, def: 80, spd: 30, desc: '攻击+100, 防御+80, 速度+30, 灵魂收割' }
+    },
+    iceQueen: { name: '❄️ 冰霜女王套', pieces: ['冰霜之刃','冰晶战甲','雪花项链'],
+        bonus2: { str: 60, int: 40, desc: '攻击+60, 智力+40' },
+        bonus3: { str: 120, int: 80, def: 50, desc: '攻击+120, 智力+80, 防御+50, 冰霜新星' }
+    },
+    holyAvenger: { name: '✨ 圣光复仇者套', pieces: ['圣光之剑','神圣铠甲','神之祝福'],
+        bonus2: { str: 80, def: 60, desc: '攻击+80, 防御+60' },
+        bonus3: { str: 160, def: 120, hp: 500, desc: '攻击+160, 防御+120, HP+500, 神圣审判' }
+    },
+    chaosDestroyer: { name: '👹 混沌毁灭套', pieces: ['混沌毁灭者','终极铠甲','命运之盾'],
+        bonus2: { str: 100, def: 80, desc: '攻击+100, 防御+80' },
+        bonus3: { str: 200, def: 160, hp: 800, spd: 50, desc: '全属性大幅提升, 混沌之力' }
+    },
+    dragonSlayer: { name: '🐲 屠龙者套', pieces: ['屠龙巨剑','龙鳞铠甲','龙牙项链'],
+        bonus2: { str: 90, hp: 300, desc: '攻击+90, HP+300' },
+        bonus3: { str: 180, hp: 600, def: 100, int: 50, desc: '全面提升, 龙杀被动' }
+    }
+};
+
+function getSetBonuses(char) {
+    if (!char || !char.equipment) return { bonuses: {}, activeSets: [] };
+    const equippedNames = Object.values(char.equipment).filter(e => e).map(e => e.name);
+    let totalBonuses = {};
+    let activeSets = [];
+    
+    for (const [setId, set] of Object.entries(EQUIPMENT_SETS)) {
+        const count = set.pieces.filter(p => equippedNames.includes(p)).length;
+        if (count >= 2 && set.bonus2) {
+            Object.entries(set.bonus2).forEach(([k, v]) => { if (k !== 'desc') totalBonuses[k] = (totalBonuses[k] || 0) + v; });
+            activeSets.push({ name: set.name, count, max: set.pieces.length, level: 2, desc: set.bonus2.desc });
+        }
+        if (count >= 3 && set.bonus3) {
+            // bonus3 replaces bonus2
+            Object.entries(set.bonus2).forEach(([k, v]) => { if (k !== 'desc') totalBonuses[k] = (totalBonuses[k] || 0) - v; });
+            Object.entries(set.bonus3).forEach(([k, v]) => { if (k !== 'desc') totalBonuses[k] = (totalBonuses[k] || 0) + v; });
+            activeSets[activeSets.length - 1].level = 3;
+            activeSets[activeSets.length - 1].desc = set.bonus3.desc;
+        }
+    }
+    return { bonuses: totalBonuses, activeSets };
+}
+
+// 在calculateStats中集成套装加成
+const _origCalculateStats = typeof calculateStats === 'function' ? calculateStats : null;
+
+window.EQUIPMENT_SETS = EQUIPMENT_SETS;
+window.getSetBonuses = getSetBonuses;
+
+// ==================== 无尽模式 ====================
+let endlessState = null;
+
+function startEndlessMode() {
+    endlessState = {
+        wave: 1,
+        kills: 0,
+        gold: 0,
+        startTime: Date.now(),
+        active: true,
+        bestWave: parseInt(localStorage.getItem('dq_endless_best') || '0')
+    };
+    showToast('⚔️ 无尽模式开始！', 'success');
+    endlessNextWave();
+}
+
+function endlessNextWave() {
+    if (!endlessState || !endlessState.active) return;
+    const wave = endlessState.wave;
+    const isBoss = wave % 10 === 0;
+    
+    // 根据波次确定区域
+    let zone;
+    if (wave <= 5) zone = 'plains';
+    else if (wave <= 10) zone = 'forest';
+    else if (wave <= 15) zone = 'cave';
+    else if (wave <= 20) zone = 'mine';
+    else if (wave <= 25) zone = 'crypt';
+    else if (wave <= 30) zone = 'desert';
+    else if (wave <= 35) zone = 'swamp';
+    else if (wave <= 40) zone = 'volcano';
+    else if (wave <= 50) zone = 'darkForest';
+    else if (wave <= 60) zone = 'castle';
+    else if (wave <= 70) zone = 'snow';
+    else if (wave <= 80) zone = 'skyCity';
+    else if (wave <= 90) zone = 'abyss';
+    else zone = 'demonCastle';
+    
+    // 显示波次信息
+    const waveInfo = document.createElement('div');
+    waveInfo.id = 'endlessWaveInfo';
+    waveInfo.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#FFD700;padding:10px 20px;border-radius:8px;border:2px solid #FFD700;z-index:999;font-family:monospace;font-size:14px;';
+    waveInfo.innerHTML = `⚔️ Wave ${wave} ${isBoss ? '🔥 BOSS WAVE!' : ''} | 最高: Wave ${endlessState.bestWave}`;
+    document.body.appendChild(waveInfo);
+    setTimeout(() => waveInfo.remove(), 3000);
+    
+    if (isBoss && typeof startBossBattle === 'function') {
+        startBossBattle(zone);
+    } else if (typeof startBattle === 'function') {
+        startBattle(zone);
+    }
+}
+
+function endlessOnBattleEnd(won) {
+    if (!endlessState || !endlessState.active) return;
+    if (won) {
+        endlessState.wave++;
+        endlessState.kills++;
+        endlessState.gold += endlessState.wave * 10;
+        if (endlessState.wave > endlessState.bestWave) {
+            endlessState.bestWave = endlessState.wave;
+            localStorage.setItem('dq_endless_best', endlessState.bestWave.toString());
+        }
+        // 每5波恢复一些HP
+        if (endlessState.wave % 5 === 0 && typeof gameState !== 'undefined') {
+            gameState.party.forEach(c => {
+                const stats = typeof calculateStats === 'function' ? calculateStats(c) : { hp: 100 };
+                c.currentHp = Math.min(stats.hp, c.currentHp + Math.floor(stats.hp * 0.3));
+                if (c.currentMp !== undefined) c.currentMp = Math.min(stats.mp || 25, c.currentMp + 10);
+            });
+            showToast('💚 第' + endlessState.wave + '波！队伍恢复30% HP！', 'success');
+        }
+        setTimeout(() => endlessNextWave(), 1500);
+    } else {
+        // 失败
+        const duration = Math.floor((Date.now() - endlessState.startTime) / 1000);
+        const mins = Math.floor(duration / 60);
+        const secs = duration % 60;
+        showEndlessResult(endlessState.wave - 1, endlessState.kills, endlessState.gold, `${mins}分${secs}秒`);
+        endlessState.active = false;
+    }
+}
+
+function showEndlessResult(wave, kills, gold, time) {
+    const overlay = document.createElement('div');
+    overlay.id = 'endlessResult';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:1000;';
+    overlay.innerHTML = `
+        <div style="background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:15px;padding:30px;text-align:center;min-width:300px;font-family:monospace;">
+            <h2 style="color:#FFD700;margin-bottom:20px;">⚔️ 无尽模式结束</h2>
+            <div style="color:#fff;font-size:14px;line-height:2;">
+                <div>🌊 到达波次: <span style="color:#ff4444;font-size:18px;">${wave}</span></div>
+                <div>💀 击杀数: ${kills}</div>
+                <div>💰 获得金币: ${gold}</div>
+                <div>⏱️ 用时: ${time}</div>
+                <div>🏆 历史最高: Wave ${endlessState.bestWave}</div>
+            </div>
+            <button onclick="document.getElementById('endlessResult').remove();if(typeof showScene==='function')showScene('menu')" 
+                style="margin-top:20px;padding:10px 30px;background:#4a1a1a;border:2px solid #FFD700;border-radius:8px;color:#FFD700;font-size:14px;cursor:pointer;font-family:monospace;">
+                返回主菜单
+            </button>
+        </div>`;
+    document.body.appendChild(overlay);
+    // 给玩家金币
+    if (typeof gameState !== 'undefined') {
+        gameState.gold += gold;
+        if (typeof saveGame === 'function') saveGame();
+    }
+}
+
+window.startEndlessMode = startEndlessMode;
+window.endlessNextWave = endlessNextWave;
+window.endlessOnBattleEnd = endlessOnBattleEnd;
+
+// ==================== New Game+ ====================
+function startNewGamePlus() {
+    if (typeof gameState === 'undefined') return;
+    const ngLevel = (gameState.newGamePlus || 0) + 1;
+    
+    // 保存继承的数据
+    const inheritedParty = gameState.party.map(c => ({
+        ...c,
+        level: Math.max(1, Math.floor(c.level * 0.8)), // 保留80%等级
+        currentHp: c.currentHp
+    }));
+    const inheritedGold = Math.floor(gameState.gold * 0.5);
+    const inheritedEquipment = gameState.party.map(c => ({...c.equipment}));
+    
+    // 重置游戏状态但保留继承
+    if (typeof initGameState === 'function') {
+        const hero = inheritedParty[0];
+        gameState.party = [hero];
+        gameState.gold = inheritedGold;
+        gameState.newGamePlus = ngLevel;
+        gameState.currentMap = 'village';
+        
+        // 恢复装备
+        if (inheritedEquipment[0]) {
+            gameState.party[0].equipment = inheritedEquipment[0];
+        }
+        
+        // 重置任务
+        if (gameState.quests) gameState.quests = {};
+        if (gameState.achievements) {
+            // 保留成就
+        }
+        
+        showToast(`🌟 New Game+ ${ngLevel} 开始！怪物变强了！`, 'success');
+        if (typeof saveGame === 'function') saveGame();
+        if (typeof showScene === 'function') showScene('menu');
+    }
+}
+
+function getNGPlusMultiplier() {
+    if (typeof gameState === 'undefined') return 1;
+    const ng = gameState.newGamePlus || 0;
+    return 1 + ng * 0.5; // 每周目怪物强50%
+}
+
+window.startNewGamePlus = startNewGamePlus;
+window.getNGPlusMultiplier = getNGPlusMultiplier;
 
 window.SHOP_EQUIPMENT = SHOP_EQUIPMENT;
 window.sellEquipment = sellEquipment;

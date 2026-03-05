@@ -240,8 +240,580 @@ const MAPS = {
             
             // 北出口 → 森林
             for(let x=18;x<23;x++) { map[0][x]=T.EXIT; exits.push({x,y:0,target:'forest',spawnX:20,spawnY:28}); }
+            // 东出口 → 废弃矿坑
+            for(let y=13;y<18;y++) { map[y][39]=T.EXIT; exits.push({x:39,y,target:'mine',spawnX:1,spawnY:15}); }
             
             return { map, npcs, chests, monsters, exits };
+        }
+    },
+
+    // ======== 废弃矿坑 Lv.15-25 ========
+    mine: {
+        name: '⛏️ 废弃矿坑', level: 'Lv.15-25', safe: false,
+        width: 50, height: 40, bgColor: '#0d0d0d',
+        encounterRate: 5,
+        generate() {
+            const map = makeGrid(50, 40, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 40);
+            // 矿道网格
+            for(let y=2;y<38;y++) for(let x=2;x<48;x++) {
+                if(Math.random()<0.2) map[y][x]=T.WALL;
+            }
+            // 主通道
+            for(let x=1;x<49;x++) { map[20][x]=T.FLOOR; map[19][x]=T.FLOOR; map[21][x]=T.FLOOR; }
+            for(let y=1;y<39;y++) { map[y][25]=T.FLOOR; map[y][24]=T.FLOOR; map[y][26]=T.FLOOR; }
+            // 矿石散布
+            for(let i=0;i<25;i++) { const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*36); if(map[y][x]===T.WALL) map[y][x]=T.ORE; }
+            // 熔岩池
+            for(let y=30;y<35;y++) for(let x=35;x<42;x++) map[y][x]=T.LAVA;
+            for(let y=5;y<10;y++) for(let x=5;x<12;x++) map[y][x]=T.LAVA;
+            // 怪物
+            [[10,8,'gargoyle'],[20,5,'skeleton'],[35,10,'batSwarm'],[8,30,'gargoyle'],[40,20,'skeleton'],[15,35,'batSwarm'],[30,30,'gargoyle'],[45,15,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][25]=T.BOSS; monsters.push({x:25,y:37,type:'diamondGiant',name:'💎钻石巨人',color:'#00ffff',isBoss:true});
+            // 宝箱
+            [[3,3,200],[47,3,250],[3,37,300],[47,37,350],[25,10,280]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            // NPC
+            npcs.push({x:25,y:18,name:'矮人矿工',color:'#8B4513',hairColor:'#DEB887',type:'talk',
+                dialog:'这矿坑已经废弃很久了...深处有钻石巨人在守护着宝藏。往南走可以到古老遗迹。'});
+            // 西出口 → 洞穴
+            for(let y=13;y<18;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'cave',spawnX:38,spawnY:15});}
+            // 南出口 → 古老遗迹
+            for(let x=23;x<28;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'crypt',spawnX:25,spawnY:1});}
+            // 东出口 → 沙漠
+            for(let y=18;y<23;y++){map[y][49]=T.EXIT;exits.push({x:49,y,target:'desert',spawnX:1,spawnY:15});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 古老遗迹 Lv.25-35 ========
+    crypt: {
+        name: '🏛️ 古老遗迹', level: 'Lv.25-35', safe: false,
+        width: 50, height: 40, bgColor: '#0a0a15',
+        encounterRate: 5,
+        generate() {
+            const map = makeGrid(50, 40, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 40);
+            // 柱廊式房间结构
+            for(let ry=0;ry<4;ry++) for(let rx=0;rx<5;rx++) {
+                const bx=rx*10+2,by=ry*10+2;
+                if(Math.random()<0.4) {
+                    for(let y=by;y<by+8&&y<39;y++) for(let x=bx;x<bx+8&&x<49;x++) {
+                        if(y===by||y===by+7||x===bx||x===bx+7) map[y][x]=T.WALL;
+                    }
+                    // 门
+                    map[by+4][bx]=T.FLOOR; map[by+4][bx+7]=T.FLOOR;
+                    map[by][bx+4]=T.FLOOR; map[by+7][bx+4]=T.FLOOR;
+                }
+            }
+            // 石板路
+            for(let x=1;x<49;x++) map[20][x]=T.PATH;
+            for(let y=1;y<39;y++) map[y][25]=T.PATH;
+            // 发光矿石装饰
+            for(let i=0;i<20;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*36);if(map[y][x]===T.FLOOR) map[y][x]=T.ORE;}
+            // 怪物
+            [[8,8,'skeleton'],[20,5,'gargoyle'],[40,8,'skeleton'],[8,30,'batSwarm'],[35,25,'gargoyle'],[25,35,'skeleton'],[42,35,'batSwarm'],[15,20,'gargoyle']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][25]=T.BOSS; monsters.push({x:25,y:37,type:'lichKing',name:'🧟巫妖王',color:'#9966ff',isBoss:true});
+            // 宝箱
+            [[5,5,350],[45,5,400],[5,35,380],[45,35,450],[25,20,500]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:10,name:'考古学家',color:'#CD853F',hairColor:'#fff',type:'talk',
+                dialog:'这些遗迹已有千年历史...深处封印着巫妖王。当心不死族的诅咒！'});
+            // 北出口 → 矿坑
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'mine',spawnX:25,spawnY:38});}
+            // 东出口 → 沼泽
+            for(let y=18;y<23;y++){map[y][49]=T.EXIT;exits.push({x:49,y,target:'swamp',spawnX:1,spawnY:15});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 灼热沙漠 Lv.30-40 ========
+    desert: {
+        name: '🏜️ 灼热沙漠', level: 'Lv.30-40', safe: false,
+        width: 60, height: 40, bgColor: '#2a1a0a',
+        encounterRate: 6,
+        generate() {
+            const map = makeGrid(60, 40, T.GRASS); // 沙地用GRASS表示
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 60, 40);
+            // 绿洲（水池）
+            for(let y=15;y<20;y++) for(let x=28;x<35;x++) map[y][x]=T.WATER;
+            // 仙人掌（用TREE）
+            for(let i=0;i<20;i++){const x=2+Math.floor(Math.random()*56),y=2+Math.floor(Math.random()*36);if(map[y][x]===T.GRASS) map[y][x]=T.TREE;}
+            // 岩石
+            for(let i=0;i<15;i++){const x=2+Math.floor(Math.random()*56),y=2+Math.floor(Math.random()*36);if(map[y][x]===T.GRASS) map[y][x]=T.WALL;}
+            // 路
+            for(let x=1;x<59;x++) map[20][x]=T.PATH;
+            for(let y=1;y<39;y++) map[y][30]=T.PATH;
+            // 流沙（用LAVA表示）
+            for(let y=30;y<34;y++) for(let x=10;x<18;x++) map[y][x]=T.LAVA;
+            for(let y=5;y<9;y++) for(let x=45;x<52;x++) map[y][x]=T.LAVA;
+            // 怪物
+            [[10,8,'skeleton'],[25,5,'gargoyle'],[45,10,'batSwarm'],[15,30,'skeleton'],[50,25,'gargoyle'],[35,35,'batSwarm'],[8,20,'skeleton'],[55,15,'gargoyle']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.GRASS||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][30]=T.BOSS; monsters.push({x:30,y:37,type:'pharaoh',name:'👳法老王',color:'#FFD700',isBoss:true});
+            // 宝箱
+            [[5,5,400],[55,5,450],[5,35,420],[55,35,500],[30,10,480]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.GRASS){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:30,y:17,name:'沙漠商人',color:'#DAA520',hairColor:'#000',type:'shop',
+                dialog:'沙漠中的绿洲，需要补给吗？'});
+            npcs.push({x:32,y:17,name:'冒险家',color:'#CD853F',hairColor:'#8B4513',type:'talk',
+                dialog:'往南走小心流沙！法老王的金字塔就在沙漠深处。西边通向废弃矿坑，东边是剧毒沼泽。'});
+            // 西出口 → 矿坑
+            for(let y=18;y<23;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'mine',spawnX:48,spawnY:20});}
+            // 东出口 → 沼泽
+            for(let y=18;y<23;y++){map[y][59]=T.EXIT;exits.push({x:59,y,target:'swamp',spawnX:1,spawnY:15});}
+            // 南出口 → 熔岩地带
+            for(let x=28;x<33;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'volcano',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 剧毒沼泽 Lv.35-45 ========
+    swamp: {
+        name: '☠️ 剧毒沼泽', level: 'Lv.35-45', safe: false,
+        width: 50, height: 40, bgColor: '#0a1a0a',
+        encounterRate: 4,
+        generate() {
+            const map = makeGrid(50, 40, T.GRASS);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 40);
+            // 毒水(WATER)大面积
+            for(let y=2;y<38;y++) for(let x=2;x<48;x++) { if(Math.random()<0.3) map[y][x]=T.WATER; }
+            // 树木
+            for(let i=0;i<30;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*36);if(map[y][x]===T.GRASS) map[y][x]=T.TREE;}
+            // 安全路径
+            for(let x=1;x<49;x++){map[20][x]=T.PATH;map[19][x]=T.PATH;}
+            for(let y=1;y<39;y++){map[y][25]=T.PATH;map[y][24]=T.PATH;}
+            // 怪物
+            [[10,8,'batSwarm'],[20,5,'gargoyle'],[40,10,'skeleton'],[8,30,'gargoyle'],[35,30,'batSwarm'],[25,35,'skeleton'],[42,20,'gargoyle'],[15,15,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.GRASS||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][25]=T.BOSS; monsters.push({x:25,y:37,type:'swampQueen',name:'🧙沼泽女王',color:'#00cc66',isBoss:true});
+            // 宝箱
+            [[5,5,450],[45,5,500],[5,35,480],[45,35,550],[25,10,520]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.GRASS||map[y][x]===T.PATH){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:18,name:'药师',color:'#2E8B57',hairColor:'#006400',type:'shop',
+                dialog:'这沼泽虽然危险，但有很多珍贵药材。需要补给吗？'});
+            // 西出口 → 遗迹
+            for(let y=18;y<23;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'crypt',spawnX:48,spawnY:20});}
+            // 西北出口 → 沙漠
+            for(let y=3;y<8;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'desert',spawnX:58,spawnY:20});}
+            // 南出口 → 黑暗森林
+            for(let x=23;x<28;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'darkForest',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 熔岩地带 Lv.40-50 ========
+    volcano: {
+        name: '🌋 熔岩地带', level: 'Lv.40-50', safe: false,
+        width: 50, height: 40, bgColor: '#1a0500',
+        encounterRate: 4,
+        generate() {
+            const map = makeGrid(50, 40, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 40);
+            // 大面积熔岩
+            for(let y=2;y<38;y++) for(let x=2;x<48;x++) { if(Math.random()<0.25) map[y][x]=T.LAVA; }
+            // 岩石路径
+            for(let x=1;x<49;x++){map[20][x]=T.FLOOR;map[19][x]=T.FLOOR;map[21][x]=T.FLOOR;}
+            for(let y=1;y<39;y++){map[y][25]=T.FLOOR;map[y][24]=T.FLOOR;map[y][26]=T.FLOOR;}
+            // 矿石
+            for(let i=0;i<15;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*36);if(map[y][x]===T.FLOOR) map[y][x]=T.ORE;}
+            // 怪物
+            [[10,8,'gargoyle'],[20,5,'skeleton'],[40,10,'batSwarm'],[8,30,'gargoyle'],[35,30,'skeleton'],[25,35,'batSwarm'],[42,15,'gargoyle'],[15,25,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][25]=T.BOSS; monsters.push({x:25,y:37,type:'flameLord',name:'🔥火焰领主',color:'#ff4400',isBoss:true});
+            // 宝箱
+            [[5,5,600],[45,5,650],[5,35,620],[45,35,700],[25,10,680]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:18,name:'火焰精灵',color:'#ff4400',hairColor:'#ffaa00',type:'talk',
+                dialog:'只有最强的勇者才能穿越熔岩地带！火焰领主就在火山口等着你。'});
+            // 北出口 → 沙漠
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'desert',spawnX:30,spawnY:38});}
+            // 东出口 → 黑暗森林
+            for(let y=18;y<23;y++){map[y][49]=T.EXIT;exits.push({x:49,y,target:'darkForest',spawnX:1,spawnY:20});}
+            // 南出口 → 幽灵古堡
+            for(let x=23;x<28;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'castle',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 黑暗森林 Lv.45-55 ========
+    darkForest: {
+        name: '🌑 黑暗森林', level: 'Lv.45-55', safe: false,
+        width: 50, height: 40, bgColor: '#050510',
+        encounterRate: 3,
+        generate() {
+            const map = makeGrid(50, 40, T.LEAF);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 40);
+            // 密集黑暗树木
+            for(let y=2;y<38;y++) for(let x=2;x<48;x++) { if(Math.random()<0.35) map[y][x]=T.TREE; }
+            // 路径
+            for(let x=1;x<49;x++){map[20][x]=T.LEAF;if(map[19][x]===T.TREE) map[19][x]=T.LEAF;if(map[21][x]===T.TREE) map[21][x]=T.LEAF;}
+            for(let y=1;y<39;y++){map[y][25]=T.LEAF;if(map[y][24]===T.TREE) map[y][24]=T.LEAF;if(map[y][26]===T.TREE) map[y][26]=T.LEAF;}
+            // 怪物
+            [[10,8,'gargoyle'],[20,5,'skeleton'],[40,10,'batSwarm'],[8,30,'gargoyle'],[35,30,'skeleton'],[25,35,'batSwarm'],[42,15,'gargoyle'],[15,25,'skeleton'],[30,12,'gargoyle']].forEach(([x,y,type])=>{
+                if(map[y][x]!==T.WALL&&map[y][x]!==T.TREE){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][25]=T.BOSS; monsters.push({x:25,y:37,type:'vampireCount',name:'🧛吸血鬼伯爵',color:'#880000',isBoss:true});
+            // 宝箱
+            [[5,5,700],[45,5,750],[5,35,720],[45,35,800],[25,10,780]].forEach(([x,y,gold])=>{
+                if(map[y][x]!==T.WALL&&map[y][x]!==T.TREE){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:18,name:'暗精灵',color:'#4B0082',hairColor:'#C0C0C0',type:'talk',
+                dialog:'这片森林被诅咒笼罩...吸血鬼伯爵的城堡就在深处。小心狼人和暗影！'});
+            // 北出口 → 沼泽
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'swamp',spawnX:25,spawnY:38});}
+            // 西出口 → 熔岩
+            for(let y=18;y<23;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'volcano',spawnX:48,spawnY:20});}
+            // 南出口 → 幽灵古堡
+            for(let x=23;x<28;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'castle',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 幽灵古堡 Lv.55-65 ========
+    castle: {
+        name: '🏰 幽灵古堡', level: 'Lv.55-65', safe: false,
+        width: 50, height: 50, bgColor: '#0a0a0a',
+        encounterRate: 3,
+        generate() {
+            const map = makeGrid(50, 50, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 50);
+            // 城堡内部房间结构
+            for(let ry=0;ry<5;ry++) for(let rx=0;rx<5;rx++) {
+                const bx=rx*10+1,by=ry*10+1;
+                makeBuilding(map,bx,by,9,9);
+            }
+            // 走廊连通
+            for(let x=1;x<49;x++){map[5][x]=T.FLOOR;map[15][x]=T.FLOOR;map[25][x]=T.FLOOR;map[35][x]=T.FLOOR;map[45][x]=T.FLOOR;}
+            for(let y=1;y<49;y++){map[y][5]=T.FLOOR;map[y][15]=T.FLOOR;map[y][25]=T.FLOOR;map[y][35]=T.FLOOR;map[y][45]=T.FLOOR;}
+            // 红地毯
+            for(let y=1;y<49;y++) map[y][25]=T.PATH;
+            for(let x=1;x<49;x++) map[25][x]=T.PATH;
+            // 怪物
+            [[8,8,'skeleton'],[20,8,'gargoyle'],[40,8,'skeleton'],[8,30,'gargoyle'],[35,35,'skeleton'],[20,40,'batSwarm'],[40,40,'gargoyle'],[8,18,'skeleton'],[40,18,'batSwarm']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][25]=T.BOSS; monsters.push({x:25,y:47,type:'deathKnight',name:'💀死亡骑士',color:'#4B0082',isBoss:true});
+            // 宝箱
+            [[3,3,900],[47,3,950],[3,47,920],[47,47,1000],[25,25,1100]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:23,name:'幽灵管家',color:'#708090',hairColor:'#C0C0C0',type:'talk',
+                dialog:'这座城堡曾是辉煌的王宫...如今只剩亡灵。死亡骑士在王座厅等待挑战者。'});
+            // 北出口 → 熔岩
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'volcano',spawnX:25,spawnY:38});}
+            // 北东出口 → 黑暗森林
+            for(let x=40;x<45;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'darkForest',spawnX:25,spawnY:38});}
+            // 东出口 → 冰封雪原
+            for(let y=23;y<28;y++){map[y][49]=T.EXIT;exits.push({x:49,y,target:'snow',spawnX:1,spawnY:20});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 冰封雪原 Lv.65-75 ========
+    snow: {
+        name: '❄️ 冰封雪原', level: 'Lv.65-75', safe: false,
+        width: 60, height: 50, bgColor: '#101828',
+        encounterRate: 4,
+        generate() {
+            const map = makeGrid(60, 50, T.GRASS); // 白雪用GRASS
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 60, 50);
+            // 冰面（WATER）
+            for(let y=15;y<25;y++) for(let x=25;x<40;x++) map[y][x]=T.WATER;
+            // 松树
+            for(let i=0;i<40;i++){const x=2+Math.floor(Math.random()*56),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.GRASS) map[y][x]=T.TREE;}
+            // 岩石
+            for(let i=0;i<15;i++){const x=2+Math.floor(Math.random()*56),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.GRASS) map[y][x]=T.WALL;}
+            // 路
+            for(let x=1;x<59;x++) map[25][x]=T.PATH;
+            for(let y=1;y<49;y++) map[y][30]=T.PATH;
+            // 怪物
+            [[10,8,'gargoyle'],[25,5,'skeleton'],[50,10,'batSwarm'],[8,35,'gargoyle'],[45,35,'skeleton'],[30,42,'batSwarm'],[15,20,'gargoyle'],[50,25,'skeleton'],[35,8,'batSwarm']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.GRASS||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][30]=T.BOSS; monsters.push({x:30,y:47,type:'iceQueen',name:'👸冰霜女王',color:'#87CEEB',isBoss:true});
+            // 宝箱
+            [[5,5,1200],[55,5,1300],[5,45,1250],[55,45,1400],[30,20,1350]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.GRASS){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:30,y:23,name:'雪地猎人',color:'#4682B4',hairColor:'#E0E0E0',type:'talk',
+                dialog:'冰霜女王住在雪原尽头的冰宫...她的暴风雪能冻住一切。往南是天空之城的入口。'});
+            npcs.push({x:32,y:23,name:'旅馆老板娘',color:'#B22222',hairColor:'#FFD700',type:'inn',
+                dialog:'在这寒冷的雪原，需要暖和一下吗？'});
+            // 西出口 → 古堡
+            for(let y=23;y<28;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'castle',spawnX:48,spawnY:25});}
+            // 南出口 → 天空之城
+            for(let x=28;x<33;x++){map[49][x]=T.EXIT;exits.push({x,y:49,target:'skyCity',spawnX:25,spawnY:1});}
+            // 东出口 → 深渊之门
+            for(let y=23;y<28;y++){map[y][59]=T.EXIT;exits.push({x:59,y,target:'abyss',spawnX:1,spawnY:20});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 天空之城 Lv.75-85 ========
+    skyCity: {
+        name: '☁️ 天空之城', level: 'Lv.75-85', safe: false,
+        width: 50, height: 50, bgColor: '#0a1530',
+        encounterRate: 4,
+        generate() {
+            const map = makeGrid(50, 50, T.PATH); // 云端石板路
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 50);
+            // 天空（WATER表示虚空/云层）
+            for(let y=2;y<48;y++) for(let x=2;x<48;x++) { if(Math.random()<0.2) map[y][x]=T.WATER; }
+            // 浮空平台（FLOOR）
+            for(let i=0;i<8;i++){
+                const px=5+Math.floor(Math.random()*38),py=5+Math.floor(Math.random()*38);
+                for(let y=py;y<py+6&&y<48;y++) for(let x=px;x<px+8&&x<48;x++) map[y][x]=T.FLOOR;
+            }
+            // 主通道
+            for(let x=1;x<49;x++){map[25][x]=T.PATH;map[24][x]=T.PATH;}
+            for(let y=1;y<49;y++){map[y][25]=T.PATH;map[y][24]=T.PATH;}
+            // 发光矿石（星辰碎片）
+            for(let i=0;i<20;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.PATH||map[y][x]===T.FLOOR) map[y][x]=T.ORE;}
+            // 怪物
+            [[10,10,'gargoyle'],[20,8,'skeleton'],[40,10,'batSwarm'],[8,35,'gargoyle'],[35,40,'skeleton'],[25,42,'batSwarm'],[42,25,'gargoyle'],[15,20,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.PATH||map[y][x]===T.FLOOR){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][25]=T.BOSS; monsters.push({x:25,y:47,type:'archAngel',name:'👼大天使',color:'#FFD700',isBoss:true});
+            // 宝箱
+            [[5,5,1500],[45,5,1600],[5,45,1550],[45,45,1700],[25,25,1800]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.PATH||map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:22,name:'天界守卫',color:'#FFD700',hairColor:'#fff',type:'talk',
+                dialog:'欢迎来到天空之城。这里是凡界与神界的交界。大天使守护着通往更高层的大门。'});
+            // 北出口 → 冰封雪原
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'snow',spawnX:30,spawnY:48});}
+            // 南出口 → 时空裂隙
+            for(let x=23;x<28;x++){map[49][x]=T.EXIT;exits.push({x,y:49,target:'rift',spawnX:20,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 深渊之门 Lv.80-90 ========
+    abyss: {
+        name: '👿 深渊之门', level: 'Lv.80-90', safe: false,
+        width: 50, height: 50, bgColor: '#050005',
+        encounterRate: 3,
+        generate() {
+            const map = makeGrid(50, 50, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 50);
+            // 深渊裂缝（LAVA）
+            for(let y=2;y<48;y++) for(let x=2;x<48;x++) { if(Math.random()<0.15) map[y][x]=T.LAVA; }
+            // 通道
+            for(let x=1;x<49;x++){map[25][x]=T.FLOOR;map[24][x]=T.FLOOR;map[26][x]=T.FLOOR;}
+            for(let y=1;y<49;y++){map[y][25]=T.FLOOR;map[y][24]=T.FLOOR;map[y][26]=T.FLOOR;}
+            // 暗矿
+            for(let i=0;i<10;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.FLOOR) map[y][x]=T.ORE;}
+            // 怪物（大量）
+            [[10,10,'gargoyle'],[20,8,'skeleton'],[40,10,'batSwarm'],[8,35,'gargoyle'],[35,40,'skeleton'],[25,42,'batSwarm'],[42,25,'gargoyle'],[15,20,'skeleton'],[30,15,'gargoyle'],[10,40,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][25]=T.BOSS; monsters.push({x:25,y:47,type:'abyssLord',name:'👿深渊领主',color:'#8B0000',isBoss:true});
+            // 宝箱
+            [[5,5,2000],[45,5,2200],[5,45,2100],[45,45,2500],[25,25,2800]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:22,name:'堕天使',color:'#4B0082',hairColor:'#8B0000',type:'talk',
+                dialog:'你来到了深渊的入口...回头还来得及。深渊领主的力量不是凡人能抵抗的。'});
+            // 西出口 → 冰封雪原
+            for(let y=23;y<28;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'snow',spawnX:58,spawnY:25});}
+            // 南出口 → 时空裂隙
+            for(let x=23;x<28;x++){map[49][x]=T.EXIT;exits.push({x,y:49,target:'rift',spawnX:20,spawnY:1});}
+            // 东出口 → 神域外围
+            for(let y=23;y<28;y++){map[y][49]=T.EXIT;exits.push({x:49,y,target:'divine',spawnX:1,spawnY:20});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 时空裂隙 Lv.85-95 ========
+    rift: {
+        name: '🌀 时空裂隙', level: 'Lv.85-95', safe: false,
+        width: 40, height: 40, bgColor: '#0a000a',
+        encounterRate: 3,
+        generate() {
+            const map = makeGrid(40, 40, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 40, 40);
+            // 扭曲空间（随机瓷砖）
+            for(let y=2;y<38;y++) for(let x=2;x<38;x++) {
+                const r=Math.random();
+                if(r<0.1) map[y][x]=T.LAVA;
+                else if(r<0.15) map[y][x]=T.WATER;
+                else if(r<0.2) map[y][x]=T.ORE;
+            }
+            // 主路
+            for(let x=1;x<39;x++){map[20][x]=T.PATH;map[19][x]=T.PATH;}
+            for(let y=1;y<39;y++){map[y][20]=T.PATH;map[y][19]=T.PATH;}
+            // 怪物
+            [[8,8,'gargoyle'],[20,5,'skeleton'],[32,10,'batSwarm'],[8,30,'gargoyle'],[30,30,'skeleton'],[20,35,'batSwarm'],[32,20,'gargoyle'],[10,15,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[37][20]=T.BOSS; monsters.push({x:20,y:37,type:'timeDragon',name:'🐉时空龙',color:'#9400D3',isBoss:true});
+            // 宝箱
+            [[3,3,3000],[37,3,3200],[3,37,3100],[37,37,3500],[20,10,3800]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:20,y:18,name:'时空旅人',color:'#9400D3',hairColor:'#E0E0E0',type:'talk',
+                dialog:'时空在这里扭曲...过去与未来交错。时空龙掌控着维度的平衡。'});
+            // 北出口 → 天空之城
+            for(let x=18;x<23;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'skyCity',spawnX:25,spawnY:48});}
+            // 北东出口 → 深渊
+            for(let x=30;x<35;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'abyss',spawnX:25,spawnY:48});}
+            // 南出口 → 神域外围
+            for(let x=18;x<23;x++){map[39][x]=T.EXIT;exits.push({x,y:39,target:'divine',spawnX:20,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 神域外围 Lv.90-98 ========
+    divine: {
+        name: '✨ 神域外围', level: 'Lv.90-98', safe: false,
+        width: 50, height: 50, bgColor: '#0a0a20',
+        encounterRate: 3,
+        generate() {
+            const map = makeGrid(50, 50, T.PATH); // 神殿石板
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 50);
+            // 神殿柱子
+            for(let y=5;y<45;y+=5) for(let x=5;x<45;x+=5) { map[y][x]=T.WALL; }
+            // 水池
+            for(let y=20;y<30;y++) for(let x=20;x<30;x++) map[y][x]=T.WATER;
+            // 通道保留
+            for(let x=1;x<49;x++) map[25][x]=T.PATH;
+            for(let y=1;y<49;y++) map[y][25]=T.PATH;
+            // 矿石（神圣水晶）
+            for(let i=0;i<25;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.PATH) map[y][x]=T.ORE;}
+            // 怪物
+            [[10,10,'gargoyle'],[20,8,'skeleton'],[40,10,'batSwarm'],[8,40,'gargoyle'],[40,40,'skeleton'],[15,30,'batSwarm'],[35,15,'gargoyle'],[25,42,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][25]=T.BOSS; monsters.push({x:25,y:47,type:'divineAvatar',name:'👑神之化身',color:'#FFD700',isBoss:true});
+            // 宝箱
+            [[5,5,5000],[45,5,5500],[5,45,5200],[45,45,6000],[25,15,5800]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.PATH){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:23,name:'神官',color:'#FFD700',hairColor:'#fff',type:'shop',
+                dialog:'这是神域的入口。勇者，你需要准备充分才能面对神之化身。需要补给吗？'});
+            // 西出口 → 深渊
+            for(let y=23;y<28;y++){map[y][0]=T.EXIT;exits.push({x:0,y,target:'abyss',spawnX:48,spawnY:25});}
+            // 北出口 → 时空裂隙
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'rift',spawnX:20,spawnY:38});}
+            // 南出口 → 龙之巢穴
+            for(let x=23;x<28;x++){map[49][x]=T.EXIT;exits.push({x,y:49,target:'dragonRealm',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 龙之巢穴 Lv.95-99 ========
+    dragonRealm: {
+        name: '🐲 龙之巢穴', level: 'Lv.95-99', safe: false,
+        width: 50, height: 50, bgColor: '#1a0000',
+        encounterRate: 2,
+        generate() {
+            const map = makeGrid(50, 50, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 50, 50);
+            // 龙骨和熔岩
+            for(let y=2;y<48;y++) for(let x=2;x<48;x++) {
+                const r=Math.random();
+                if(r<0.15) map[y][x]=T.LAVA;
+                else if(r<0.2) map[y][x]=T.WALL;
+            }
+            // 通道
+            for(let x=1;x<49;x++){map[25][x]=T.FLOOR;map[24][x]=T.FLOOR;map[26][x]=T.FLOOR;}
+            for(let y=1;y<49;y++){map[y][25]=T.FLOOR;map[y][24]=T.FLOOR;map[y][26]=T.FLOOR;}
+            // 宝矿
+            for(let i=0;i<20;i++){const x=2+Math.floor(Math.random()*46),y=2+Math.floor(Math.random()*46);if(map[y][x]===T.FLOOR) map[y][x]=T.ORE;}
+            // 怪物
+            [[10,10,'gargoyle'],[20,8,'skeleton'],[40,10,'batSwarm'],[8,40,'gargoyle'],[40,40,'skeleton'],[15,30,'batSwarm'],[35,15,'gargoyle'],[25,42,'skeleton'],[30,20,'gargoyle'],[12,25,'skeleton']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // BOSS
+            map[47][25]=T.BOSS; monsters.push({x:25,y:47,type:'dragonKing',name:'🐲龙王',color:'#FF4500',isBoss:true});
+            // 宝箱
+            [[5,5,8000],[45,5,8500],[5,45,8200],[45,45,9000],[25,25,10000]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:25,y:23,name:'古龙使者',color:'#FF4500',hairColor:'#FFD700',type:'talk',
+                dialog:'你终于来了...龙王在巢穴最深处等待着最强的勇者。击败龙王后，前方就是魔王城！'});
+            // 北出口 → 神域
+            for(let x=23;x<28;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'divine',spawnX:25,spawnY:48});}
+            // 南出口 → 魔王城
+            for(let x=23;x<28;x++){map[49][x]=T.EXIT;exits.push({x,y:49,target:'demonCastle',spawnX:25,spawnY:1});}
+            return {map,npcs,chests,monsters,exits};
+        }
+    },
+
+    // ======== 魔王城 Lv.99 最终区域 ========
+    demonCastle: {
+        name: '👹 魔王城', level: 'Lv.99 终极', safe: false,
+        width: 60, height: 60, bgColor: '#000000',
+        encounterRate: 2,
+        generate() {
+            const map = makeGrid(60, 60, T.FLOOR);
+            const npcs = [], chests = [], monsters = [], exits = [];
+            borderWall(map, 60, 60);
+            // 宏大的城堡结构
+            for(let ry=0;ry<6;ry++) for(let rx=0;rx<6;rx++) {
+                const bx=rx*10+1,by=ry*10+1;
+                if(Math.random()<0.5) makeBuilding(map,bx,by,9,9);
+            }
+            // 走廊
+            for(let x=1;x<59;x++){map[10][x]=T.PATH;map[20][x]=T.PATH;map[30][x]=T.PATH;map[40][x]=T.PATH;map[50][x]=T.PATH;}
+            for(let y=1;y<59;y++){map[y][10]=T.PATH;map[y][20]=T.PATH;map[y][30]=T.PATH;map[y][40]=T.PATH;map[y][50]=T.PATH;}
+            // 血色地毯（通向王座）
+            for(let y=1;y<59;y++){map[y][30]=T.PATH;map[y][29]=T.PATH;map[y][31]=T.PATH;}
+            // 暗黑熔岩装饰
+            for(let y=2;y<58;y++) for(let x=2;x<58;x++) { if(map[y][x]===T.FLOOR&&Math.random()<0.08) map[y][x]=T.LAVA; }
+            // 怪物（超多）
+            [[10,10,'gargoyle'],[20,8,'skeleton'],[40,10,'batSwarm'],[8,40,'gargoyle'],[50,40,'skeleton'],[20,50,'batSwarm'],[45,25,'gargoyle'],[15,30,'skeleton'],[35,15,'gargoyle'],[50,50,'skeleton'],[10,50,'batSwarm'],[40,55,'gargoyle']].forEach(([x,y,type])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.MONSTER;monsters.push({x,y,type,name:monsterName(type),color:monsterColor(type)});}
+            });
+            // 最终BOSS
+            map[57][30]=T.BOSS; monsters.push({x:30,y:57,type:'demonEmperor',name:'👹混沌魔王',color:'#8B0000',isBoss:true});
+            // 宝箱
+            [[3,3,15000],[57,3,16000],[3,57,15500],[57,57,18000],[30,30,20000],[15,15,12000],[45,45,14000]].forEach(([x,y,gold])=>{
+                if(map[y][x]===T.FLOOR||map[y][x]===T.PATH){map[y][x]=T.CHEST;chests.push({x,y,opened:false,gold});}
+            });
+            npcs.push({x:30,y:28,name:'叛变的魔族将军',color:'#8B0000',hairColor:'#FFD700',type:'shop',
+                dialog:'我背叛了魔王...勇者，这是你最后的补给机会。混沌魔王就在王座厅！'});
+            // 北出口 → 龙之巢穴
+            for(let x=28;x<33;x++){map[0][x]=T.EXIT;exits.push({x,y:0,target:'dragonRealm',spawnX:25,spawnY:48});}
+            return {map,npcs,chests,monsters,exits};
         }
     }
 };
@@ -249,11 +821,21 @@ const MAPS = {
 // 怪物名/色
 function monsterName(t) {
     return {slime:'史莱姆',mushroom:'毒蘑菇',bat:'蝙蝠',wolf:'灰狼',treant:'树精',snake:'毒蛇',
-        batSwarm:'蝙蝠群',gargoyle:'石像鬼',skeleton:'骷髅兵',skeletonKing:'💀骷髅王'}[t]||t;
+        batSwarm:'蝙蝠群',gargoyle:'石像鬼',skeleton:'骷髅兵',skeletonKing:'💀骷髅王',
+        diamondGiant:'💎钻石巨人',lichKing:'🧟巫妖王',pharaoh:'👳法老王',swampQueen:'🧙沼泽女王',
+        flameLord:'🔥火焰领主',vampireCount:'🧛吸血鬼伯爵',deathKnight:'💀死亡骑士',
+        iceQueen:'👸冰霜女王',archAngel:'👼大天使',abyssLord:'👿深渊领主',
+        timeDragon:'🐉时空龙',divineAvatar:'👑神之化身',dragonKing:'🐲龙王',
+        demonEmperor:'👹混沌魔王'}[t]||t;
 }
 function monsterColor(t) {
     return {slime:'#44dd44',mushroom:'#dd4444',bat:'#9944cc',wolf:'#888',treant:'#6b4226',snake:'#44cc44',
-        batSwarm:'#333',gargoyle:'#777',skeleton:'#ddd',skeletonKing:'#fff'}[t]||'#fff';
+        batSwarm:'#333',gargoyle:'#777',skeleton:'#ddd',skeletonKing:'#fff',
+        diamondGiant:'#00ffff',lichKing:'#9966ff',pharaoh:'#FFD700',swampQueen:'#00cc66',
+        flameLord:'#ff4400',vampireCount:'#880000',deathKnight:'#4B0082',
+        iceQueen:'#87CEEB',archAngel:'#FFD700',abyssLord:'#8B0000',
+        timeDragon:'#9400D3',divineAvatar:'#FFD700',dragonKing:'#FF4500',
+        demonEmperor:'#8B0000'}[t]||'#fff';
 }
 
 // ======== 地图工具函数 ========
@@ -276,7 +858,21 @@ const PALETTES = {
     village: { grass1:'#4a7c4e', grass2:'#3d6b40', path1:'#c4a060', path2:'#b09050', floor1:'#8B7355', floor2:'#7a6245' },
     plains: { grass1:'#5a9c5e', grass2:'#4d8b50', path1:'#d4b070', path2:'#c0a060', flower:['#ff6b6b','#ffdb4d','#ff9ff3','#fff'] },
     forest: { leaf1:'#2a5a2e', leaf2:'#1e4a22', grass1:'#3a6a3e', grass2:'#2e5a32' },
-    cave: { floor1:'#3a3a3a', floor2:'#2e2e2e', lava1:'#ff4400', lava2:'#ff6622', ore:'#44aaff' }
+    cave: { floor1:'#3a3a3a', floor2:'#2e2e2e', lava1:'#ff4400', lava2:'#ff6622', ore:'#44aaff' },
+    mine: { floor1:'#2a2a2a', floor2:'#222', lava1:'#ff4400', lava2:'#ff6622', ore:'#00ccff' },
+    crypt: { floor1:'#2a2a3a', floor2:'#1e1e2e', path1:'#6a6a8a', path2:'#5a5a7a', ore:'#9966ff' },
+    desert: { grass1:'#d4a040', grass2:'#c49030', path1:'#e0c070', path2:'#d0b060', lava1:'#c49030', lava2:'#b48020' },
+    swamp: { grass1:'#3a5a2a', grass2:'#2e4a1e', path1:'#6a7a5a', path2:'#5a6a4a' },
+    volcano: { floor1:'#3a2020', floor2:'#2e1818', lava1:'#ff2200', lava2:'#ff4400', ore:'#ff8800' },
+    darkForest: { leaf1:'#1a2a1e', leaf2:'#0e1e12', grass1:'#2a3a2e', grass2:'#1e2e22' },
+    castle: { floor1:'#3a3a4a', floor2:'#2e2e3e', path1:'#8B0000', path2:'#6B0000' },
+    snow: { grass1:'#c8d8e8', grass2:'#b8c8d8', path1:'#a0b0c0', path2:'#90a0b0' },
+    skyCity: { path1:'#b0c4de', path2:'#a0b4ce', floor1:'#c0d4ee', floor2:'#b0c4de', ore:'#FFD700' },
+    abyss: { floor1:'#1a0a1a', floor2:'#0e040e', lava1:'#880044', lava2:'#aa0066', ore:'#ff00ff' },
+    rift: { floor1:'#2a1a3a', floor2:'#1e0e2e', path1:'#6a4a8a', path2:'#5a3a7a', lava1:'#9900ff', lava2:'#bb22ff', ore:'#00ffff' },
+    divine: { path1:'#e0d0a0', path2:'#d0c090', ore:'#FFD700' },
+    dragonRealm: { floor1:'#3a1a1a', floor2:'#2e0e0e', lava1:'#ff3300', lava2:'#ff5500', ore:'#ff4400' },
+    demonCastle: { floor1:'#1a0a0a', floor2:'#0e0404', path1:'#660000', path2:'#440000', lava1:'#aa0000', lava2:'#cc2200' }
 };
 
 // ======== 像素绘制 ========
