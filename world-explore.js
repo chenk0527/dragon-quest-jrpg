@@ -18,6 +18,200 @@ let W = {
     transitioning: false
 };
 
+// ======== 钓鱼系统 ========
+const FISH_TYPES = [
+    { id:'carp',      name:'鲤鱼',   emoji:'🐟', rarity:'common',    sellPrice:10,  healAmount:20  },
+    { id:'crucian',   name:'鲫鱼',   emoji:'🐟', rarity:'common',    sellPrice:15,  healAmount:30  },
+    { id:'catfish',   name:'鲶鱼',   emoji:'🐟', rarity:'uncommon',  sellPrice:30,  healAmount:50  },
+    { id:'trout',     name:'鳟鱼',   emoji:'🐠', rarity:'uncommon',  sellPrice:50,  healAmount:70  },
+    { id:'salmon',    name:'三文鱼', emoji:'🐠', rarity:'rare',      sellPrice:100, healAmount:100 },
+    { id:'pufferfish',name:'河豚',   emoji:'🐡', rarity:'rare',      sellPrice:150, healAmount:120 },
+    { id:'koi',       name:'锦鲤',   emoji:'🐠', rarity:'epic',      sellPrice:300, healAmount:150 },
+    { id:'goldenfish', name:'金龙鱼', emoji:'🐠', rarity:'legendary', sellPrice:500, healAmount:200 }
+];
+
+const WATER_MAPS = ['village', 'swamp', 'snow'];
+
+function getFishByAccuracy(accuracy) {
+    // accuracy 0-1, higher = rarer fish
+    if (accuracy > 0.95) return FISH_TYPES[7]; // legendary
+    if (accuracy > 0.85) return FISH_TYPES[6]; // epic
+    if (accuracy > 0.70) return FISH_TYPES[Math.random() < 0.5 ? 4 : 5]; // rare
+    if (accuracy > 0.45) return FISH_TYPES[Math.random() < 0.5 ? 2 : 3]; // uncommon
+    return FISH_TYPES[Math.random() < 0.5 ? 0 : 1]; // common
+}
+
+function startFishing() {
+    if (typeof gameState === 'undefined') return;
+    if (!gameState.fishInventory) gameState.fishInventory = [];
+    W.menuActive = true;
+    const old = document.getElementById('worldMenu'); if (old) old.remove();
+    const old2 = document.getElementById('fishingOverlay'); if (old2) old2.remove();
+
+    const container = W.canvas.parentElement;
+    if (!container) return;
+    container.style.position = 'relative';
+
+    let barPos = 0, barDir = 1, speed = 2.5, running = true, caught = false;
+    const barWidth = 260, greenStart = 0.35, greenEnd = 0.65; // center 30%
+
+    const overlay = document.createElement('div');
+    overlay.id = 'fishingOverlay';
+    overlay.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#0a1a3a,#1a2a5a);border:3px solid #4488ff;border-radius:10px;padding:20px;z-index:200;min-width:300px;text-align:center;font-family:"Press Start 2P",monospace;';
+
+    overlay.innerHTML = `
+        <div style="color:#4488ff;font-size:12px;margin-bottom:12px;">🎣 钓鱼</div>
+        <div style="color:#ccc;font-size:8px;margin-bottom:12px;">点击按钮停住指针！绿色区域=上钩！</div>
+        <div style="position:relative;width:${barWidth}px;height:24px;background:#1a1a2a;border:2px solid #4a4a8a;border-radius:4px;margin:0 auto 12px;">
+            <div style="position:absolute;left:${greenStart*100}%;width:${(greenEnd-greenStart)*100}%;height:100%;background:rgba(68,204,68,0.3);border-radius:2px;"></div>
+            <div id="fishingCursor" style="position:absolute;top:-2px;width:4px;height:28px;background:#ff4444;border-radius:2px;transition:none;"></div>
+        </div>
+        <div id="fishingResult" style="color:#ffd700;font-size:9px;min-height:20px;margin-bottom:8px;"></div>
+        <button id="fishingBtn" style="display:block;width:100%;padding:10px;margin:4px 0;min-height:44px;background:#1a3a1a;border:2px solid #44aa44;border-radius:4px;color:#44ff44;font-size:10px;font-family:'Press Start 2P',monospace;cursor:pointer;">🎣 拉杆!</button>
+        <button id="fishingClose" style="display:none;width:100%;padding:8px;margin:4px 0;min-height:44px;background:#1a3a3a;border:2px solid #44aa88;border-radius:4px;color:#88ffcc;font-size:9px;font-family:'Press Start 2P',monospace;cursor:pointer;">🎣 再钓一次</button>
+        <button onclick="closeFishing()" style="display:block;width:100%;padding:8px;margin-top:4px;min-height:44px;background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;font-family:'Press Start 2P',monospace;cursor:pointer;">收竿离开</button>`;
+
+    container.appendChild(overlay);
+
+    const cursor = document.getElementById('fishingCursor');
+    const resultDiv = document.getElementById('fishingResult');
+    const btn = document.getElementById('fishingBtn');
+    const closeBtn = document.getElementById('fishingClose');
+
+    function animate() {
+        if (!running) return;
+        barPos += barDir * speed;
+        if (barPos >= barWidth - 4) { barPos = barWidth - 4; barDir = -1; }
+        if (barPos <= 0) { barPos = 0; barDir = 1; }
+        cursor.style.left = barPos + 'px';
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    function doFish() {
+        if (caught) return;
+        caught = true;
+        running = false;
+        const pct = barPos / (barWidth - 4); // 0..1
+        const inGreen = pct >= greenStart && pct <= greenEnd;
+
+        if (inGreen) {
+            // accuracy: how close to center (0.5)
+            const accuracy = 1 - Math.abs(pct - 0.5) * 2;
+            const fish = getFishByAccuracy(accuracy);
+            gameState.fishInventory.push({ ...fish, caughtAt: Date.now() });
+            const rarityColors = { common:'#aaa', uncommon:'#44cc44', rare:'#4488ff', epic:'#aa44ff', legendary:'#ffaa00' };
+            resultDiv.innerHTML = `<span style="color:${rarityColors[fish.rarity] || '#fff'};">${fish.emoji} 钓到了 ${fish.name}！(${fish.sellPrice}G / 回复${fish.healAmount}HP)</span>`;
+            if (typeof SoundEffects !== 'undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
+            if (typeof showToast === 'function') showToast(`🎣 钓到了${fish.emoji}${fish.name}！`, 'success');
+        } else {
+            resultDiv.innerHTML = '<span style="color:#ff6666;">鱼跑了...没有钓到</span>';
+            if (typeof SoundEffects !== 'undefined' && SoundEffects.playCancel) SoundEffects.playCancel();
+        }
+        btn.style.display = 'none';
+        closeBtn.style.display = 'block';
+    }
+
+    btn.addEventListener('click', doFish);
+    // Touch support
+    btn.addEventListener('touchstart', function(e) { e.preventDefault(); doFish(); });
+
+    closeBtn.addEventListener('click', function() {
+        // Reset for another round
+        caught = false;
+        running = true;
+        barPos = 0;
+        barDir = 1;
+        resultDiv.innerHTML = '';
+        btn.style.display = 'block';
+        closeBtn.style.display = 'none';
+        animate();
+    });
+}
+
+window.startFishing = startFishing;
+
+function closeFishing() {
+    W.menuActive = false;
+    const el = document.getElementById('fishingOverlay');
+    if (el) el.remove();
+}
+window.closeFishing = closeFishing;
+
+function showFishInventory() {
+    if (typeof gameState === 'undefined') return;
+    if (!gameState.fishInventory) gameState.fishInventory = [];
+    W.menuActive = true;
+    const old = document.getElementById('worldMenu'); if (old) old.remove();
+    const container = W.canvas.parentElement;
+    if (!container) return;
+    container.style.position = 'relative';
+
+    const fishCount = {};
+    gameState.fishInventory.forEach(f => {
+        fishCount[f.id] = fishCount[f.id] || { ...f, count: 0 };
+        fishCount[f.id].count++;
+    });
+
+    const gold = gameState.gold || 0;
+    let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        background:linear-gradient(135deg,#0a1a3a,#1a2a5a);border:3px solid #4488ff;border-radius:10px;
+        padding:20px;z-index:200;min-width:280px;max-width:calc(100vw - 40px);max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        <div style="color:#4488ff;font-size:12px;margin-bottom:12px;text-align:center;">🐟 鱼篓</div>
+        <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>`;
+
+    const entries = Object.values(fishCount);
+    if (entries.length === 0) {
+        html += '<div style="color:#888;font-size:8px;text-align:center;padding:12px;">鱼篓是空的，去钓鱼吧！</div>';
+    } else {
+        const rarityColors = { common:'#aaa', uncommon:'#44cc44', rare:'#4488ff', epic:'#aa44ff', legendary:'#ffaa00' };
+        entries.forEach(f => {
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px;margin:3px 0;background:#1a1a3a;border:1px solid ${rarityColors[f.rarity]||'#4a4a8a'};border-radius:4px;">
+                <span style="color:${rarityColors[f.rarity]||'#fff'};font-size:8px;">${f.emoji} ${f.name} x${f.count}</span>
+                <span style="white-space:nowrap;">
+                    <button onclick="useFish('${f.id}')" style="padding:4px 6px;background:#1a3a1a;border:1px solid #44aa44;border-radius:3px;color:#44ff44;font-size:7px;font-family:'Press Start 2P',monospace;cursor:pointer;margin-right:4px;">回复${f.healAmount}HP</button>
+                    <button onclick="sellFish('${f.id}')" style="padding:4px 6px;background:#3a3a1a;border:1px solid #aaaa44;border-radius:3px;color:#ffff44;font-size:7px;font-family:'Press Start 2P',monospace;cursor:pointer;">${f.sellPrice}G</button>
+                </span>
+            </div>`;
+        });
+    }
+
+    html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
+        background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
+        font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
+
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+window.showFishInventory = showFishInventory;
+
+window.useFish = function(fishId) {
+    if (typeof gameState === 'undefined' || !gameState.fishInventory) return;
+    const idx = gameState.fishInventory.findIndex(f => f.id === fishId);
+    if (idx === -1) return;
+    const fish = gameState.fishInventory.splice(idx, 1)[0];
+    if (gameState.party && gameState.party[0]) {
+        const hero = gameState.party[0];
+        const stats = (typeof calculateStats === 'function') ? calculateStats(hero) : { hp: 100 };
+        hero.currentHp = Math.min(hero.currentHp + fish.healAmount, stats.hp);
+        if (typeof showToast === 'function') showToast(`${fish.emoji} 使用${fish.name}，回复${fish.healAmount}HP！`, 'success');
+    }
+    closeNPCMenu();
+    showFishInventory();
+};
+
+window.sellFish = function(fishId) {
+    if (typeof gameState === 'undefined' || !gameState.fishInventory) return;
+    const idx = gameState.fishInventory.findIndex(f => f.id === fishId);
+    if (idx === -1) return;
+    const fish = gameState.fishInventory.splice(idx, 1)[0];
+    gameState.gold += fish.sellPrice;
+    if (typeof SoundEffects !== 'undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
+    if (typeof showToast === 'function') showToast(`💰 卖出${fish.emoji}${fish.name}，获得${fish.sellPrice}G！`, 'success');
+    closeNPCMenu();
+    showFishInventory();
+};
+
 // ======== 图块类型 ========
 const T = { GRASS:0, WALL:1, TREE:2, WATER:3, CHEST:4, MONSTER:5, PATH:6, EXIT:7, FLOOR:8, LAVA:9, ORE:10, FENCE:11, LEAF:12, BOSS:13 };
 
@@ -1505,6 +1699,16 @@ function showShopMenu() {
         });
     }
 
+    // 水域地图添加钓鱼按钮
+    if (WATER_MAPS.indexOf(region) !== -1) {
+        html += `<button onclick="closeNPCMenu();startFishing();" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
+            background:#0a2a3a;border:2px solid #4488ff;border-radius:4px;color:#88ccff;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🎣 钓鱼</button>`;
+        html += `<button onclick="closeNPCMenu();showFishInventory();" style="display:block;width:100%;padding:8px;margin-top:4px;min-height:44px;
+            background:#0a2a3a;border:2px solid #4488aa;border-radius:4px;color:#88aacc;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🐟 鱼篓</button>`;
+    }
+
     html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
         background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
         font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
@@ -1845,8 +2049,18 @@ function showSmithMenu() {
         <div style="color:#888;font-size:7px;margin:8px 0 4px;">💡 洗练会随机重新生成装备属性和名称</div>
         <button onclick="closeNPCMenu();if(typeof showCraftingUI==='function')showCraftingUI();" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
             background:#2a1a3a;border:2px solid #9b59b6;border-radius:4px;color:#bb88ff;font-size:9px;
-            font-family:'Press Start 2P',monospace;cursor:pointer;">🔨 合成工坊</button>
-        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🔨 合成工坊</button>`;
+    // 水域地图添加钓鱼按钮
+    const smithRegion = W.currentMap || 'village';
+    if (WATER_MAPS.indexOf(smithRegion) !== -1) {
+        html += `<button onclick="closeNPCMenu();startFishing();" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
+            background:#0a2a3a;border:2px solid #4488ff;border-radius:4px;color:#88ccff;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🎣 钓鱼</button>`;
+        html += `<button onclick="closeNPCMenu();showFishInventory();" style="display:block;width:100%;padding:8px;margin-top:4px;min-height:44px;
+            background:#0a2a3a;border:2px solid #4488aa;border-radius:4px;color:#88aacc;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">🐟 鱼篓</button>`;
+    }
+    html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
             background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
     const container = W.canvas.parentElement;

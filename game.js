@@ -2294,6 +2294,7 @@ let gameState = {
         pet: 'none'
     },
     enhancementMaterials: { common: 0, magic: 0, rare: 0, epic: 0, legendary: 0 },
+    fishInventory: [],
     stats: { monstersKilled: 0, goldEarned: 0, steps: 0, maxDamage: 0 }
 };
 
@@ -2376,6 +2377,7 @@ function startNewGameConfirmed() {
             pet: 'none'
         },
         enhancementMaterials: { common: 5, magic: 2, rare: 0, epic: 0, legendary: 0 },
+        fishInventory: [],
         quests: { active: [], completed: [] },
         questProgress: {},
         stats: { monstersKilled: 0, goldEarned: 0, steps: 0, maxDamage: 0 }
