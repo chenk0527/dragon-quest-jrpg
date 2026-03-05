@@ -1324,7 +1324,7 @@ function action() {
         switch(npc.type) {
             case 'shop': showShopMenu(); break;
             case 'inn': showInnMenu(npc); break;
-            case 'smith': showWorldDialog('💬 铁匠', '想强化装备？去队伍界面选择角色和装备槽位吧！'); break;
+            case 'smith': showSmithMenu(); break;
             case 'recruit':
                 if (typeof showRecruitMenu === 'function') showRecruitMenu();
                 else showWorldDialog('💬 ' + npc.name, npc.dialog);
@@ -1672,6 +1672,76 @@ function showQuestDialog(dialogText, onComplete) {
         });
     }
 }
+
+// ======== 铁匠菜单（强化+洗练） ========
+function showSmithMenu() {
+    W.menuActive = true;
+    const old = document.getElementById('worldMenu'); if(old) old.remove();
+    const gold = (typeof gameState!=='undefined') ? gameState.gold : 0;
+    const hero = (typeof gameState!=='undefined' && gameState.party) ? gameState.party[0] : null;
+    
+    let equipList = '';
+    if (hero && hero.equipment) {
+        const slotNames = {weapon:'武器',helmet:'头盔',armor:'铠甲',shield:'盾牌',accessory:'饰品'};
+        Object.entries(hero.equipment).forEach(([slot, equip]) => {
+            if (equip) {
+                const cost = Math.floor((equip.level || 1) * 50 * ({common:1,magic:2,rare:3,epic:5,legendary:10}[equip.rarity]||1));
+                equipList += `<button onclick="reforgeEquip('${slot}',${cost})" style="display:block;width:100%;padding:6px;margin:3px 0;
+                    background:#1a1a3a;border:2px solid #8B6914;border-radius:4px;color:#fff;font-size:8px;
+                    font-family:'Press Start 2P',monospace;cursor:pointer;text-align:left;">
+                    🔨 洗练 ${slotNames[slot]}: ${equip.name} <span style="float:right;color:#ffd700;">${cost}G</span></button>`;
+            }
+        });
+    }
+    
+    // 套装信息
+    let setInfo = '';
+    if (hero && typeof getSetBonuses === 'function') {
+        const { activeSets } = getSetBonuses(hero);
+        if (activeSets.length > 0) {
+            setInfo = '<div style="color:#ff88ff;font-size:8px;margin:8px 0 4px;">🛡️ 激活的套装:</div>';
+            activeSets.forEach(s => {
+                setInfo += `<div style="color:#ccc;font-size:7px;margin:2px 0;padding:4px;background:#1a1a2a;border-radius:3px;">${s.name} (${s.count}/${s.max}) - ${s.desc}</div>`;
+            });
+        }
+    }
+    
+    let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #8B6914;border-radius:10px;
+        padding:20px;z-index:200;min-width:300px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        <div style="color:#8B6914;font-size:12px;margin-bottom:12px;text-align:center;">🔨 铁匠铺</div>
+        <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>
+        <div style="color:#88ccff;font-size:8px;margin-bottom:6px;">🔄 词条洗练（重随属性值）</div>
+        ${equipList || '<div style="color:#888;font-size:8px;">没有可洗练的装备</div>'}
+        ${setInfo}
+        <div style="color:#888;font-size:7px;margin:8px 0 4px;">💡 洗练会随机重新生成装备属性和名称</div>
+        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
+            background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
+            font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
+    const container = W.canvas.parentElement;
+    if(container) { container.style.position='relative'; container.insertAdjacentHTML('beforeend',html); }
+}
+
+window.reforgeEquip = function(slot, cost) {
+    if (typeof gameState === 'undefined') return;
+    if (gameState.gold < cost) { if(typeof showToast==='function') showToast('💰 金币不足！','error'); return; }
+    const hero = gameState.party[0];
+    if (!hero || !hero.equipment[slot]) return;
+    
+    const oldEquip = hero.equipment[slot];
+    gameState.gold -= cost;
+    
+    // 重新生成同品质同槽位装备
+    if (typeof generateEquipment === 'function') {
+        const newEquip = generateEquipment(slot, oldEquip.level, oldEquip.rarity);
+        newEquip.enhanceLevel = oldEquip.enhanceLevel || 0; // 保留强化等级
+        hero.equipment[slot] = newEquip;
+        if(typeof SoundEffects!=='undefined' && SoundEffects.playConfirm) SoundEffects.playConfirm();
+        if(typeof showToast==='function') showToast(`🔨 洗练成功！${oldEquip.name} → ${newEquip.name}`, 'success');
+    }
+    closeNPCMenu();
+    showSmithMenu();
+};
 
 // ======== 导出 ========
 window.WorldSystem = {

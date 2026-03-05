@@ -2508,6 +2508,17 @@ function calculateStats(char) {
         });
     }
 
+    // 套装加成
+    if (typeof getSetBonuses === 'function') {
+        const { bonuses } = getSetBonuses(char);
+        stats.str += bonuses.str || 0;
+        stats.def += bonuses.def || 0;
+        stats.spd += bonuses.spd || 0;
+        stats.int += bonuses.int || 0;
+        stats.hp += bonuses.hp || 0;
+        stats.mp += (bonuses.int || 0) * 2;
+    }
+
     // 应用BUFF效果
     if (char.buffs) {
         char.buffs.forEach(buff => {
