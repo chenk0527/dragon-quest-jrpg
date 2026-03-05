@@ -2519,6 +2519,15 @@ function calculateStats(char) {
         stats.mp += (bonuses.int || 0) * 2;
     }
 
+    // 宠物加成
+    const petBonus = typeof getPetBonus === 'function' ? getPetBonus() : {};
+    if(petBonus.hp) stats.maxHp += petBonus.hp;
+    if(petBonus.mp) stats.maxMp += petBonus.mp;
+    if(petBonus.str) stats.str += petBonus.str;
+    if(petBonus.def) stats.def += petBonus.def;
+    if(petBonus.int) stats.int += petBonus.int;
+    if(petBonus.spd) stats.spd += petBonus.spd;
+
     // 应用BUFF效果
     if (char.buffs) {
         char.buffs.forEach(buff => {
@@ -3253,6 +3262,7 @@ function victory() {
 
     gameState.gold += totalGold;
     checkAchievement('gold', totalGold);
+    tryCapturePet(gameState.currentZone || 'plains');
 
     const aliveChars = gameState.party.filter(c => c.currentHp > 0);
     const xpPerChar = Math.floor(totalXp / aliveChars.length);
@@ -3500,6 +3510,7 @@ function renderMenu() {
                 <button class="btn btn-primary" onclick="showSaveLoadUI('save')">💾 保存游戏</button>
                 <button class="btn btn-secondary" onclick="showSaveLoadUI('load')">📂 选择存档</button>
                 <button class="btn btn-danger" onclick="startEndlessMode()">⚔️ 无尽模式</button>
+                <button class="btn btn-secondary" onclick="showPetsUI()">🐾 宠物</button>
                 <button class="btn btn-secondary" onclick="startNewGamePlus()">🌟 New Game+</button>
                 <button class="btn btn-secondary" onclick="showSettings()">⚙️ 设置</button>
                 <button class="btn btn-secondary" onclick="showStatsPage()">📊 统计</button>
@@ -5233,6 +5244,75 @@ function showEndlessResult(wave, kills, gold, time) {
 window.startEndlessMode = startEndlessMode;
 window.endlessNextWave = endlessNextWave;
 window.endlessOnBattleEnd = endlessOnBattleEnd;
+
+// ========== PET SYSTEM ==========
+const PET_TEMPLATES = [
+  {id:'slime',name:'史莱姆',emoji:'🟢',bonus:{def:5},desc:'黏糊糊但忠诚',captureRate:0.15},
+  {id:'wolf',name:'灰狼',emoji:'🐺',bonus:{str:8},desc:'凶猛的战斗伙伴',captureRate:0.12},
+  {id:'bat',name:'暗影蝙蝠',emoji:'🦇',bonus:{spd:10},desc:'夜间飞行者',captureRate:0.12},
+  {id:'fairy',name:'精灵',emoji:'🧚',bonus:{int:8,mp:20},desc:'魔法小精灵',captureRate:0.08},
+  {id:'golem',name:'石魔像',emoji:'🗿',bonus:{def:12,hp:30},desc:'坚不可摧的守卫',captureRate:0.08},
+  {id:'phoenix',name:'火凤凰',emoji:'🔥',bonus:{str:10,int:10},desc:'浴火重生',captureRate:0.05},
+  {id:'dragon',name:'幼龙',emoji:'🐉',bonus:{str:15,def:10,hp:50},desc:'未来的龙王',captureRate:0.03},
+  {id:'ghost',name:'幽灵',emoji:'👻',bonus:{spd:15,int:5},desc:'虚无缥缈',captureRate:0.10},
+  {id:'treant',name:'树人',emoji:'🌳',bonus:{hp:80,def:5},desc:'古老森林的守护者',captureRate:0.06},
+  {id:'mimic',name:'宝箱怪',emoji:'📦',bonus:{goldBonus:0.15},desc:'额外15%金币',captureRate:0.07}
+];
+
+function tryCapturePet(enemyZone) {
+  if(!gameState.pets) gameState.pets = {captured:[],active:null};
+  const zonePetMap = {plains:'slime',forest:'wolf',cave:'bat',mine:'golem',crypt:'ghost',
+    desert:'phoenix',swamp:'treant',volcano:'phoenix',darkForest:'wolf',castle:'ghost',
+    snow:'fairy',skyCity:'fairy',abyss:'dragon',rift:'ghost',divine:'phoenix',
+    dragonRealm:'dragon',demonCastle:'mimic',village:'slime'};
+  const petId = zonePetMap[enemyZone] || 'slime';
+  const tmpl = PET_TEMPLATES.find(p=>p.id===petId);
+  if(!tmpl) return;
+  if(gameState.pets.captured.find(p=>p.id===petId)) return;
+  if(Math.random() < tmpl.captureRate) {
+    gameState.pets.captured.push({...tmpl});
+    if(!gameState.pets.active) gameState.pets.active = petId;
+    addBattleLog('🎉 捕获了 ' + tmpl.emoji + ' ' + tmpl.name + '！');
+    showToast(tmpl.emoji + ' 捕获：' + tmpl.name + '！', 'success');
+  }
+}
+
+function getPetBonus() {
+  if(!gameState.pets || !gameState.pets.active) return {};
+  const pet = gameState.pets.captured.find(p=>p.id===gameState.pets.active);
+  return pet ? pet.bonus : {};
+}
+
+function showPetsUI() {
+  if(!gameState.pets) gameState.pets = {captured:[],active:null};
+  let html = '<div style="padding:15px"><h3>🐾 我的宠物</h3>';
+  if(gameState.pets.captured.length === 0) {
+    html += '<p>还没有捕获任何宠物，战斗中有几率捕获！</p>';
+  } else {
+    gameState.pets.captured.forEach(pet => {
+      const isActive = gameState.pets.active === pet.id;
+      const bonusText = Object.entries(pet.bonus).map(([k,v])=> k==='goldBonus'?'金币+'+Math.round(v*100)+'%':k.toUpperCase()+'+'+v).join(' ');
+      html += '<div style="padding:10px;margin:5px 0;border:2px solid '+(isActive?'#FFD700':'#555')+';border-radius:8px;cursor:pointer" onclick="setActivePet(\x27'+pet.id+'\x27)">';
+      html += '<span style="font-size:24px">'+pet.emoji+'</span> <b>'+pet.name+'</b>'+(isActive?' ⭐出战':'');
+      html += '<br><small>'+pet.desc+'</small><br><small style="color:#4FC3F7">'+bonusText+'</small></div>';
+    });
+  }
+  html += '<p style="color:#888;font-size:12px">点击宠物切换出战</p>';
+  html += '<button class="btn" onclick="closePetsUI()" style="margin-top:10px">关闭</button></div>';
+  const overlay = document.createElement('div');
+  overlay.id = 'petsOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<div style="background:#1a1a2e;border-radius:12px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto;color:#eee">'+html+'</div>';
+  document.body.appendChild(overlay);
+}
+function setActivePet(id) { gameState.pets.active = id; closePetsUI(); showPetsUI(); saveGame(); }
+function closePetsUI() { const o=document.getElementById('petsOverlay'); if(o) o.remove(); }
+
+window.tryCapturePet = tryCapturePet;
+window.getPetBonus = getPetBonus;
+window.showPetsUI = showPetsUI;
+window.setActivePet = setActivePet;
+window.closePetsUI = closePetsUI;
 
 // ==================== New Game+ ====================
 function startNewGamePlus() {
