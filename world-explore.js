@@ -965,6 +965,10 @@ function drawTile(ctx, tile, sx, sy, mx, my, mapId) {
             const mon=W.monsters.find(m=>m.x===mx&&m.y===my);
             if(mon) drawMonsterSprite(ctx,sx,sy,mon);
             break;
+        default:
+            ctx.fillStyle = pal.floor1 || '#3a3a3a';
+            ctx.fillRect(sx, sy, s, s);
+            break;
     }
 }
 
@@ -1467,7 +1471,7 @@ function showShopMenu() {
 
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
-        padding:20px;z-index:200;min-width:280px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        padding:20px;z-index:200;min-width:280px;max-width:calc(100vw - 40px);max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
         <div style="color:#FFD700;font-size:12px;margin-bottom:12px;text-align:center;">🏪 商店</div>
         <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>
         <div style="color:#88ccff;font-size:8px;margin-bottom:6px;">📦 消耗品</div>`;
@@ -1543,13 +1547,13 @@ function showInnMenu(npc) {
     const old = document.getElementById('worldMenu'); if(old) old.remove();
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
-        padding:20px;z-index:200;min-width:260px;font-family:'Press Start 2P',monospace;">
+        padding:20px;z-index:200;min-width:260px;max-width:calc(100vw - 40px);font-family:'Press Start 2P',monospace;">
         <div style="color:#FFD700;font-size:12px;margin-bottom:12px;text-align:center;">🏨 酒馆</div>
         <div style="color:#ccc;font-size:9px;margin-bottom:12px;line-height:1.6;">休息一晚恢复全队 HP/MP<br>费用: ${cost}G (${gameState.party.length}人×30G)</div>
-        <button onclick="restAtInn(${cost})" style="display:block;width:100%;padding:8px;margin:4px 0;
+        <button onclick="restAtInn(${cost})" style="display:block;width:100%;padding:8px;margin:4px 0;min-height:44px;
             background:#1a3a1a;border:2px solid #44aa44;border-radius:4px;color:#44ff44;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;">💤 休息 (${cost}G)</button>
-        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:4px;
+        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:4px;min-height:44px;
             background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;">离开</button></div>`;
     const container = W.canvas.parentElement;
@@ -1823,14 +1827,14 @@ function showSmithMenu() {
     
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #8B6914;border-radius:10px;
-        padding:20px;z-index:200;min-width:300px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        padding:20px;z-index:200;min-width:300px;max-width:calc(100vw - 40px);max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
         <div style="color:#8B6914;font-size:12px;margin-bottom:12px;text-align:center;">🔨 铁匠铺</div>
         <div style="color:#ffd700;font-size:9px;text-align:right;margin-bottom:8px;">💰 ${gold}G</div>
         <div style="color:#88ccff;font-size:8px;margin-bottom:6px;">🔄 词条洗练（重随属性值）</div>
         ${equipList || '<div style="color:#888;font-size:8px;">没有可洗练的装备</div>'}
         ${setInfo}
         <div style="color:#888;font-size:7px;margin:8px 0 4px;">💡 洗练会随机重新生成装备属性和名称</div>
-        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
+        <button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
             background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
             font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
     const container = W.canvas.parentElement;

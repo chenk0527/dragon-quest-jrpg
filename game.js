@@ -1182,7 +1182,7 @@ function showRecruitMenu() {
 
     let html = `<div id="worldMenu" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
         background:linear-gradient(135deg,#1a2a4a,#2a3a5a);border:3px solid #FFD700;border-radius:10px;
-        padding:20px;z-index:200;min-width:280px;max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
+        padding:20px;z-index:200;min-width:280px;max-width:calc(100vw - 40px);max-height:80vh;overflow-y:auto;font-family:'Press Start 2P',monospace;">
         <div style="color:#FFD700;font-size:12px;margin-bottom:12px;text-align:center;">🤝 招募队友</div>
         <div style="color:#aaa;font-size:8px;text-align:center;margin-bottom:10px;">队伍 ${partySize}/${maxSize}</div>`;
 
@@ -1208,7 +1208,7 @@ function showRecruitMenu() {
         });
     }
 
-    html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;
+    html += `<button onclick="closeNPCMenu()" style="display:block;width:100%;padding:8px;margin-top:8px;min-height:44px;
         background:#4a1a1a;border:2px solid #aa4444;border-radius:4px;color:#ff8888;font-size:9px;
         font-family:'Press Start 2P',monospace;cursor:pointer;">关闭</button></div>`;
 
@@ -3468,7 +3468,9 @@ function loadGame() {
 
 // 自动保存
 function autoSave() {
-    saveGame();
+    if (saveGame()) {
+        showToast('💾 自动保存完成', 'save');
+    }
 }
 
 // ==================== 渲染菜单 ====================
@@ -4857,6 +4859,7 @@ function showTutorial() {
 function renderStats() {
     const stats = gameState.stats || {};
     const playTime = formatPlayTime(gameState.playTime || 0);
+    const endlessBest = parseInt(localStorage.getItem('dq_endless_best') || '0');
     return `
         <div class="game-stats-panel">
             <h3>📊 游戏统计</h3>
@@ -4867,6 +4870,7 @@ function renderStats() {
                 <div class="stat-item-card"><div class="stat-icon">👣</div><div class="stat-label">走过步数</div><div class="stat-value">${stats.steps || 0}</div></div>
                 <div class="stat-item-card"><div class="stat-icon">💥</div><div class="stat-label">最高伤害</div><div class="stat-value">${stats.maxDamage || 0}</div></div>
                 <div class="stat-item-card"><div class="stat-icon">📜</div><div class="stat-label">完成任务</div><div class="stat-value">${(gameState.quests?.completed || []).length}</div></div>
+                <div class="stat-item-card"><div class="stat-icon">⚔️</div><div class="stat-label">无尽最高波</div><div class="stat-value">${endlessBest > 0 ? 'Wave ' + endlessBest : '未挑战'}</div></div>
             </div>
         </div>`;
 }

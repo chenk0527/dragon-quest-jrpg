@@ -151,20 +151,29 @@ body {
     font-family: 'Press Start 2P', monospace;
     font-size: 10px;
     cursor: pointer;
-    transition: all 0.1s;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, filter 0.15s ease;
     position: relative;
     background: var(--dq-blue);
     color: white;
-    box-shadow: 
+    box-shadow:
         inset -4px -4px 0 var(--dq-blue-dark),
         inset 4px 4px 0 var(--dq-blue-light),
         4px 4px 0 rgba(0,0,0,0.3);
     image-rendering: pixelated;
 }
 
+.btn:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+    box-shadow:
+        inset -4px -4px 0 var(--dq-blue-dark),
+        inset 4px 4px 0 var(--dq-blue-light),
+        4px 6px 0 rgba(0,0,0,0.35);
+}
+
 .btn:active {
     transform: translate(2px, 2px);
-    box-shadow: 
+    box-shadow:
         inset -2px -2px 0 var(--dq-blue-dark),
         inset 2px 2px 0 var(--dq-blue-light),
         2px 2px 0 rgba(0,0,0,0.3);
@@ -2090,6 +2099,23 @@ body {
     90% { transform: translate(-1px, 0); }
 }
 
+.shake-screen-heavy {
+    animation: shakeScreenHeavy 0.5s ease-in-out;
+}
+
+@keyframes shakeScreenHeavy {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-8px, -4px); }
+    20% { transform: translate(8px, 4px); }
+    30% { transform: translate(-6px, 6px); }
+    40% { transform: translate(6px, -6px); }
+    50% { transform: translate(-4px, 4px); }
+    60% { transform: translate(4px, -4px); }
+    70% { transform: translate(-3px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    90% { transform: translate(-1px, 1px); }
+}
+
 /* 白色闪光（技能释放） */
 .flash-white {
     animation: flashWhite 0.3s ease-out;
@@ -2505,8 +2531,9 @@ body {
     align-items: center;
     z-index: 9999;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.5s ease;
     font-family: 'Press Start 2P', monospace;
+    backdrop-filter: blur(4px);
 }
 .victory-overlay.active,
 .defeat-overlay.active {
@@ -2521,23 +2548,35 @@ body {
     text-align: center;
     min-width: 280px;
     max-width: 360px;
-    animation: questRewardPop 0.4s ease-out;
+    animation: victorySlideIn 0.5s ease-out;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 .defeat-content {
     border-color: var(--dq-red);
     background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
+    animation: defeatSlideIn 0.5s ease-out;
+    box-shadow: 0 0 30px rgba(255, 68, 68, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+@keyframes victorySlideIn {
+    0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes defeatSlideIn {
+    0% { transform: scale(1.1) translateY(-20px); opacity: 0; }
+    50% { transform: scale(0.98); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 .victory-title {
     font-size: 18px;
     color: var(--dq-gold);
     margin-bottom: 16px;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3);
 }
 .defeat-title {
     font-size: 18px;
     color: var(--dq-red);
     margin-bottom: 16px;
-    text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+    text-shadow: 0 0 10px rgba(255, 68, 68, 0.5), 0 0 20px rgba(255, 68, 68, 0.3);
 }
 .victory-stats {
     margin-bottom: 12px;
@@ -2871,6 +2910,18 @@ body {
 
 .equip-compare .stat-down {
     color: #ff4444;
+}
+
+/* ============== Phase 8: worldMenu touch targets ============== */
+#worldMenu button {
+    min-height: 44px;
+}
+
+/* ============== Phase 8: Auto-save toast ============== */
+.toast-save {
+    background: linear-gradient(135deg, #1a3a2a, #2a4a3a);
+    border: 2px solid #44aa66;
+    color: #88ffaa;
 }
 
 .equip-compare .stat-same {
