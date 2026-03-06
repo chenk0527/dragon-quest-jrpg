@@ -6249,8 +6249,10 @@ const DayNightCycle = {
     }
 };
 
-// ==================== Phase 9: Weather Effects ====================
-const WeatherSystem = {
+// ==================== Phase 9: Weather Effects (extends world-explore.js WeatherSystem) ====================
+// NOTE: WeatherSystem base object is defined in world-explore.js (loaded first)
+// Here we just ensure all methods exist by merging any missing ones
+(function() { const _ws = {
     canvas: null,
     ctx: null,
     particles: [],
@@ -6357,7 +6359,7 @@ const WeatherSystem = {
 
         this.animId = requestAnimationFrame(() => this.animate());
     }
-};
+}; Object.keys(_ws).forEach(k => { if (typeof WeatherSystem[k] === 'undefined') WeatherSystem[k] = _ws[k]; }); })();
 
 // Apply weather based on current zone
 function updateWeatherForZone(zoneId) {
