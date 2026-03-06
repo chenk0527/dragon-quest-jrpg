@@ -1114,6 +1114,110 @@ body {
     font-size: 12px;
 }
 
+/* 强化界面子样式 */
+.enhance-equipment {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--dq-bg-dark);
+    border: 2px solid var(--dq-blue-dark);
+    margin-bottom: 12px;
+}
+
+.equip-icon {
+    font-size: 30px;
+    cursor: pointer;
+}
+
+.equip-info {
+    flex: 1;
+}
+
+.equip-name {
+    font-size: 9px;
+    margin-bottom: 4px;
+}
+
+.equip-level {
+    font-size: 7px;
+    color: var(--dq-gold);
+}
+
+.enhance-stats {
+    margin-bottom: 12px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.success-rate {
+    font-weight: bold;
+}
+
+.success-rate.high { color: var(--dq-green); }
+.success-rate.medium { color: var(--dq-gold); }
+.success-rate.low { color: var(--dq-red); }
+
+.stat-row .cost { color: var(--dq-gold); }
+.stat-row .cost.insufficient { color: var(--dq-red); }
+
+.enhance-materials h4 {
+    font-size: 8px;
+    margin-bottom: 8px;
+    color: var(--dq-blue-light);
+}
+
+.material-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 6px;
+    background: var(--dq-bg-dark);
+    border: 1px solid var(--dq-gray);
+    margin-bottom: 4px;
+    font-size: 7px;
+}
+
+.material-item.insufficient {
+    border-color: var(--dq-red);
+    color: var(--dq-red);
+}
+
+.material-icon { margin-right: 6px; }
+.material-common { color: #95a5a6; }
+.material-magic { color: #2ecc71; }
+.material-rare { color: #3498db; }
+.material-epic { color: #9b59b6; }
+.material-legendary { color: #f39c12; }
+
+.material-count { font-size: 7px; }
+
+.enhance-warning {
+    color: var(--dq-red);
+    font-size: 7px;
+    text-align: center;
+    min-height: 14px;
+    margin: 8px 0;
+}
+
+.enhance-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.enhance-buttons .btn {
+    flex: 1;
+    padding: 8px 4px;
+}
+
 /* ============== 技能树 ============== */
 .skill-tree-overlay {
     position: fixed;
