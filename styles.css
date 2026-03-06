@@ -133,11 +133,7 @@ body {
     display: block;
 }
 
-/* 世界探索场景需要flex布局 */
-#sceneWorld.scene.active {
-    display: flex;
-    flex-direction: column;
-}
+/* 世界探索场景使用fixed定位，z-index: 1000覆盖其他内容（由 #sceneWorld 规则统一管理） */
 
 @keyframes fadeIn {
     from { opacity: 0; }
@@ -897,10 +893,10 @@ body {
     border-top: 4px solid var(--dq-blue);
     position: fixed;
     bottom: 0;
-    left: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
     max-width: 480px;
-    margin: 0 auto;
     z-index: 100;
 }
 
@@ -1954,7 +1950,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.95);
     z-index: 9000;
     display: flex;
     justify-content: center;
@@ -2012,7 +2008,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.7);
+    background: rgba(0,0,0,0.95);
     z-index: 9000;
     display: flex;
     justify-content: center;

@@ -3556,8 +3556,9 @@ function showScene(sceneId) {
     if (sceneId === 'cosmetics') renderCosmetics();
     if (sceneId === 'world' && window.WorldSystem) {
         // 冒险场景需要隐藏导航栏，初始化Canvas
+        // 延迟初始化确保 DOM 已布局，canvas 能正确获取宽高
         if (navBar) navBar.style.display = 'none';
-        window.WorldSystem.init();
+        setTimeout(() => window.WorldSystem.init(), 50);
     }
 }
 
