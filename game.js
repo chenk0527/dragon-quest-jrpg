@@ -96,6 +96,34 @@ function showSkillTree(charId) {
     let skills = [...(SKILL_SYSTEM[char.classId] || [])];
     const baseClass = CLASSES[char.classId]?.advancedOf;
     if (baseClass) skills = [...(SKILL_SYSTEM[baseClass] || []), ...skills];
+
+    const activeSkills = skills.filter(s => s.type !== 'passive');
+    const passiveSkills = skills.filter(s => s.type === 'passive');
+    const currentCooldowns = char.skillCooldowns || {};
+
+    const renderSkill = (skill, isBattle) => {
+        const isLearned = char.learnedSkills && char.learnedSkills.includes(skill.id);
+        const canLearn = char.level >= skill.level;
+        const isPassive = skill.type === 'passive';
+        const cdLeft = currentCooldowns[skill.id] || 0;
+        const onCooldown = cdLeft > 0;
+        let statusText = '';
+        if (isPassive) statusText = '<div class="skill-mp" style="color:#2ecc71">● 被动</div>';
+        else if (onCooldown) statusText = `<div class="skill-mp" style="color:#e74c3c">冷却 ${cdLeft}回合</div>`;
+        else statusText = `<div class="skill-mp">${skill.mp > 0 ? skill.mp + ' MP' : '无消耗'}</div>`;
+        const clickable = isLearned && !isPassive && !onCooldown;
+        return `
+            <div class="skill-item ${isLearned ? 'learned' : ''} ${!isLearned && canLearn ? 'available' : ''} ${!canLearn ? 'locked' : ''} ${onCooldown ? 'on-cooldown' : ''}"
+                 onclick="${clickable ? `selectSkillForBattle(${charId}, '${skill.id}')` : ''}">
+                <div class="skill-icon">${skill.icon}</div>
+                <div class="skill-name">${skill.name}</div>
+                <div class="skill-level">Lv.${skill.level}</div>
+                ${statusText}
+                <div class="skill-desc">${skill.desc}${skill.cooldown ? ` [冷${skill.cooldown}]` : ''}</div>
+            </div>
+        `;
+    };
+
     const overlay = document.createElement('div');
     overlay.id = 'skillTreeOverlay';
     overlay.className = 'skill-tree-overlay';
@@ -103,22 +131,15 @@ function showSkillTree(charId) {
         <div class="skill-tree-panel">
             <h2>📚 ${char.name} 的技能树</h2>
             <div class="skill-points">MP: ${char.currentMp}/${calculateStats(char).mp}</div>
+            <h3 style="color:var(--dq-gold);font-size:9px;margin:10px 0 6px">⚔️ 主动技能</h3>
             <div class="skills-grid">
-                ${skills.map(skill => {
-                    const isLearned = char.learnedSkills && char.learnedSkills.includes(skill.id);
-                    const canLearn = char.level >= skill.level;
-                    return `
-                        <div class="skill-item ${isLearned ? 'learned' : ''} ${!isLearned && canLearn ? 'available' : ''} ${!canLearn ? 'locked' : ''}"
-                             onclick="${isLearned ? `selectSkillForBattle(${charId}, '${skill.id}')` : ''}">
-                            <div class="skill-icon">${skill.icon}</div>
-                            <div class="skill-name">${skill.name}</div>
-                            <div class="skill-level">Lv.${skill.level}</div>
-                            <div class="skill-mp">${skill.mp} MP</div>
-                            <div class="skill-desc">${skill.desc}</div>
-                        </div>
-                    `;
-                }).join('')}
+                ${activeSkills.map(s => renderSkill(s, true)).join('')}
             </div>
+            ${passiveSkills.length > 0 ? `
+            <h3 style="color:#2ecc71;font-size:9px;margin:10px 0 6px">✨ 被动技能（自动生效）</h3>
+            <div class="skills-grid">
+                ${passiveSkills.map(s => renderSkill(s, false)).join('')}
+            </div>` : ''}
             <div class="skill-tree-buttons">
                 <button class="btn btn-secondary" onclick="closeSkillTree()">关闭</button>
             </div>
@@ -147,9 +168,23 @@ function selectSkillForBattle(charId, skillId) {
     const skill = getSkillById(char.classId, skillId);
     if (!skill) return;
 
+    // 被动技能不能手动使用
+    if (skill.type === 'passive') {
+        showToast('这是被动技能，自动生效', 'info');
+        return;
+    }
+
     // 检查MP
     if (char.currentMp < skill.mp) {
         showToast('MP不足！', 'error');
+        return;
+    }
+
+    // 检查冷却
+    if (!char.skillCooldowns) char.skillCooldowns = {};
+    const cdLeft = char.skillCooldowns[skill.id] || 0;
+    if (cdLeft > 0) {
+        showToast(`冷却中！还需 ${cdLeft} 回合`, 'error');
         return;
     }
 
@@ -177,6 +212,12 @@ function executeSkill(char, skill) {
 
     // 消耗MP
     char.currentMp -= skill.mp;
+
+    // 设置冷却
+    if (skill.cooldown && skill.cooldown > 0) {
+        if (!char.skillCooldowns) char.skillCooldowns = {};
+        char.skillCooldowns[skill.id] = skill.cooldown;
+    }
 
     switch(skill.type) {
         case 'attack':
@@ -485,6 +526,14 @@ function updateBuffs() {
             char.buffs = char.buffs.filter(buff => {
                 buff.duration--;
                 return buff.duration > 0;
+            });
+        }
+        // 更新技能冷却
+        if (char.skillCooldowns) {
+            Object.keys(char.skillCooldowns).forEach(skillId => {
+                if (char.skillCooldowns[skillId] > 0) {
+                    char.skillCooldowns[skillId]--;
+                }
             });
         }
     });
@@ -797,71 +846,89 @@ function closeEnhanceInterface() {
 }
 
 // ==================== 技能系统配置 ====================
+// passive 技能说明：type='passive'，不消耗MP，自动生效，在 calculateStats 中应用
+// 主动技能说明：type 为 attack/magic/aoe/heal/buff/partyBuff 等，消耗MP，战斗中手动使用
+// 冷却说明：cooldown 字段为回合数，技能使用后在 char.skillCooldowns[skillId] 中记录
 const SKILL_SYSTEM = {
-    // 战士技能
+    // 战士技能（6个主动 + 2个被动）
     warrior: [
+        // 主动技能
         { id: 'slash', name: '斩击', icon: '⚔️', mp: 0, type: 'attack', power: 1.2, desc: '基本的斩击', level: 1 },
-        { id: 'heavyStrike', name: '重击', icon: '🔨', mp: 5, type: 'attack', power: 1.8, desc: '强力的打击', level: 3 },
-        { id: 'whirlwind', name: '旋风斩', icon: '🌪️', mp: 15, type: 'aoe', power: 1.5, desc: '攻击全体敌人', level: 8 },
-        { id: 'defendStance', name: '防御姿态', icon: '🛡️', mp: 8, type: 'buff', buffType: 'def', buffValue: 1.5, duration: 3, desc: '提升防御力', level: 5 },
-        { id: 'berserk', name: '狂战士', icon: '👹', mp: 20, type: 'buff', buffType: 'str', buffValue: 1.8, duration: 3, desc: '大幅提升攻击力', level: 12 },
-        { id: 'pierce', name: '破甲', icon: '💥', mp: 12, type: 'attack', power: 2.2, desc: '无视部分防御', level: 15 },
-        { id: 'warCry', name: '战吼', icon: '📢', mp: 15, type: 'partyBuff', buffType: 'str', buffValue: 1.3, duration: 3, desc: '全队攻击力提升', level: 18 },
-        { id: 'execute', name: '处决', icon: '⚡', mp: 25, type: 'attack', power: 3.0, condition: 'hpPercent', conditionValue: 0.3, desc: '对低血量敌人造成大量伤害', level: 25 },
-        { id: 'counter', name: '反击', icon: '↩️', mp: 10, type: 'counter', power: 1.5, desc: '受到攻击时反击', level: 20 },
-        { id: 'ultimateSlash', name: '终极斩', icon: '🔥', mp: 40, type: 'attack', power: 4.0, desc: '最强单体攻击', level: 35 }
+        { id: 'heavyStrike', name: '重击', icon: '🔨', mp: 5, type: 'attack', power: 1.8, cooldown: 1, desc: '强力打击，有冷却', level: 3 },
+        { id: 'whirlwind', name: '旋风斩', icon: '🌪️', mp: 15, type: 'aoe', power: 1.5, cooldown: 2, desc: '攻击全体敌人', level: 8 },
+        { id: 'defendStance', name: '防御姿态', icon: '🛡️', mp: 8, type: 'buff', buffType: 'def', buffValue: 1.5, duration: 3, cooldown: 3, desc: '提升防御力3回合', level: 5 },
+        { id: 'berserk', name: '狂战士', icon: '👹', mp: 20, type: 'buff', buffType: 'str', buffValue: 1.8, duration: 3, cooldown: 4, desc: '大幅提升攻击力', level: 12 },
+        { id: 'pierce', name: '破甲', icon: '💥', mp: 12, type: 'attack', power: 2.2, cooldown: 2, desc: '无视部分防御', level: 15 },
+        { id: 'warCry', name: '战吼', icon: '📢', mp: 15, type: 'partyBuff', buffType: 'str', buffValue: 1.3, duration: 3, cooldown: 4, desc: '全队攻击力提升', level: 18 },
+        { id: 'ultimateSlash', name: '终极斩', icon: '🔥', mp: 40, type: 'attack', power: 4.0, cooldown: 5, desc: '最强单体攻击', level: 35 },
+        // 被动技能（永久属性加成，自动生效）
+        { id: 'warriorInstinct', name: '战斗本能', icon: '💪', mp: 0, type: 'passive', passiveStat: 'str', passiveBonus: 0.15, desc: '永久提升15%力量', level: 7 },
+        { id: 'ironWill', name: '钢铁意志', icon: '🛡️', mp: 0, type: 'passive', passiveStat: 'def', passiveBonus: 0.12, desc: '永久提升12%防御', level: 14 },
+        { id: 'warlordAura', name: '战将气魄', icon: '👑', mp: 0, type: 'passive', passiveStat: 'hp', passiveBonus: 0.20, desc: '永久提升20%最大HP', level: 22 }
     ],
-    // 法师技能
+    // 法师技能（7个主动 + 3个被动）
     mage: [
+        // 主动技能
         { id: 'fireball', name: '火球术', icon: '🔥', mp: 8, type: 'magic', power: 1.8, element: 'fire', desc: '火属性魔法', level: 1 },
         { id: 'iceShard', name: '冰锥术', icon: '❄️', mp: 8, type: 'magic', power: 1.6, element: 'ice', desc: '冰属性魔法，有几率冰冻', level: 1 },
-        { id: 'thunder', name: '雷击', icon: '⚡', mp: 12, type: 'magic', power: 2.2, element: 'thunder', desc: '雷属性魔法', level: 5 },
-        { id: 'heal', name: '治疗术', icon: '💚', mp: 10, type: 'heal', power: 1.5, desc: '恢复单体生命', level: 3 },
-        { id: 'meteor', name: '陨石术', icon: '☄️', mp: 35, type: 'aoe', power: 2.8, element: 'fire', desc: '强力的全体攻击', level: 15 },
-        { id: 'blizzard', name: '暴风雪', icon: '🌨️', mp: 30, type: 'aoe', power: 2.5, element: 'ice', desc: '冰属性全体攻击', level: 18 },
-        { id: 'manaShield', name: '魔法盾', icon: '🔮', mp: 15, type: 'buff', buffType: 'def', buffValue: 2.0, duration: 3, desc: '用MP抵挡伤害', level: 10 },
-        { id: 'enchant', name: '附魔', icon: '✨', mp: 20, type: 'partyBuff', buffType: 'int', buffValue: 1.4, duration: 4, desc: '全队智力提升', level: 22 },
+        { id: 'thunder', name: '雷击', icon: '⚡', mp: 12, type: 'magic', power: 2.2, element: 'thunder', cooldown: 1, desc: '雷属性魔法', level: 5 },
+        { id: 'heal', name: '治疗术', icon: '💚', mp: 10, type: 'heal', power: 1.5, cooldown: 2, desc: '恢复单体生命', level: 3 },
+        { id: 'meteor', name: '陨石术', icon: '☄️', mp: 35, type: 'aoe', power: 2.8, element: 'fire', cooldown: 4, desc: '强力的全体攻击', level: 15 },
+        { id: 'blizzard', name: '暴风雪', icon: '🌨️', mp: 30, type: 'aoe', power: 2.5, element: 'ice', cooldown: 3, desc: '冰属性全体攻击', level: 18 },
         { id: 'drain', name: '魔力吸收', icon: '🌀', mp: 5, type: 'drain', power: 1.2, desc: '攻击并恢复MP', level: 12 },
-        { id: 'armageddon', name: '末日审判', icon: '💫', mp: 60, type: 'aoe', power: 4.5, desc: '最强魔法攻击', level: 40 }
+        { id: 'armageddon', name: '末日审判', icon: '💫', mp: 60, type: 'aoe', power: 4.5, cooldown: 6, desc: '最强魔法攻击', level: 40 },
+        // 被动技能
+        { id: 'magicMastery', name: '魔法精通', icon: '📚', mp: 0, type: 'passive', passiveStat: 'int', passiveBonus: 0.18, desc: '永久提升18%智力', level: 6 },
+        { id: 'manaFlow', name: '魔力流动', icon: '💧', mp: 0, type: 'passive', passiveStat: 'mp', passiveBonus: 0.25, desc: '永久提升25%最大MP', level: 13 },
+        { id: 'elementalAffinity', name: '元素亲和', icon: '🌈', mp: 0, type: 'passive', passiveStat: 'spd', passiveBonus: 0.10, desc: '元素感知，提升10%速度', level: 20 }
     ],
-    // 弓箭手技能
+    // 弓箭手技能（7个主动 + 3个被动）
     archer: [
+        // 主动技能
         { id: 'aimedShot', name: '瞄准射击', icon: '🎯', mp: 5, type: 'attack', power: 1.6, desc: '精准的单体攻击', level: 1 },
-        { id: 'doubleShot', name: '双重射击', icon: '🏹', mp: 8, type: 'attack', power: 1.2, hits: 2, desc: '连续两次攻击', level: 3 },
-        { id: 'poisonArrow', name: '毒箭', icon: '☠️', mp: 10, type: 'dot', power: 0.5, duration: 4, desc: '附加中毒效果', level: 6 },
-        { id: 'volley', name: '箭雨', icon: '🌧️', mp: 20, type: 'aoe', power: 1.4, desc: '攻击全体敌人', level: 10 },
-        { id: 'snipe', name: '狙击', icon: '🔭', mp: 18, type: 'attack', power: 2.5, critBonus: 0.3, desc: '高暴击率攻击', level: 15 },
-        { id: 'haste', name: '急速', icon: '💨', mp: 15, type: 'buff', buffType: 'spd', buffValue: 1.6, duration: 3, desc: '提升速度', level: 12 },
-        { id: 'trap', name: '陷阱', icon: '🕸️', mp: 12, type: 'debuff', debuffType: 'spd', debuffValue: 0.5, duration: 3, desc: '降低敌人速度', level: 18 },
-        { id: 'piercingShot', name: '穿透箭', icon: '↔️', mp: 22, type: 'attack', power: 2.0, pierce: true, desc: '穿透防御', level: 20 },
-        { id: 'eagleEye', name: '鹰眼', icon: '👁️', mp: 20, type: 'buff', buffType: 'crit', buffValue: 2.0, duration: 3, desc: '大幅提升暴击', level: 25 },
-        { id: 'barrage', name: '弹幕', icon: '📦', mp: 40, type: 'attack', power: 1.0, hits: 5, desc: '连续五次攻击', level: 35 }
+        { id: 'doubleShot', name: '双重射击', icon: '🏹', mp: 8, type: 'attack', power: 1.2, hits: 2, cooldown: 1, desc: '连续两次攻击', level: 3 },
+        { id: 'poisonArrow', name: '毒箭', icon: '☠️', mp: 10, type: 'dot', power: 0.5, duration: 4, cooldown: 2, desc: '附加中毒效果', level: 6 },
+        { id: 'volley', name: '箭雨', icon: '🌧️', mp: 20, type: 'aoe', power: 1.4, cooldown: 3, desc: '攻击全体敌人', level: 10 },
+        { id: 'snipe', name: '狙击', icon: '🔭', mp: 18, type: 'attack', power: 2.5, critBonus: 0.3, cooldown: 2, desc: '高暴击率攻击', level: 15 },
+        { id: 'haste', name: '急速', icon: '💨', mp: 15, type: 'buff', buffType: 'spd', buffValue: 1.6, duration: 3, cooldown: 3, desc: '提升速度', level: 12 },
+        { id: 'piercingShot', name: '穿透箭', icon: '↔️', mp: 22, type: 'attack', power: 2.0, pierce: true, cooldown: 3, desc: '穿透防御', level: 20 },
+        { id: 'barrage', name: '弹幕', icon: '📦', mp: 40, type: 'attack', power: 1.0, hits: 5, cooldown: 5, desc: '连续五次攻击', level: 35 },
+        // 被动技能
+        { id: 'hawkEye', name: '鹰眼视界', icon: '🦅', mp: 0, type: 'passive', passiveStat: 'str', passiveBonus: 0.15, desc: '永久提升15%力量', level: 8 },
+        { id: 'quickStep', name: '轻步', icon: '💨', mp: 0, type: 'passive', passiveStat: 'spd', passiveBonus: 0.20, desc: '永久提升20%速度', level: 15 },
+        { id: 'hunterInstinct', name: '猎人本能', icon: '🎯', mp: 0, type: 'passive', passiveStat: 'def', passiveBonus: 0.10, desc: '永久提升10%防御', level: 22 }
     ],
-    // 牧师技能
+    // 牧师技能（7个主动 + 3个被动）
     priest: [
-        { id: 'cure', name: '治愈', icon: '💚', mp: 8, type: 'heal', power: 1.3, desc: '基础治疗', level: 1 },
+        // 主动技能
+        { id: 'cure', name: '治愈', icon: '💚', mp: 8, type: 'heal', power: 1.3, cooldown: 1, desc: '基础治疗', level: 1 },
         { id: 'holyLight', name: '圣光', icon: '✨', mp: 10, type: 'magic', power: 1.5, element: 'holy', desc: '光属性攻击', level: 1 },
-        { id: 'groupHeal', name: '群体治疗', icon: '💗', mp: 25, type: 'partyHeal', power: 1.0, desc: '恢复全队生命', level: 8 },
-        { id: 'bless', name: '祝福', icon: '🙏', mp: 15, type: 'partyBuff', buffType: 'def', buffValue: 1.4, duration: 3, desc: '全队防御提升', level: 5 },
-        { id: 'revive', name: '复活', icon: '👼', mp: 40, type: 'revive', power: 0.5, desc: '复活倒下的队友', level: 15 },
-        { id: 'dispel', name: '驱散', icon: '🌟', mp: 12, type: 'dispel', desc: '移除负面状态', level: 10 },
-        { id: 'sanctuary', name: '圣域', icon: '⛪', mp: 30, type: 'partyHeal', power: 0.3, duration: 3, desc: '持续恢复全队', level: 20 },
-        { id: 'holyShield', name: '神圣护盾', icon: '🔆', mp: 20, type: 'buff', buffType: 'invincible', duration: 1, desc: '抵挡一次伤害', level: 18 },
-        { id: 'judgment', name: '审判', icon: '⚖️', mp: 25, type: 'magic', power: 2.5, element: 'holy', desc: '强力光属性攻击', level: 22 },
-        { id: 'divineBlessing', name: '神之恩赐', icon: '🌈', mp: 50, type: 'partyBuff', buffType: 'all', buffValue: 1.5, duration: 3, desc: '全属性大幅提升', level: 35 }
+        { id: 'groupHeal', name: '群体治疗', icon: '💗', mp: 25, type: 'partyHeal', power: 1.0, cooldown: 3, desc: '恢复全队生命', level: 8 },
+        { id: 'bless', name: '祝福', icon: '🙏', mp: 15, type: 'partyBuff', buffType: 'def', buffValue: 1.4, duration: 3, cooldown: 3, desc: '全队防御提升', level: 5 },
+        { id: 'revive', name: '复活', icon: '👼', mp: 40, type: 'revive', power: 0.5, cooldown: 5, desc: '复活倒下的队友', level: 15 },
+        { id: 'dispel', name: '驱散', icon: '🌟', mp: 12, type: 'dispel', cooldown: 2, desc: '移除负面状态', level: 10 },
+        { id: 'judgment', name: '审判', icon: '⚖️', mp: 25, type: 'magic', power: 2.5, element: 'holy', cooldown: 3, desc: '强力光属性攻击', level: 22 },
+        { id: 'divineBlessing', name: '神之恩赐', icon: '🌈', mp: 50, type: 'partyBuff', buffType: 'all', buffValue: 1.5, duration: 3, cooldown: 6, desc: '全属性大幅提升', level: 35 },
+        // 被动技能
+        { id: 'holyProtection', name: '圣光庇护', icon: '🛡️', mp: 0, type: 'passive', passiveStat: 'def', passiveBonus: 0.15, desc: '永久提升15%防御', level: 7 },
+        { id: 'divineGrace', name: '神圣恩典', icon: '💙', mp: 0, type: 'passive', passiveStat: 'hp', passiveBonus: 0.15, desc: '永久提升15%最大HP', level: 14 },
+        { id: 'faithHealing', name: '信仰治愈', icon: '✝️', mp: 0, type: 'passive', passiveStat: 'int', passiveBonus: 0.20, desc: '虔诚祈祷，提升20%智力', level: 21 }
     ],
-    // 盗贼技能
+    // 盗贼技能（7个主动 + 3个被动）
     rogue: [
+        // 主动技能
         { id: 'stab', name: '突刺', icon: '🗡️', mp: 5, type: 'attack', power: 1.4, desc: '快速攻击', level: 1 },
-        { id: 'backstab', name: '背刺', icon: '🔪', mp: 10, type: 'attack', power: 2.0, critBonus: 0.2, desc: '高伤害背刺', level: 3 },
-        { id: 'steal', name: '偷窃', icon: '👋', mp: 8, type: 'steal', desc: '偷取物品或金币', level: 5 },
-        { id: 'poisonBlade', name: '毒刃', icon: '🗡️', mp: 12, type: 'buff', buffType: 'poison', duration: 3, desc: '武器附加毒素', level: 8 },
+        { id: 'backstab', name: '背刺', icon: '🔪', mp: 10, type: 'attack', power: 2.0, critBonus: 0.2, cooldown: 1, desc: '高伤害背刺', level: 3 },
+        { id: 'steal', name: '偷窃', icon: '👋', mp: 8, type: 'steal', cooldown: 2, desc: '偷取物品或金币', level: 5 },
         { id: 'smokeBomb', name: '烟雾弹', icon: '💣', mp: 15, type: 'escape', desc: '必定逃跑成功', level: 10 },
-        { id: 'shadowStrike', name: '暗影打击', icon: '🌑', mp: 20, type: 'attack', power: 2.2, ignoreDef: 0.3, desc: '无视部分防御', level: 15 },
-        { id: 'dualWield', name: '双持', icon: '⚔️', mp: 18, type: 'buff', buffType: 'doubleAttack', duration: 3, desc: '每次攻击两次', level: 18 },
-        { id: 'hide', name: '隐身', icon: '👤', mp: 15, type: 'buff', buffType: 'hide', duration: 2, desc: '敌人无法选中', level: 20 },
-        { id: 'assassinate', name: '暗杀', icon: '🎯', mp: 30, type: 'attack', power: 3.0, critBonus: 0.5, desc: '超高暴击伤害', level: 25 },
-        { id: 'shadowDance', name: '影舞', icon: '💃', mp: 45, type: 'attack', power: 0.8, hits: 4, desc: '连续四次攻击', level: 35 }
+        { id: 'shadowStrike', name: '暗影打击', icon: '🌑', mp: 20, type: 'attack', power: 2.2, ignoreDef: 0.3, cooldown: 2, desc: '无视部分防御', level: 15 },
+        { id: 'dualWield', name: '双持', icon: '⚔️', mp: 18, type: 'buff', buffType: 'doubleAttack', duration: 3, cooldown: 4, desc: '每次攻击两次', level: 18 },
+        { id: 'assassinate', name: '暗杀', icon: '🎯', mp: 30, type: 'attack', power: 3.0, critBonus: 0.5, cooldown: 4, desc: '超高暴击伤害', level: 25 },
+        { id: 'shadowDance', name: '影舞', icon: '💃', mp: 45, type: 'attack', power: 0.8, hits: 4, cooldown: 5, desc: '连续四次攻击', level: 35 },
+        // 被动技能
+        { id: 'sharpSenses', name: '敏锐感知', icon: '👁️', mp: 0, type: 'passive', passiveStat: 'spd', passiveBonus: 0.18, desc: '永久提升18%速度', level: 8 },
+        { id: 'shadowStep', name: '影步', icon: '👣', mp: 0, type: 'passive', passiveStat: 'str', passiveBonus: 0.12, desc: '步法精妙，提升12%力量', level: 15 },
+        { id: 'opportunist', name: '趁虚而入', icon: '🗡️', mp: 0, type: 'passive', passiveStat: 'hp', passiveBonus: 0.08, desc: '永久提升8%最大HP', level: 22 }
     ]
 };
 
@@ -2446,7 +2513,8 @@ function createCharacter(name, classId) {
             accessory: null
         },
         learnedSkills: (SKILL_SYSTEM[classId] || []).filter(s => s.level <= 1).map(s => s.id),
-        buffs: []
+        buffs: [],
+        skillCooldowns: {}
     };
 
     gameState.party.push(char);
@@ -2531,6 +2599,26 @@ function calculateStats(char) {
     if(petBonus.def) stats.def += petBonus.def;
     if(petBonus.int) stats.int += petBonus.int;
     if(petBonus.spd) stats.spd += petBonus.spd;
+
+    // 应用被动技能加成
+    if (char.learnedSkills) {
+        const allSkills = [
+            ...(SKILL_SYSTEM[char.classId] || []),
+            ...(CLASSES[char.classId]?.advancedOf ? (SKILL_SYSTEM[CLASSES[char.classId].advancedOf] || []) : [])
+        ];
+        allSkills.forEach(skill => {
+            if (skill.type === 'passive' && char.learnedSkills.includes(skill.id)) {
+                const stat = skill.passiveStat;
+                const bonus = skill.passiveBonus || 0;
+                if (stat === 'hp') stats.hp = Math.floor(stats.hp * (1 + bonus));
+                else if (stat === 'mp') stats.mp = Math.floor(stats.mp * (1 + bonus));
+                else if (stat === 'str') stats.str = Math.floor(stats.str * (1 + bonus));
+                else if (stat === 'def') stats.def = Math.floor(stats.def * (1 + bonus));
+                else if (stat === 'spd') stats.spd = Math.floor(stats.spd * (1 + bonus));
+                else if (stat === 'int') stats.int = Math.floor(stats.int * (1 + bonus));
+            }
+        });
+    }
 
     // 应用BUFF效果
     if (char.buffs) {

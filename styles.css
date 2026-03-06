@@ -1282,6 +1282,13 @@ body {
     cursor: not-allowed;
 }
 
+.skill-item.on-cooldown {
+    opacity: 0.6;
+    cursor: not-allowed;
+    border-color: #e74c3c;
+    background: rgba(231,76,60,0.1);
+}
+
 .skill-icon {
     font-size: 20px;
     margin-bottom: 4px;
